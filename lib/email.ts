@@ -62,7 +62,7 @@ async function sendEmail(to: EmailRecipient, subject: string, text: string) {
     },
     body: JSON.stringify({
       from: fromEmail,
-      to: [to.name ? `${to.name} <${to.email}>` : to.email],
+      to: [to.email],
       subject,
       text
     })
