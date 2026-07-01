@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String          @id @default(cuid())
+  name           String
+  email          String          @unique
+  passwordHash   String
+  role           String
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  citizenProfile CitizenProfile?
+  driverProfile  DriverProfile?
+  membership     Membership?
+  sessions       Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CitizenProfile {
+  id            String        @id @default(cuid())
+  userId        String        @unique
+  phone         String?
+  address       String?
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rideRequests  RideRequest[]
+}
+
+model DriverProfile {
+  id            String           @id @default(cuid())
+  userId        String           @unique
+  phone         String?
+  licenseNumber String?
+  imageUrl      String?
+  notes         String?
+  isActive      Boolean          @default(true)
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignments   RideAssignment[]
+  shifts        DriverShift[]
+}
+
+model RideRequest {
+  id                 String           @id @default(cuid())
+  citizenProfileId   String
+  pickupAddress      String
+  destinationAddress String
+  rideDate           DateTime
+  rideTime           String
+  passengers         Int
+  purpose            String
+  includesMinors     Boolean          @default(false)
+  parentalConsent    Boolean          @default(false)
+  guardianName       String?
+  guardianPhone      String?
+  notes              String?
+  status             String           @default("PENDING")
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  citizenProfile     CitizenProfile   @relation(fields: [citizenProfileId], references: [id], onDelete: Cascade)
+  assignment         RideAssignment?
+}
+
+model RideAssignment {
+  id              String        @id @default(cuid())
+  rideRequestId   String        @unique
+  driverProfileId String
+  assignedAt      DateTime      @default(now())
+  rideRequest     RideRequest   @relation(fields: [rideRequestId], references: [id], onDelete: Cascade)
+  driverProfile   DriverProfile @relation(fields: [driverProfileId], references: [id], onDelete: Cascade)
+}
+
+model DriverShift {
+  id              String         @id @default(cuid())
+  driverProfileId String?
+  shiftDate       DateTime
+  startTime       String
+  endTime         String
+  notes           String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  driverProfile   DriverProfile? @relation(fields: [driverProfileId], references: [id], onDelete: SetNull)
+}
+
+model Membership {
+  id        String           @id @default(cuid())
+  userId    String           @unique
+  status    String   @default("ACTIVE")
+  startsAt  DateTime         @default(now())
+  endsAt    DateTime?
+  notes     String?
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

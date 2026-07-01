@@ -1,0 +1,13 @@
+<svg width="310" height="88" viewBox="0 0 310 88" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title">
+  <title id="title">Velkommen i bussen</title>
+  <rect x="2" y="16" width="96" height="52" rx="10" fill="#FFD13B" stroke="#284532" stroke-width="4"/>
+  <path d="M16 30H84V52H16V30Z" fill="#FFF9DE"/>
+  <path d="M19 33H36V49H19V33ZM42 33H59V49H42V33ZM65 33H82V49H65V33Z" fill="#5E9F44"/>
+  <circle cx="26" cy="68" r="9" fill="#284532"/>
+  <circle cx="74" cy="68" r="9" fill="#284532"/>
+  <circle cx="26" cy="68" r="4" fill="#FFF9DE"/>
+  <circle cx="74" cy="68" r="4" fill="#FFF9DE"/>
+  <path d="M96 36C108 37 115 44 118 56H98V36H96Z" fill="#FFD13B" stroke="#284532" stroke-width="4" stroke-linejoin="round"/>
+  <text x="132" y="42" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="800" fill="#284532">Velkommen</text>
+  <text x="132" y="68" font-family="Arial, Helvetica, sans-serif" font-size="23" font-weight="800" fill="#5E9F44">i bussen</text>
+</svg>
