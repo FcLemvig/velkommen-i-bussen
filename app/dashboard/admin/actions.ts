@@ -3,8 +3,35 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { isRideStatus } from "@/lib/domain";
+import { isRideStatus, RideStatus } from "@/lib/domain";
+import {
+  notifyCitizenAboutAssignment,
+  notifyCitizenAboutStatus,
+  notifyDriverAboutAssignment
+} from "@/lib/email";
 import { prisma } from "@/lib/prisma";
+
+function toRideEmailData(ride: {
+  citizenProfile: { user: { name: string } };
+  pickupAddress: string;
+  destinationAddress: string;
+  rideDate: Date;
+  rideTime: string;
+  passengers: number;
+  purpose: string;
+  notes: string | null;
+}) {
+  return {
+    citizenName: ride.citizenProfile.user.name,
+    pickupAddress: ride.pickupAddress,
+    destinationAddress: ride.destinationAddress,
+    rideDate: ride.rideDate,
+    rideTime: ride.rideTime,
+    passengers: ride.passengers,
+    purpose: ride.purpose,
+    notes: ride.notes
+  };
+}
 
 export async function updateRideStatusAction(formData: FormData) {
   await requireUser(["ADMIN"]);
@@ -15,10 +42,24 @@ export async function updateRideStatusAction(formData: FormData) {
     redirect("/dashboard/admin?error=Status%20kunne%20ikke%20opdateres.");
   }
 
-  await prisma.rideRequest.update({
+  const ride = await prisma.rideRequest.update({
     where: { id: rideRequestId },
-    data: { status }
+    data: { status },
+    include: {
+      citizenProfile: {
+        include: { user: true }
+      }
+    }
   });
+
+  await notifyCitizenAboutStatus(
+    {
+      email: ride.citizenProfile.user.email,
+      name: ride.citizenProfile.user.name
+    },
+    toRideEmailData(ride),
+    status as RideStatus
+  );
 
   revalidatePath("/dashboard/admin");
 }
@@ -38,10 +79,37 @@ export async function assignDriverAction(formData: FormData) {
     update: { driverProfileId }
   });
 
-  await prisma.rideRequest.update({
+  const ride = await prisma.rideRequest.update({
     where: { id: rideRequestId },
-    data: { status: "ASSIGNED" }
+    data: { status: "ASSIGNED" },
+    include: {
+      citizenProfile: {
+        include: { user: true }
+      },
+      assignment: {
+        include: {
+          driverProfile: {
+            include: { user: true }
+          }
+        }
+      }
+    }
   });
+
+  if (ride.assignment?.driverProfile.user) {
+    const rideData = toRideEmailData(ride);
+    const citizen = {
+      email: ride.citizenProfile.user.email,
+      name: ride.citizenProfile.user.name
+    };
+    const driver = {
+      email: ride.assignment.driverProfile.user.email,
+      name: ride.assignment.driverProfile.user.name
+    };
+
+    await notifyCitizenAboutAssignment(citizen, rideData, driver);
+    await notifyDriverAboutAssignment(driver, rideData);
+  }
 
   revalidatePath("/dashboard/admin");
 }
