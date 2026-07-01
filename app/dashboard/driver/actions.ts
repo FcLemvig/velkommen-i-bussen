@@ -3,9 +3,36 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
+import {
+  notifyCitizenAboutAssignment,
+  notifyCitizenAboutStatus,
+  notifyDriverAboutAssignment
+} from "@/lib/email";
 import { prisma } from "@/lib/prisma";
 import { isRideWithinShift } from "@/lib/shifts";
 import { saveDriverImage } from "@/lib/uploads";
+
+function toRideEmailData(ride: {
+  citizenProfile: { user: { name: string } };
+  pickupAddress: string;
+  destinationAddress: string;
+  rideDate: Date;
+  rideTime: string;
+  passengers: number;
+  purpose: string;
+  notes: string | null;
+}) {
+  return {
+    citizenName: ride.citizenProfile.user.name,
+    pickupAddress: ride.pickupAddress,
+    destinationAddress: ride.destinationAddress,
+    rideDate: ride.rideDate,
+    rideTime: ride.rideTime,
+    passengers: ride.passengers,
+    purpose: ride.purpose,
+    notes: ride.notes
+  };
+}
 
 export async function completeRideAction(formData: FormData) {
   const user = await requireUser(["DRIVER"]);
@@ -26,10 +53,24 @@ export async function completeRideAction(formData: FormData) {
     redirect("/dashboard/driver?error=Du%20kan%20kun%20opdatere%20ture%2C%20der%20er%20tildelt%20dig.");
   }
 
-  await prisma.rideRequest.update({
+  const ride = await prisma.rideRequest.update({
     where: { id: rideRequestId },
-    data: { status: "COMPLETED" }
+    data: { status: "COMPLETED" },
+    include: {
+      citizenProfile: {
+        include: { user: true }
+      }
+    }
   });
+
+  await notifyCitizenAboutStatus(
+    {
+      email: ride.citizenProfile.user.email,
+      name: ride.citizenProfile.user.name
+    },
+    toRideEmailData(ride),
+    "COMPLETED"
+  );
 
   revalidatePath("/dashboard/driver");
 }
@@ -81,6 +122,11 @@ export async function claimShiftAction(formData: FormData) {
       rideDate: shift.shiftDate,
       assignment: null,
       status: { notIn: ["COMPLETED", "CANCELLED"] }
+    },
+    include: {
+      citizenProfile: {
+        include: { user: true }
+      }
     }
   });
 
@@ -106,6 +152,21 @@ export async function claimShiftAction(formData: FormData) {
       })
     )
   ]);
+
+  for (const ride of ridesInShift) {
+    const rideData = toRideEmailData(ride);
+    const citizen = {
+      email: ride.citizenProfile.user.email,
+      name: ride.citizenProfile.user.name
+    };
+    const driver = {
+      email: user.email,
+      name: user.name
+    };
+
+    await notifyCitizenAboutAssignment(citizen, rideData, driver);
+    await notifyDriverAboutAssignment(driver, rideData);
+  }
 
   const rideText =
     ridesInShift.length === 1
