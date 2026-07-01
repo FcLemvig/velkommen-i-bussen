@@ -14,6 +14,7 @@ MVP webapp til en dansk frivillig busordning. Appen er bygget med Next.js App Ro
 - Chauffører kan tage ledige vagter og se tildelte ture
 - Vagter matcher automatisk ikke-tildelte ture i samme dato og tidsrum
 - Chauffører kan uploade profilbillede, som borgeren kan se
+- Emailnotifikationer ved ny tur, tildeling og statusændring
 
 ## Lokal opsætning med PostgreSQL
 
@@ -75,6 +76,10 @@ Velkommen123!
 ```text
 DATABASE_URL=<Neon connection string>
 SESSION_SECRET=<lang tilfældig tekst>
+NEXT_PUBLIC_APP_URL=<appens offentlige URL>
+ADMIN_NOTIFICATION_EMAIL=<email til koordinator/admin>
+EMAIL_FROM=<afsender, fx Velkommen i Bussen <mail@ditdomæne.dk>>
+RESEND_API_KEY=<API-nøgle fra Resend>
 ```
 
 5. Deploy appen.
@@ -89,6 +94,17 @@ pnpm prisma migrate deploy
 ```bash
 pnpm prisma:seed
 ```
+
+## Emailnotifikationer
+
+Email sendes via Resend, når `RESEND_API_KEY` er sat. Uden nøglen springes mails over, så appen stadig virker.
+
+Appen sender email ved:
+
+- Ny kørselsanmodning til admin/koordinator
+- Tildeling af chauffør til borger og chauffør
+- Statusændring til borger
+- Gennemført tur til borger
 
 ## Produktionsnoter
 
