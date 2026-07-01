@@ -13,6 +13,8 @@ export async function registerAction(formData: FormData) {
     redirect(`/register?error=${encodeURIComponent(parsed.error.issues[0].message)}`);
   }
 
+  let dashboardPath = "/dashboard/citizen";
+
   try {
     const user = await prisma.user.create({
       data: {
@@ -26,7 +28,7 @@ export async function registerAction(formData: FormData) {
     });
 
     await createSession(user.id);
-    redirect(dashboardPathForRole(user.role));
+    dashboardPath = dashboardPathForRole(user.role);
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       redirect("/register?error=Der%20findes%20allerede%20en%20profil%20med%20den%20email.");
@@ -34,4 +36,6 @@ export async function registerAction(formData: FormData) {
 
     redirect("/register?error=Profilen%20kunne%20ikke%20oprettes.%20Prøv%20igen.");
   }
+
+  redirect(dashboardPath);
 }
