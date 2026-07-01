@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
+import { notifyAdminAboutNewRide } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
 import { rideRequestSchema } from "@/lib/validation";
 
@@ -18,7 +19,7 @@ export async function createRideRequestAction(formData: FormData) {
     redirect("/dashboard/citizen?error=Din%20borgerprofil%20mangler.%20Kontakt%20administrationen.");
   }
 
-  await prisma.rideRequest.create({
+  const ride = await prisma.rideRequest.create({
     data: {
       citizenProfileId: user.citizenProfile.id,
       pickupAddress: parsed.data.pickupAddress,
@@ -33,6 +34,17 @@ export async function createRideRequestAction(formData: FormData) {
       guardianPhone: parsed.data.includesMinors ? parsed.data.guardianPhone : undefined,
       notes: parsed.data.notes
     }
+  });
+
+  await notifyAdminAboutNewRide({
+    citizenName: user.name,
+    pickupAddress: ride.pickupAddress,
+    destinationAddress: ride.destinationAddress,
+    rideDate: ride.rideDate,
+    rideTime: ride.rideTime,
+    passengers: ride.passengers,
+    purpose: ride.purpose,
+    notes: ride.notes
   });
 
   revalidatePath("/dashboard/citizen");
