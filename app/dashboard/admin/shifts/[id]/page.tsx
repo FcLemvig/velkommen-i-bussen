@@ -5,6 +5,7 @@ import { updateShiftAction } from "@/app/dashboard/admin/shifts/actions";
 import { FormMessage } from "@/components/FormMessage";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { busLabels, busOptions } from "@/lib/shifts";
 
 export default async function EditShiftPage({
   params,
@@ -39,7 +40,7 @@ export default async function EditShiftPage({
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-ink">Rediger vagt</h1>
-          <p className="mt-2 text-slate-600">Opdater tidspunkt, note eller hvilken chauffør der har vagten.</p>
+          <p className="mt-2 text-slate-600">Opdater tidspunkt, bus, note eller hvilken chauffør der har vagten.</p>
         </div>
         <Link href="/dashboard/admin/shifts" className="button gap-2 border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
           <ArrowLeft size={16} />
@@ -47,12 +48,22 @@ export default async function EditShiftPage({
         </Link>
       </div>
 
-      <form action={action} className="grid gap-4 rounded-[32px] border-2 border-fjord/25 bg-white shadow-sm p-6">
+      <form action={action} className="grid gap-4 rounded-[32px] border-2 border-fjord/25 bg-white p-6 shadow-sm">
         <FormMessage message={query.error} />
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-4">
           <div className="grid gap-2">
             <label htmlFor="date">Dato</label>
             <input id="date" name="date" type="date" defaultValue={shift.shiftDate.toISOString().slice(0, 10)} required />
+          </div>
+          <div className="grid gap-2">
+            <label htmlFor="bus">Bus</label>
+            <select id="bus" name="bus" defaultValue={shift.bus || "EAST"} required>
+              {busOptions.map((bus) => (
+                <option key={bus} value={bus}>
+                  {busLabels[bus]}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="grid gap-2">
             <label htmlFor="startTime">Start</label>
