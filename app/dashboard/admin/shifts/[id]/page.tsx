@@ -41,13 +41,13 @@ export default async function EditShiftPage({
           <h1 className="text-3xl font-bold text-ink">Rediger vagt</h1>
           <p className="mt-2 text-slate-600">Opdater tidspunkt, note eller hvilken chauffør der har vagten.</p>
         </div>
-        <Link href="/dashboard/admin/shifts" className="button gap-2 border border-slate-300 bg-white text-slate-900 hover:bg-slate-50">
+        <Link href="/dashboard/admin/shifts" className="button gap-2 border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
           <ArrowLeft size={16} />
           Tilbage
         </Link>
       </div>
 
-      <form action={action} className="grid gap-4 rounded-lg border border-slate-200 bg-white p-6">
+      <form action={action} className="grid gap-4 rounded-[32px] border-2 border-fjord/25 bg-white shadow-sm p-6">
         <FormMessage message={query.error} />
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="grid gap-2">
@@ -81,7 +81,7 @@ export default async function EditShiftPage({
           <textarea id="notes" name="notes" rows={4} defaultValue={shift.notes ?? ""} />
         </div>
 
-        <button type="submit" className="w-fit bg-fjord text-white hover:bg-fjord/90">
+        <button type="submit" className="w-fit bg-bus text-white hover:bg-bus/90">
           Gem vagt
         </button>
       </form>
