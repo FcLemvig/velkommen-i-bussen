@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarClock, Plus, Users } from "lucide-react";
+import { BusFront, CalendarClock, Plus, Users } from "lucide-react";
 import { assignDriverAction, updateRideStatusAction } from "@/app/dashboard/admin/actions";
 import { FormMessage } from "@/components/FormMessage";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -46,6 +46,10 @@ export default async function AdminDashboardPage({
           <p className="mt-2 text-slate-600">Planlæg ture, tildel chauffører og opdater status.</p>
         </div>
         <div className="flex flex-wrap gap-3">
+          <Link href="/dashboard/admin/buses" className="button gap-2 border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
+            <BusFront size={16} />
+            Buskalender
+          </Link>
           <Link href="/dashboard/admin/shifts" className="button gap-2 border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
             <CalendarClock size={16} />
             Vagter
@@ -63,7 +67,7 @@ export default async function AdminDashboardPage({
 
       <FormMessage message={params.error} />
 
-      <form className="flex flex-wrap items-end gap-3 rounded-[32px] border-2 border-fjord/25 bg-white shadow-sm p-4">
+      <form className="flex flex-wrap items-end gap-3 rounded-[32px] border-2 border-fjord/25 bg-white p-4 shadow-sm">
         <div className="grid min-w-56 gap-2">
           <label htmlFor="status">Filtrer efter status</label>
           <select id="status" name="status" defaultValue={selectedStatus ?? ""}>
