@@ -13,7 +13,7 @@ export default async function NewDriverPage({ searchParams }: { searchParams: Pr
         <h1 className="text-3xl font-bold text-ink">Ny chauffør</h1>
         <p className="mt-2 text-slate-600">Opret login og profiloplysninger for en frivillig chauffør.</p>
       </div>
-      <form action={createDriverAction} className="grid gap-4 rounded-lg border border-slate-200 bg-white p-6">
+      <form action={createDriverAction} className="grid gap-4 rounded-[32px] border-2 border-fjord/25 bg-white shadow-sm p-6">
         <FormMessage message={params.error} />
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="grid gap-2">
@@ -53,10 +53,10 @@ export default async function NewDriverPage({ searchParams }: { searchParams: Pr
           Aktiv chauffør
         </label>
         <div className="flex flex-wrap gap-3">
-          <button type="submit" className="bg-fjord text-white hover:bg-fjord/90">
+          <button type="submit" className="bg-bus text-white hover:bg-bus/90">
             Opret chauffør
           </button>
-          <Link href="/dashboard/admin/drivers" className="button border border-slate-300 bg-white text-slate-900 hover:bg-slate-50">
+          <Link href="/dashboard/admin/drivers" className="button border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
             Annuller
           </Link>
         </div>
