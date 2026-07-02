@@ -4,24 +4,46 @@
 
 :root {
   color-scheme: light;
+  --color-primary: #f5861f;
+  --color-secondary: #29b5b3;
+  --color-dark: #0e255b;
+  --color-brown: #2a0908;
+  --color-light: #fff8ef;
+  --color-grey: #d9d9d6;
+  --font-heading: "Nunito", "Arial Rounded MT Bold", "Trebuchet MS", sans-serif;
+  --font-body: "Inter", "Arial", sans-serif;
 }
 
 body {
-  background: #fff9de;
-  color: #284532;
+  background:
+    radial-gradient(circle at top left, rgba(245, 134, 31, 0.18), transparent 28rem),
+    linear-gradient(180deg, #fff8ef 0%, #fffaf4 46%, #ffffff 100%);
+  color: var(--color-dark);
+  font-family: var(--font-body);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-heading);
+  letter-spacing: 0;
 }
 
 input,
 textarea,
 select {
-  @apply w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition focus:border-fjord focus:ring-2 focus:ring-fjord/20;
+  @apply w-full rounded-2xl border border-softGrey bg-white px-4 py-3 text-sm text-ink shadow-sm outline-none transition focus:border-fjord focus:ring-4 focus:ring-fjord/20;
 }
 
 label {
-  @apply text-sm font-medium text-slate-800;
+  @apply text-sm font-bold text-ink;
 }
 
 button,
 .button {
-  @apply inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-semibold transition;
+  @apply inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-bold transition;
+}
+
+table {
+  color: var(--color-dark);
 }
