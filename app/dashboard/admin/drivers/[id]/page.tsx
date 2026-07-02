@@ -31,7 +31,7 @@ export default async function EditDriverPage({
         <h1 className="text-3xl font-bold text-ink">Rediger chauffør</h1>
         <p className="mt-2 text-slate-600">Opdater kontaktoplysninger og om chaufføren er aktiv.</p>
       </div>
-      <form action={action} className="grid gap-4 rounded-[32px] border-2 border-fjord/25 bg-white shadow-sm p-6">
+      <form action={action} className="grid gap-4 rounded-[32px] border-2 border-fjord/25 bg-white p-6 shadow-sm">
         <FormMessage message={query.error} />
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="grid gap-2">
