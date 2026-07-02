@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, BusFront, Pencil, Trash2 } from "lucide-react";
 import { createShiftAction, deleteShiftAction } from "@/app/dashboard/admin/shifts/actions";
 import { FormMessage } from "@/components/FormMessage";
 import { requireUser } from "@/lib/auth";
@@ -26,10 +26,16 @@ export default async function AdminShiftsPage({
           <h1 className="text-3xl font-bold text-ink">Vagter</h1>
           <p className="mt-2 text-slate-600">Opret 2-timers vagter, book en bus og lad chaufførerne selv tage vagten.</p>
         </div>
-        <Link href="/dashboard/admin" className="button gap-2 border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
-          <ArrowLeft size={16} />
-          Tilbage
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/dashboard/admin/buses" className="button gap-2 border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
+            <BusFront size={16} />
+            Buskalender
+          </Link>
+          <Link href="/dashboard/admin" className="button gap-2 border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
+            <ArrowLeft size={16} />
+            Tilbage
+          </Link>
+        </div>
       </div>
 
       <FormMessage message={params.error} />
