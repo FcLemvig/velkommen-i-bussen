@@ -50,12 +50,12 @@ export default async function DriverDashboardPage({
 
       <FormMessage message={params.error} />
       {params.success ? (
-        <p className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+        <p className="rounded-2xl border border-fjord/30 bg-fjord/10 px-4 py-3 text-sm font-semibold text-ink">
           {params.success}
         </p>
       ) : null}
 
-      <section className="rounded-lg border border-slate-200 bg-white p-5">
+      <section className="rounded-[32px] border-2 border-fjord/25 bg-white shadow-sm p-5">
         <div className="flex flex-wrap items-center gap-5">
           {user.driverProfile?.imageUrl ? (
             <img src={user.driverProfile.imageUrl} alt={user.name} className="h-20 w-20 rounded-full object-cover" />
@@ -70,7 +70,7 @@ export default async function DriverDashboardPage({
               <p className="mt-1 text-sm text-slate-600">Billedet vises for borgere, når du er tildelt deres tur.</p>
             </div>
             <input name="image" type="file" accept="image/png,image/jpeg,image/webp" required />
-            <button type="submit" className="w-fit bg-fjord text-white hover:bg-fjord/90">
+            <button type="submit" className="w-fit bg-bus text-white hover:bg-bus/90">
               Gem profilbillede
             </button>
           </form>
@@ -78,11 +78,11 @@ export default async function DriverDashboardPage({
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-lg border border-slate-200 bg-white p-5">
+        <div className="rounded-[32px] border-2 border-fjord/25 bg-white shadow-sm p-5">
           <h2 className="text-xl font-semibold text-ink">Mine vagter</h2>
           <div className="mt-4 grid gap-3">
             {myShifts.map((shift) => (
-              <div key={shift.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-100 p-3">
+              <div key={shift.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 p-3">
                 <div>
                   <div className="font-medium text-ink">{shift.shiftDate.toLocaleDateString("da-DK")}</div>
                   <div className="text-sm text-slate-600">
@@ -92,7 +92,7 @@ export default async function DriverDashboardPage({
                 </div>
                 <form action={releaseShiftAction}>
                   <input type="hidden" name="shiftId" value={shift.id} />
-                  <button type="submit" className="border border-slate-300 bg-white text-slate-900 hover:bg-slate-50">
+                  <button type="submit" className="border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
                     Frigiv
                   </button>
                 </form>
@@ -102,11 +102,11 @@ export default async function DriverDashboardPage({
           </div>
         </div>
 
-        <div className="rounded-lg border border-slate-200 bg-white p-5">
+        <div className="rounded-[32px] border-2 border-fjord/25 bg-white shadow-sm p-5">
           <h2 className="text-xl font-semibold text-ink">Ledige vagter</h2>
           <div className="mt-4 grid gap-3">
             {openShifts.map((shift) => (
-              <div key={shift.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-100 p-3">
+              <div key={shift.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 p-3">
                 <div>
                   <div className="font-medium text-ink">{shift.shiftDate.toLocaleDateString("da-DK")}</div>
                   <div className="text-sm text-slate-600">
@@ -116,7 +116,7 @@ export default async function DriverDashboardPage({
                 </div>
                 <form action={claimShiftAction}>
                   <input type="hidden" name="shiftId" value={shift.id} />
-                  <button type="submit" className="bg-fjord text-white hover:bg-fjord/90">
+                  <button type="submit" className="bg-bus text-white hover:bg-bus/90">
                     Tag vagt
                   </button>
                 </form>
@@ -130,7 +130,7 @@ export default async function DriverDashboardPage({
       <section className="grid gap-4">
         <h2 className="text-xl font-semibold text-ink">Mine tildelte ture</h2>
         {assignments.map(({ rideRequest }) => (
-          <article key={rideRequest.id} className="rounded-lg border border-slate-200 bg-white p-5">
+          <article key={rideRequest.id} className="rounded-[32px] border-2 border-fjord/25 bg-white shadow-sm p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <div className="text-sm text-slate-500">
@@ -158,14 +158,14 @@ export default async function DriverDashboardPage({
             </dl>
             {rideRequest.notes ? <p className="mt-4 text-sm text-slate-600">Note: {rideRequest.notes}</p> : null}
             {rideRequest.includesMinors ? (
-              <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              <p className="mt-4 rounded-2xl bg-bus/15 px-4 py-3 text-sm text-brown">
                 Børn/unge på turen. Forældresamtykke er {rideRequest.parentalConsent ? "bekræftet" : "ikke bekræftet"}.
               </p>
             ) : null}
             {rideRequest.status !== "COMPLETED" ? (
               <form action={completeRideAction} className="mt-5">
                 <input type="hidden" name="rideRequestId" value={rideRequest.id} />
-                <button type="submit" className="bg-fjord text-white hover:bg-fjord/90">
+                <button type="submit" className="bg-bus text-white hover:bg-bus/90">
                   Markér som gennemført
                 </button>
               </form>
@@ -173,7 +173,7 @@ export default async function DriverDashboardPage({
           </article>
         ))}
         {assignments.length === 0 ? (
-          <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-slate-500">
+          <div className="rounded-[32px] border-2 border-fjord/25 bg-white shadow-sm p-8 text-center text-slate-500">
             Du har ingen tildelte ture lige nu.
           </div>
         ) : null}
