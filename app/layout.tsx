@@ -22,20 +22,20 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="da">
       <body className="min-h-screen">
-        <header className="border-b border-slate-200 bg-white/95">
+        <header className="border-b border-bus/20 bg-white/95 shadow-sm">
           <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
             <Link href="/" className="flex items-center gap-3" aria-label="Velkommen i Bussen">
               <img src="/velkommen-i-bussen-logo.png" alt="Velkommen i Bussen" className="h-14 w-14 rounded-full" />
-              <span className="hidden text-lg font-bold text-ink sm:inline">Velkommen i Bussen</span>
+              <span className="hidden text-lg font-extrabold text-ink sm:inline">Velkommen i Bussen</span>
             </Link>
             <nav className="flex items-center gap-3 text-sm">
               {user ? (
                 <>
-                  <Link href="/dashboard" className="text-slate-700 hover:text-ink">
+                  <Link href="/dashboard" className="font-semibold text-ink hover:text-bus">
                     Dashboard
                   </Link>
                   <form action={logoutAction}>
-                    <button className="gap-2 bg-slate-900 text-white hover:bg-slate-700" type="submit">
+                    <button className="gap-2 bg-ink text-white hover:bg-brown" type="submit">
                       <LogOut size={16} />
                       Log ud
                     </button>
@@ -43,10 +43,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 </>
               ) : (
                 <>
-                  <Link href="/login" className="text-slate-700 hover:text-ink">
+                  <Link href="/login" className="font-semibold text-ink hover:text-bus">
                     Log ind
                   </Link>
-                  <Link href="/register" className="button bg-fjord text-white hover:bg-fjord/90">
+                  <Link href="/register" className="button bg-bus text-white hover:bg-bus/90">
                     Opret profil
                   </Link>
                 </>
