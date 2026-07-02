@@ -46,15 +46,15 @@ export default async function AdminDashboardPage({
           <p className="mt-2 text-slate-600">Planlæg ture, tildel chauffører og opdater status.</p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <Link href="/dashboard/admin/shifts" className="button gap-2 border border-slate-300 bg-white text-slate-900 hover:bg-slate-50">
+          <Link href="/dashboard/admin/shifts" className="button gap-2 border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
             <CalendarClock size={16} />
             Vagter
           </Link>
-          <Link href="/dashboard/admin/citizens" className="button gap-2 border border-slate-300 bg-white text-slate-900 hover:bg-slate-50">
+          <Link href="/dashboard/admin/citizens" className="button gap-2 border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
             <Users size={16} />
             Borgere
           </Link>
-          <Link href="/dashboard/admin/drivers" className="button gap-2 bg-fjord text-white hover:bg-fjord/90">
+          <Link href="/dashboard/admin/drivers" className="button gap-2 bg-bus text-white hover:bg-bus/90">
             <Plus size={16} />
             Chauffører
           </Link>
@@ -63,7 +63,7 @@ export default async function AdminDashboardPage({
 
       <FormMessage message={params.error} />
 
-      <form className="flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4">
+      <form className="flex flex-wrap items-end gap-3 rounded-[32px] border-2 border-fjord/25 bg-white shadow-sm p-4">
         <div className="grid min-w-56 gap-2">
           <label htmlFor="status">Filtrer efter status</label>
           <select id="status" name="status" defaultValue={selectedStatus ?? ""}>
@@ -75,7 +75,7 @@ export default async function AdminDashboardPage({
             ))}
           </select>
         </div>
-        <button type="submit" className="border border-slate-300 bg-white text-slate-900 hover:bg-slate-50">
+        <button type="submit" className="border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
           Filtrer
         </button>
         <Link href="/dashboard/admin" className="button text-slate-700 hover:bg-slate-100">
@@ -83,7 +83,7 @@ export default async function AdminDashboardPage({
         </Link>
       </form>
 
-      <section className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+      <section className="overflow-x-auto rounded-[32px] border-2 border-fjord/25 bg-white shadow-sm">
         <table className="w-full min-w-[1100px] text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
             <tr>
@@ -112,11 +112,11 @@ export default async function AdminDashboardPage({
                     {ride.rideDate.toLocaleDateString("da-DK")} kl. {ride.rideTime}
                     <div className="mt-2 text-xs">
                       {coveredShifts.length > 0 ? (
-                        <span className="rounded-full bg-green-100 px-2 py-1 font-medium text-green-900">
+                        <span className="rounded-full bg-fjord/25 px-3 py-1.5 font-bold text-ink">
                           {coveredShifts.length} matchende vagt(er)
                         </span>
                       ) : (
-                        <span className="rounded-full bg-amber-100 px-2 py-1 font-medium text-amber-900">
+                        <span className="rounded-full bg-bus/20 px-3 py-1.5 font-bold text-brown">
                           Mangler vagt
                         </span>
                       )}
@@ -130,7 +130,7 @@ export default async function AdminDashboardPage({
                     <div className="font-medium text-ink">{ride.pickupAddress}</div>
                     <div className="text-slate-600">til {ride.destinationAddress}</div>
                     {ride.includesMinors ? (
-                      <div className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                      <div className="mt-2 rounded-2xl bg-bus/15 px-3 py-2 text-xs text-brown">
                         Børn/unge: {ride.parentalConsent ? "forældresamtykke bekræftet" : "mangler samtykke"}
                         {ride.guardianName || ride.guardianPhone ? (
                           <span>
@@ -142,7 +142,7 @@ export default async function AdminDashboardPage({
                       </div>
                     ) : null}
                     {matchingShifts.length > 0 ? (
-                      <div className="mt-2 rounded-md bg-green-50 px-3 py-2 text-xs text-green-900">
+                      <div className="mt-2 rounded-2xl bg-fjord/15 px-3 py-2 text-xs text-ink">
                         Matchende vagter:{" "}
                         {matchingShifts
                           .map((shift) =>
@@ -167,7 +167,7 @@ export default async function AdminDashboardPage({
                           </option>
                         ))}
                       </select>
-                      <button type="submit" className="bg-slate-900 text-white hover:bg-slate-700">
+                      <button type="submit" className="bg-ink text-white hover:bg-brown">
                         Tildel
                       </button>
                     </form>
@@ -185,7 +185,7 @@ export default async function AdminDashboardPage({
                           </option>
                         ))}
                       </select>
-                      <button type="submit" className="border border-slate-300 bg-white text-slate-900 hover:bg-slate-50">
+                      <button type="submit" className="border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
                         Gem status
                       </button>
                     </form>
