@@ -8,10 +8,10 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
   return (
     <main className="mx-auto grid max-w-md gap-6 px-4 py-12">
       <div>
-        <h1 className="text-3xl font-bold text-ink">Opret profil</h1>
+        <h1 className="text-3xl font-extrabold text-ink">Opret profil</h1>
         <p className="mt-2 text-slate-600">Når profilen er oprettet, kan du anmode om kørsel med det samme.</p>
       </div>
-      <form action={registerAction} className="grid gap-4 rounded-lg border border-slate-200 bg-white p-6">
+      <form action={registerAction} className="grid gap-4 rounded-[32px] border-2 border-fjord/25 bg-white p-6 shadow-sm">
         <FormMessage message={params.error} />
         <div className="grid gap-2">
           <label htmlFor="name">Navn</label>
@@ -29,13 +29,13 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
           <label htmlFor="password">Adgangskode</label>
           <input id="password" name="password" type="password" autoComplete="new-password" minLength={8} required />
         </div>
-        <button type="submit" className="bg-fjord text-white hover:bg-fjord/90">
+        <button type="submit" className="bg-bus text-white hover:bg-bus/90">
           Opret profil
         </button>
       </form>
       <p className="text-sm text-slate-600">
         Har du allerede en profil?{" "}
-        <Link href="/login" className="font-semibold text-fjord hover:underline">
+        <Link href="/login" className="font-bold text-ink hover:text-bus">
           Log ind
         </Link>
       </p>
