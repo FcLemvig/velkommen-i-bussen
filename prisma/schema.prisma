@@ -85,6 +85,7 @@ model RideAssignment {
 model DriverShift {
   id              String         @id @default(cuid())
   driverProfileId String?
+  bus             String         @default("EAST")
   shiftDate       DateTime
   startTime       String
   endTime         String
