@@ -9,11 +9,13 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: "#284532",
-        bus: "#FFD13B",
-        fjord: "#5E9F44",
-        leaf: "#3F7D35",
-        cream: "#FFF9DE"
+        ink: "#0E255B",
+        bus: "#F5861F",
+        fjord: "#29B5B3",
+        leaf: "#F5861F",
+        cream: "#FFF8EF",
+        brown: "#2A0908",
+        softGrey: "#D9D9D6"
       }
     }
   },
