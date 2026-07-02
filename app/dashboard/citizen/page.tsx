@@ -27,14 +27,14 @@ export default async function CitizenDashboardPage({
       </div>
 
       <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-        <form action={createRideRequestAction} className="grid gap-4 rounded-lg border border-slate-200 bg-white p-6">
+        <form action={createRideRequestAction} className="grid gap-4 rounded-[32px] border-2 border-fjord/25 bg-white shadow-sm p-6">
           <div>
             <h2 className="text-xl font-semibold text-ink">Ny kørselsanmodning</h2>
             <p className="mt-1 text-sm text-slate-600">Udfyld oplysningerne, så kontoret kan planlægge turen.</p>
           </div>
           <FormMessage message={params.error} />
           {params.success ? (
-            <p className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+            <p className="rounded-2xl border border-fjord/30 bg-fjord/10 px-4 py-3 text-sm font-semibold text-ink">
               {params.success}
             </p>
           ) : null}
@@ -66,7 +66,7 @@ export default async function CitizenDashboardPage({
               <input id="purpose" name="purpose" placeholder="Fx læge, indkøb eller aktivitet" required />
             </div>
           </div>
-          <div className="grid gap-3 rounded-md border border-[#e4d78c] bg-cream p-4">
+          <div className="grid gap-3 rounded-2xl border-2 border-fjord/30 bg-cream p-4">
             <label className="flex items-start gap-3">
               <input className="mt-1 h-4 w-4" type="checkbox" name="includesMinors" />
               <span>
@@ -95,12 +95,12 @@ export default async function CitizenDashboardPage({
             <label htmlFor="notes">Noter</label>
             <textarea id="notes" name="notes" rows={4} />
           </div>
-          <button type="submit" className="bg-fjord text-white hover:bg-fjord/90">
+          <button type="submit" className="bg-bus text-white hover:bg-bus/90">
             Send anmodning
           </button>
         </form>
 
-        <div className="rounded-lg border border-slate-200 bg-white p-6">
+        <div className="rounded-[32px] border-2 border-fjord/25 bg-white shadow-sm p-6">
           <h2 className="text-xl font-semibold text-ink">Mine ture</h2>
           <div className="mt-4 overflow-x-auto">
             <table className="w-full min-w-[720px] text-left text-sm">
