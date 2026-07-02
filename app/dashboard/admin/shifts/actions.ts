@@ -3,9 +3,27 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { addHoursToTime } from "@/lib/shifts";
+import { addHoursToTime, shiftsOverlap } from "@/lib/shifts";
 import { prisma } from "@/lib/prisma";
 import { driverShiftSchema } from "@/lib/validation";
+
+async function findOverlappingBusShift(data: {
+  bus: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  excludeShiftId?: string;
+}) {
+  const shifts = await prisma.driverShift.findMany({
+    where: {
+      bus: data.bus,
+      shiftDate: new Date(`${data.date}T00:00:00`),
+      id: data.excludeShiftId ? { not: data.excludeShiftId } : undefined
+    }
+  });
+
+  return shifts.find((shift) => shiftsOverlap(data.startTime, data.endTime, shift.startTime, shift.endTime));
+}
 
 export async function createShiftAction(formData: FormData) {
   await requireUser(["ADMIN"]);
@@ -20,9 +38,16 @@ export async function createShiftAction(formData: FormData) {
     redirect(`/dashboard/admin/shifts?error=${encodeURIComponent(parsed.error.issues[0].message)}`);
   }
 
+  const overlap = await findOverlappingBusShift(parsed.data);
+
+  if (overlap) {
+    redirect("/dashboard/admin/shifts?error=Den%20bus%20er%20allerede%20booket%20i%20det%20tidsrum.");
+  }
+
   await prisma.driverShift.create({
     data: {
       shiftDate: new Date(`${parsed.data.date}T00:00:00`),
+      bus: parsed.data.bus,
       startTime: parsed.data.startTime,
       endTime: parsed.data.endTime,
       notes: parsed.data.notes
@@ -60,11 +85,17 @@ export async function updateShiftAction(shiftId: string, formData: FormData) {
   }
 
   const driverProfileId = String(formData.get("driverProfileId") ?? "");
+  const overlap = await findOverlappingBusShift({ ...parsed.data, excludeShiftId: shiftId });
+
+  if (overlap) {
+    redirect(`/dashboard/admin/shifts/${shiftId}?error=Den%20bus%20er%20allerede%20booket%20i%20det%20tidsrum.`);
+  }
 
   await prisma.driverShift.update({
     where: { id: shiftId },
     data: {
       shiftDate: new Date(`${parsed.data.date}T00:00:00`),
+      bus: parsed.data.bus,
       startTime: parsed.data.startTime,
       endTime: parsed.data.endTime,
       notes: parsed.data.notes,
