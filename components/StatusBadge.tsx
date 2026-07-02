@@ -6,7 +6,7 @@ export function StatusBadge({ status }: { status: RideStatus | string }) {
   const safeStatus = isRideStatus(status) ? status : "PENDING";
 
   return (
-    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${rideStatusTone[safeStatus]}`}>
+    <span className={`inline-flex rounded-full px-3 py-1.5 text-xs font-bold ${rideStatusTone[safeStatus]}`}>
       {rideStatusLabels[safeStatus]}
     </span>
   );
