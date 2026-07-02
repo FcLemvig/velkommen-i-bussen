@@ -17,13 +17,13 @@ export default async function DriversPage() {
           <h1 className="text-3xl font-bold text-ink">Chauffører</h1>
           <p className="mt-2 text-slate-600">Opret og rediger frivillige chaufførprofiler.</p>
         </div>
-        <Link href="/dashboard/admin/drivers/new" className="button gap-2 bg-fjord text-white hover:bg-fjord/90">
+        <Link href="/dashboard/admin/drivers/new" className="button gap-2 bg-bus text-white hover:bg-bus/90">
           <Plus size={16} />
           Ny chauffør
         </Link>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-[32px] border-2 border-fjord/25 bg-white shadow-sm">
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
             <tr>
@@ -58,7 +58,7 @@ export default async function DriversPage() {
                 <td className="px-4 py-3">{driver.isActive ? "Aktiv" : "Inaktiv"}</td>
                 <td className="px-4 py-3">{driver.assignments.length}</td>
                 <td className="px-4 py-3">
-                  <Link href={`/dashboard/admin/drivers/${driver.id}`} className="font-semibold text-fjord hover:underline">
+                  <Link href={`/dashboard/admin/drivers/${driver.id}`} className="font-semibold text-ink hover:text-bus">
                     Rediger
                   </Link>
                 </td>
