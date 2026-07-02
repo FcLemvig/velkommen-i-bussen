@@ -25,7 +25,7 @@ export default async function AdminShiftsPage({
           <h1 className="text-3xl font-bold text-ink">Vagter</h1>
           <p className="mt-2 text-slate-600">Opret 2-timers vagter, som chaufførerne selv kan tage.</p>
         </div>
-        <Link href="/dashboard/admin" className="button gap-2 border border-slate-300 bg-white text-slate-900 hover:bg-slate-50">
+        <Link href="/dashboard/admin" className="button gap-2 border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
           <ArrowLeft size={16} />
           Tilbage
         </Link>
@@ -33,10 +33,10 @@ export default async function AdminShiftsPage({
 
       <FormMessage message={params.error} />
       {params.success ? (
-        <p className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">{params.success}</p>
+        <p className="rounded-2xl border border-fjord/30 bg-fjord/10 px-4 py-3 text-sm font-semibold text-ink">{params.success}</p>
       ) : null}
 
-      <form action={createShiftAction} className="grid gap-4 rounded-lg border border-slate-200 bg-white p-6 md:grid-cols-[1fr_1fr_1fr_2fr_auto] md:items-end">
+      <form action={createShiftAction} className="grid gap-4 rounded-[32px] border-2 border-fjord/25 bg-white shadow-sm p-6 md:grid-cols-[1fr_1fr_1fr_2fr_auto] md:items-end">
         <div className="grid gap-2">
           <label htmlFor="date">Dato</label>
           <input id="date" name="date" type="date" required />
@@ -53,12 +53,12 @@ export default async function AdminShiftsPage({
           <label htmlFor="notes">Note</label>
           <input id="notes" name="notes" placeholder="Fx Lemvig, Harboøre eller særlige aftaler" />
         </div>
-        <button type="submit" className="bg-fjord text-white hover:bg-fjord/90">
+        <button type="submit" className="bg-bus text-white hover:bg-bus/90">
           Opret vagt
         </button>
       </form>
 
-      <section className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+      <section className="overflow-x-auto rounded-[32px] border-2 border-fjord/25 bg-white shadow-sm">
         <table className="w-full min-w-[760px] text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
             <tr>
@@ -80,13 +80,13 @@ export default async function AdminShiftsPage({
                 <td className="px-4 py-3">{shift.driverProfile?.user.name ?? "Ikke taget"}</td>
                 <td className="px-4 py-3">{shift.notes || "-"}</td>
                 <td className="px-4 py-3">
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${shift.driverProfile ? "bg-green-100 text-green-900" : "bg-amber-100 text-amber-900"}`}>
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${shift.driverProfile ? "bg-fjord/25 text-ink" : "bg-bus/20 text-brown"}`}>
                     {shift.driverProfile ? "Dækket" : "Mangler chauffør"}
                   </span>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-2">
-                    <Link href={`/dashboard/admin/shifts/${shift.id}`} className="button gap-2 border border-slate-300 bg-white text-slate-900 hover:bg-slate-50">
+                    <Link href={`/dashboard/admin/shifts/${shift.id}`} className="button gap-2 border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
                       <Pencil size={15} />
                       Rediger
                     </Link>
