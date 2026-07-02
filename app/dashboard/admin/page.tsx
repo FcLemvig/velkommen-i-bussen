@@ -7,7 +7,7 @@ import { requireUser } from "@/lib/auth";
 import { RideStatus, isRideStatus, rideStatuses } from "@/lib/domain";
 import { rideStatusLabels } from "@/lib/labels";
 import { prisma } from "@/lib/prisma";
-import { isRideWithinShift } from "@/lib/shifts";
+import { busLabels, BusName, isRideWithinShift } from "@/lib/shifts";
 
 export default async function AdminDashboardPage({
   searchParams
@@ -147,8 +147,8 @@ export default async function AdminDashboardPage({
                         {matchingShifts
                           .map((shift) =>
                             shift.driverProfile
-                              ? `${shift.driverProfile.user.name} ${shift.startTime}-${shift.endTime}`
-                              : `ledig ${shift.startTime}-${shift.endTime}`
+                              ? `${busLabels[(shift.bus || "EAST") as BusName]}: ${shift.driverProfile.user.name} ${shift.startTime}-${shift.endTime}`
+                              : `${busLabels[(shift.bus || "EAST") as BusName]}: ledig ${shift.startTime}-${shift.endTime}`
                           )
                           .join(", ")}
                       </div>
