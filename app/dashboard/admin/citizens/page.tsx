@@ -26,13 +26,13 @@ export default async function CitizensPage() {
           <h1 className="text-3xl font-bold text-ink">Borgere</h1>
           <p className="mt-2 text-slate-600">Oversigt over borgerprofiler og deres seneste kørselsaktivitet.</p>
         </div>
-        <Link href="/dashboard/admin" className="button gap-2 border border-slate-300 bg-white text-slate-900 hover:bg-slate-50">
+        <Link href="/dashboard/admin" className="button gap-2 border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
           <ArrowLeft size={16} />
           Tilbage
         </Link>
       </div>
 
-      <section className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+      <section className="overflow-x-auto rounded-[32px] border-2 border-fjord/25 bg-white shadow-sm">
         <table className="w-full min-w-[900px] text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
             <tr>
