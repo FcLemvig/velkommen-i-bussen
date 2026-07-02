@@ -16,10 +16,10 @@ export const rideStatusLabels: Record<RideStatus, string> = {
 };
 
 export const rideStatusTone: Record<RideStatus, string> = {
-  PENDING: "bg-yellow-100 text-yellow-900",
-  APPROVED: "bg-blue-100 text-blue-900",
-  ASSIGNED: "bg-teal-100 text-teal-900",
-  IN_PROGRESS: "bg-indigo-100 text-indigo-900",
-  COMPLETED: "bg-green-100 text-green-900",
-  CANCELLED: "bg-red-100 text-red-900"
+  PENDING: "bg-bus/15 text-brown",
+  APPROVED: "bg-fjord/20 text-ink",
+  ASSIGNED: "bg-fjord/25 text-ink",
+  IN_PROGRESS: "bg-ink/10 text-ink",
+  COMPLETED: "bg-fjord/30 text-ink",
+  CANCELLED: "bg-red-100 text-red-800"
 };
