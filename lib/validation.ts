@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { busOptions } from "@/lib/shifts";
 
 export const loginSchema = z.object({
   email: z.string().email("Skriv en gyldig email."),
@@ -9,14 +10,14 @@ export const registerSchema = z.object({
   name: z.string().min(2, "Skriv dit navn."),
   email: z.string().email("Skriv en gyldig email."),
   phone: z.string().min(8, "Skriv et telefonnummer med mindst 8 cifre."),
-  password: z.string().min(8, "Adgangskoden skal vaere mindst 8 tegn.")
+  password: z.string().min(8, "Adgangskoden skal være mindst 8 tegn.")
 });
 
 export const rideRequestSchema = z.object({
   pickupAddress: z.string().min(3, "Skriv afhentningsadressen."),
   destinationAddress: z.string().min(3, "Skriv destinationsadressen."),
-  date: z.string().min(1, "Vaelg en dato."),
-  time: z.string().regex(/^\d{2}:\d{2}$/, "Vaelg et tidspunkt."),
+  date: z.string().min(1, "Vælg en dato."),
+  time: z.string().regex(/^\d{2}:\d{2}$/, "Vælg et tidspunkt."),
   passengers: z.coerce.number().int().min(1, "Der skal være mindst 1 passager.").max(8, "Kontakt os ved flere end 8 passagerer."),
   purpose: z.string().min(2, "Skriv formålet med turen."),
   includesMinors: z.coerce.boolean().default(false),
@@ -69,6 +70,7 @@ export const createDriverSchema = driverSchema.extend({
 
 export const driverShiftSchema = z.object({
   date: z.string().min(1, "Vælg en dato."),
+  bus: z.enum(busOptions, { required_error: "Vælg en bus." }),
   startTime: z.string().regex(/^\d{2}:\d{2}$/, "Vælg starttidspunkt."),
   endTime: z.string().regex(/^\d{2}:\d{2}$/, "Vælg sluttidspunkt."),
   notes: z.string().max(300, "Noter må højst være 300 tegn.").optional()
