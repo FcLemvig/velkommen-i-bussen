@@ -8,6 +8,7 @@ import { FormMessage } from "@/components/FormMessage";
 import { StatusBadge } from "@/components/StatusBadge";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { busLabels, BusName } from "@/lib/shifts";
 
 export default async function DriverDashboardPage({
   searchParams
@@ -86,7 +87,7 @@ export default async function DriverDashboardPage({
                 <div>
                   <div className="font-medium text-ink">{shift.shiftDate.toLocaleDateString("da-DK")}</div>
                   <div className="text-sm text-slate-600">
-                    {shift.startTime} - {shift.endTime}
+                    {busLabels[(shift.bus || "EAST") as BusName]} · {shift.startTime} - {shift.endTime}
                     {shift.notes ? ` · ${shift.notes}` : ""}
                   </div>
                 </div>
@@ -110,7 +111,7 @@ export default async function DriverDashboardPage({
                 <div>
                   <div className="font-medium text-ink">{shift.shiftDate.toLocaleDateString("da-DK")}</div>
                   <div className="text-sm text-slate-600">
-                    {shift.startTime} - {shift.endTime}
+                    {busLabels[(shift.bus || "EAST") as BusName]} · {shift.startTime} - {shift.endTime}
                     {shift.notes ? ` · ${shift.notes}` : ""}
                   </div>
                 </div>
