@@ -155,12 +155,14 @@ async function main() {
     data: [
       {
         driverProfileId: driverOne.driverProfile!.id,
+        bus: "EAST",
         shiftDate: new Date("2026-07-02T00:00:00"),
         startTime: "09:00",
         endTime: "11:00",
         notes: "Formiddag Lemvig"
       },
       {
+        bus: "WEST",
         shiftDate: new Date("2026-07-03T00:00:00"),
         startTime: "12:00",
         endTime: "14:00",
