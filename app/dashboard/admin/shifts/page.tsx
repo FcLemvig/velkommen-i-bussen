@@ -4,6 +4,7 @@ import { createShiftAction, deleteShiftAction } from "@/app/dashboard/admin/shif
 import { FormMessage } from "@/components/FormMessage";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { busLabels, busOptions, BusName } from "@/lib/shifts";
 
 export default async function AdminShiftsPage({
   searchParams
@@ -23,7 +24,7 @@ export default async function AdminShiftsPage({
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-ink">Vagter</h1>
-          <p className="mt-2 text-slate-600">Opret 2-timers vagter, som chaufførerne selv kan tage.</p>
+          <p className="mt-2 text-slate-600">Opret 2-timers vagter, book en bus og lad chaufførerne selv tage vagten.</p>
         </div>
         <Link href="/dashboard/admin" className="button gap-2 border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
           <ArrowLeft size={16} />
@@ -36,10 +37,20 @@ export default async function AdminShiftsPage({
         <p className="rounded-2xl border border-fjord/30 bg-fjord/10 px-4 py-3 text-sm font-semibold text-ink">{params.success}</p>
       ) : null}
 
-      <form action={createShiftAction} className="grid gap-4 rounded-[32px] border-2 border-fjord/25 bg-white shadow-sm p-6 md:grid-cols-[1fr_1fr_1fr_2fr_auto] md:items-end">
+      <form action={createShiftAction} className="grid gap-4 rounded-[32px] border-2 border-fjord/25 bg-white p-6 shadow-sm md:grid-cols-[1fr_1fr_1fr_1fr_2fr_auto] md:items-end">
         <div className="grid gap-2">
           <label htmlFor="date">Dato</label>
           <input id="date" name="date" type="date" required />
+        </div>
+        <div className="grid gap-2">
+          <label htmlFor="bus">Bus</label>
+          <select id="bus" name="bus" defaultValue="EAST" required>
+            {busOptions.map((bus) => (
+              <option key={bus} value={bus}>
+                {busLabels[bus]}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="grid gap-2">
           <label htmlFor="startTime">Start</label>
@@ -59,10 +70,11 @@ export default async function AdminShiftsPage({
       </form>
 
       <section className="overflow-x-auto rounded-[32px] border-2 border-fjord/25 bg-white shadow-sm">
-        <table className="w-full min-w-[760px] text-left text-sm">
+        <table className="w-full min-w-[860px] text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
             <tr>
               <th className="px-4 py-3">Dato</th>
+              <th className="px-4 py-3">Bus</th>
               <th className="px-4 py-3">Tid</th>
               <th className="px-4 py-3">Chauffør</th>
               <th className="px-4 py-3">Note</th>
@@ -74,6 +86,11 @@ export default async function AdminShiftsPage({
             {shifts.map((shift) => (
               <tr key={shift.id}>
                 <td className="px-4 py-3">{shift.shiftDate.toLocaleDateString("da-DK")}</td>
+                <td className="px-4 py-3">
+                  <span className="rounded-full bg-bus/15 px-3 py-1.5 text-xs font-bold text-brown">
+                    {busLabels[(shift.bus || "EAST") as BusName]}
+                  </span>
+                </td>
                 <td className="px-4 py-3">
                   {shift.startTime} - {shift.endTime}
                 </td>
@@ -90,20 +107,20 @@ export default async function AdminShiftsPage({
                       <Pencil size={15} />
                       Rediger
                     </Link>
-                  <form action={deleteShiftAction}>
-                    <input type="hidden" name="shiftId" value={shift.id} />
-                    <button type="submit" className="gap-2 border border-red-200 bg-white text-red-700 hover:bg-red-50">
-                      <Trash2 size={15} />
-                      Slet
-                    </button>
-                  </form>
+                    <form action={deleteShiftAction}>
+                      <input type="hidden" name="shiftId" value={shift.id} />
+                      <button type="submit" className="gap-2 border border-red-200 bg-white text-red-700 hover:bg-red-50">
+                        <Trash2 size={15} />
+                        Slet
+                      </button>
+                    </form>
                   </div>
                 </td>
               </tr>
             ))}
             {shifts.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
                   Der er ingen vagter endnu.
                 </td>
               </tr>
