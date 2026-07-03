@@ -5,9 +5,11 @@ const prisma = new PrismaClient();
 
 async function main() {
   await prisma.session.deleteMany();
+  await prisma.busBooking.deleteMany();
   await prisma.rideAssignment.deleteMany();
   await prisma.driverShift.deleteMany();
   await prisma.rideRequest.deleteMany();
+  await prisma.organizationProfile.deleteMany();
   await prisma.citizenProfile.deleteMany();
   await prisma.driverProfile.deleteMany();
   await prisma.membership.deleteMany();
@@ -85,6 +87,23 @@ async function main() {
       membership: { create: { status: "ACTIVE" } }
     },
     include: { driverProfile: true }
+  });
+
+  const organization = await prisma.user.create({
+    data: {
+      name: "Lemvig Idrætsforening",
+      email: "forening@example.dk",
+      passwordHash,
+      role: "ORGANIZATION",
+      organizationProfile: {
+        create: {
+          phone: "20406080",
+          address: "Foreningsvej 1, Lemvig"
+        }
+      },
+      membership: { create: { status: "ACTIVE" } }
+    },
+    include: { organizationProfile: true }
   });
 
   const rides = await prisma.rideRequest.createManyAndReturn({
@@ -169,6 +188,19 @@ async function main() {
         notes: "Ledig vagt"
       }
     ]
+  });
+
+  await prisma.busBooking.create({
+    data: {
+      organizationProfileId: organization.organizationProfile!.id,
+      driverProfileId: driverTwo.driverProfile!.id,
+      bus: "WEST",
+      bookingDate: new Date("2026-07-06T00:00:00"),
+      startTime: "10:00",
+      endTime: "12:00",
+      purpose: "Udflugt for foreningen",
+      notes: "Afgang fra frivilligcenteret."
+    }
   });
 
   console.log(`Seed færdig. Admin: ${admin.email}, kodeord: Velkommen123!`);
