@@ -70,6 +70,7 @@ export async function getCurrentUser() {
         include: {
           citizenProfile: true,
           driverProfile: true,
+          organizationProfile: true,
           membership: true
         }
       }
@@ -112,5 +113,6 @@ export async function requireUser(roles?: Role[]) {
 export function dashboardPathForRole(role: Role | string) {
   if (role === "ADMIN") return "/dashboard/admin";
   if (role === "DRIVER") return "/dashboard/driver";
+  if (role === "ORGANIZATION") return "/dashboard/organization";
   return "/dashboard/citizen";
 }
