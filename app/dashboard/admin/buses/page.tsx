@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { ArrowLeft, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -38,16 +38,32 @@ export default async function BusCalendarPage({
   const weekDays = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
   const weekEnd = addDays(weekStart, 7);
 
-  const shifts = await prisma.driverShift.findMany({
-    where: {
-      shiftDate: {
-        gte: weekStart,
-        lt: weekEnd
+  const [shifts, bookings] = await Promise.all([
+    prisma.driverShift.findMany({
+      where: {
+        shiftDate: {
+          gte: weekStart,
+          lt: weekEnd
+        }
+      },
+      orderBy: [{ shiftDate: "asc" }, { startTime: "asc" }],
+      include: { driverProfile: { include: { user: true } } }
+    }),
+    prisma.busBooking.findMany({
+      where: {
+        bookingDate: {
+          gte: weekStart,
+          lt: weekEnd
+        },
+        status: { not: "CANCELLED" }
+      },
+      orderBy: [{ bookingDate: "asc" }, { startTime: "asc" }],
+      include: {
+        organizationProfile: { include: { user: true } },
+        driverProfile: { include: { user: true } }
       }
-    },
-    orderBy: [{ shiftDate: "asc" }, { startTime: "asc" }],
-    include: { driverProfile: { include: { user: true } } }
-  });
+    })
+  ]);
 
   const previousWeek = toDateInputValue(addDays(weekStart, -7));
   const nextWeek = toDateInputValue(addDays(weekStart, 7));
@@ -58,7 +74,7 @@ export default async function BusCalendarPage({
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-ink">Buskalender</h1>
-          <p className="mt-2 text-slate-600">Se hvornår Bus Øst og Bus Vest er booket via vagter.</p>
+          <p className="mt-2 text-slate-600">Se hvornÃ¥r Bus Ã˜st og Bus Vest er booket via vagter og foreningsbookinger.</p>
         </div>
         <Link href="/dashboard/admin" className="button gap-2 border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
           <ArrowLeft size={16} />
@@ -74,7 +90,7 @@ export default async function BusCalendarPage({
               <h2 className="text-xl font-semibold text-ink">
                 Uge {weekStart.toLocaleDateString("da-DK")} - {addDays(weekStart, 6).toLocaleDateString("da-DK")}
               </h2>
-              <p className="text-sm text-slate-600">Bookingerne kommer fra vagtplanen.</p>
+              <p className="text-sm text-slate-600">Orange er foreningsbookinger. Turkis er vagter.</p>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -86,7 +102,7 @@ export default async function BusCalendarPage({
               Denne uge
             </Link>
             <Link href={`/dashboard/admin/buses?week=${nextWeek}`} className="button gap-2 bg-bus text-white hover:bg-bus/90">
-              Næste uge
+              NÃ¦ste uge
               <ChevronRight size={16} />
             </Link>
           </div>
@@ -110,10 +126,21 @@ export default async function BusCalendarPage({
               <div className="bg-cream px-4 py-4 font-bold text-ink">{busLabels[bus]}</div>
               {weekDays.map((day) => {
                 const dayShifts = shifts.filter((shift) => shift.bus === bus && sameDate(shift.shiftDate, day));
+                const dayBookings = bookings.filter((booking) => booking.bus === bus && sameDate(booking.bookingDate, day));
 
                 return (
                   <div key={`${bus}-${day.toISOString()}`} className="min-h-36 border-l border-slate-100 p-3">
                     <div className="grid gap-2">
+                      {dayBookings.map((booking) => (
+                        <div key={booking.id} className="rounded-2xl border border-bus/30 bg-bus/10 px-3 py-2 text-sm text-ink">
+                          <div className="font-bold">
+                            {booking.startTime} - {booking.endTime}
+                          </div>
+                          <div className="mt-1 text-xs text-slate-700">{booking.organizationProfile.user.name}</div>
+                          <div className="mt-1 text-xs text-slate-600">ChauffÃ¸r: {booking.driverProfile.user.name}</div>
+                          <div className="mt-1 text-xs text-slate-500">{booking.purpose}</div>
+                        </div>
+                      ))}
                       {dayShifts.map((shift) => (
                         <Link
                           key={shift.id}
@@ -129,7 +156,7 @@ export default async function BusCalendarPage({
                           {shift.notes ? <div className="mt-1 text-xs text-slate-500">{shift.notes}</div> : null}
                         </Link>
                       ))}
-                      {dayShifts.length === 0 ? <span className="text-xs text-slate-400">Ledig</span> : null}
+                      {dayShifts.length === 0 && dayBookings.length === 0 ? <span className="text-xs text-slate-400">Ledig</span> : null}
                     </div>
                   </div>
                 );
