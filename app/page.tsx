@@ -20,7 +20,7 @@ export default function HomePage() {
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/register" className="button bg-white text-ink hover:bg-cream">
-                Book en tur
+                Opret bruger
               </Link>
               <Link href="/login" className="button bg-fjord text-ink hover:bg-fjord/90">
                 Log ind
