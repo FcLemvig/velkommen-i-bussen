@@ -3,7 +3,8 @@ import { RideStatus, Role } from "@/lib/domain";
 export const roleLabels: Record<Role, string> = {
   ADMIN: "Administrator",
   CITIZEN: "Borger",
-  DRIVER: "Chauffør"
+  DRIVER: "Chauffør",
+  ORGANIZATION: "Forening/institution"
 };
 
 export const rideStatusLabels: Record<RideStatus, string> = {
