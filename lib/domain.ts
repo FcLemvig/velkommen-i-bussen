@@ -1,4 +1,4 @@
-export const roles = ["CITIZEN", "DRIVER", "ADMIN"] as const;
+export const roles = ["CITIZEN", "DRIVER", "ADMIN", "ORGANIZATION"] as const;
 export type Role = (typeof roles)[number];
 
 export const rideStatuses = ["PENDING", "APPROVED", "ASSIGNED", "IN_PROGRESS", "COMPLETED", "CANCELLED"] as const;
