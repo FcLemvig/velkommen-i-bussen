@@ -7,10 +7,20 @@ export const loginSchema = z.object({
 });
 
 export const registerSchema = z.object({
+  accountType: z.enum(["CITIZEN", "ORGANIZATION"]).default("CITIZEN"),
   name: z.string().min(2, "Skriv dit navn."),
   email: z.string().email("Skriv en gyldig email."),
   phone: z.string().min(8, "Skriv et telefonnummer med mindst 8 cifre."),
+  address: z.string().optional(),
   password: z.string().min(8, "Adgangskoden skal være mindst 8 tegn.")
+}).superRefine((data, ctx) => {
+  if (data.accountType === "ORGANIZATION" && (!data.address || data.address.trim().length < 3)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["address"],
+      message: "Skriv foreningens eller institutionens adresse."
+    });
+  }
 });
 
 export const rideRequestSchema = z.object({
@@ -74,6 +84,19 @@ export const driverShiftSchema = z.object({
   startTime: z.string().regex(/^\d{2}:\d{2}$/, "Vælg starttidspunkt."),
   endTime: z.string().regex(/^\d{2}:\d{2}$/, "Vælg sluttidspunkt."),
   notes: z.string().max(300, "Noter må højst være 300 tegn.").optional()
+}).refine((data) => data.endTime > data.startTime, {
+  path: ["endTime"],
+  message: "Sluttidspunkt skal være efter starttidspunkt."
+});
+
+export const organizationBookingSchema = z.object({
+  bus: z.enum(busOptions, { required_error: "Vælg en bus." }),
+  driverProfileId: z.string().min(1, "Vælg en frivillig chauffør."),
+  date: z.string().min(1, "Vælg en dato."),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/, "Vælg starttidspunkt."),
+  endTime: z.string().regex(/^\d{2}:\d{2}$/, "Vælg sluttidspunkt."),
+  purpose: z.string().min(2, "Skriv hvad bussen skal bruges til."),
+  notes: z.string().max(500, "Noter må højst være 500 tegn.").optional()
 }).refine((data) => data.endTime > data.startTime, {
   path: ["endTime"],
   message: "Sluttidspunkt skal være efter starttidspunkt."
