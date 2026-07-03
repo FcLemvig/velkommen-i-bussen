@@ -17,6 +17,7 @@ model User {
   updatedAt      DateTime        @updatedAt
   citizenProfile CitizenProfile?
   driverProfile  DriverProfile?
+  organizationProfile OrganizationProfile?
   membership     Membership?
   sessions       Session[]
 }
@@ -50,6 +51,16 @@ model DriverProfile {
   user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   assignments   RideAssignment[]
   shifts        DriverShift[]
+  organizationBookings BusBooking[]
+}
+
+model OrganizationProfile {
+  id       String       @id @default(cuid())
+  userId   String       @unique
+  phone    String
+  address  String
+  user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookings BusBooking[]
 }
 
 model RideRequest {
@@ -93,6 +104,23 @@ model DriverShift {
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   driverProfile   DriverProfile? @relation(fields: [driverProfileId], references: [id], onDelete: SetNull)
+}
+
+model BusBooking {
+  id                    String              @id @default(cuid())
+  organizationProfileId String
+  driverProfileId       String
+  bus                   String
+  bookingDate           DateTime
+  startTime             String
+  endTime               String
+  purpose               String
+  notes                 String?
+  status                String              @default("CONFIRMED")
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  organizationProfile   OrganizationProfile @relation(fields: [organizationProfileId], references: [id], onDelete: Cascade)
+  driverProfile         DriverProfile       @relation(fields: [driverProfileId], references: [id], onDelete: Cascade)
 }
 
 model Membership {
