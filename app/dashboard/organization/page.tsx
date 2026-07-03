@@ -79,18 +79,20 @@ export default async function OrganizationDashboardPage({
               </select>
             </div>
           </div>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4">
             <div className="grid gap-2">
               <label htmlFor="date">Dato</label>
               <input id="date" name="date" type="date" required />
             </div>
-            <div className="grid gap-2">
-              <label htmlFor="startTime">Start</label>
-              <input id="startTime" name="startTime" type="time" required />
-            </div>
-            <div className="grid gap-2">
-              <label htmlFor="endTime">Slut</label>
-              <input id="endTime" name="endTime" type="time" required />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <label htmlFor="startTime">Start</label>
+                <input id="startTime" name="startTime" type="time" required />
+              </div>
+              <div className="grid gap-2">
+                <label htmlFor="endTime">Slut</label>
+                <input id="endTime" name="endTime" type="time" required />
+              </div>
             </div>
           </div>
           <div className="grid gap-2">
