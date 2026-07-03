@@ -13,7 +13,7 @@ export async function registerAction(formData: FormData) {
     redirect(`/register?error=${encodeURIComponent(parsed.error.issues[0].message)}`);
   }
 
-  let dashboardPath = "/dashboard/citizen";
+  let dashboardPath = parsed.data.accountType === "ORGANIZATION" ? "/dashboard/organization" : "/dashboard/citizen";
 
   try {
     const user = await prisma.user.create({
@@ -21,8 +21,15 @@ export async function registerAction(formData: FormData) {
         name: parsed.data.name,
         email: parsed.data.email.toLowerCase(),
         passwordHash: await hashPassword(parsed.data.password),
-        role: "CITIZEN",
-        citizenProfile: { create: { phone: parsed.data.phone } },
+        role: parsed.data.accountType,
+        citizenProfile:
+          parsed.data.accountType === "CITIZEN"
+            ? { create: { phone: parsed.data.phone, address: parsed.data.address || null } }
+            : undefined,
+        organizationProfile:
+          parsed.data.accountType === "ORGANIZATION"
+            ? { create: { phone: parsed.data.phone, address: parsed.data.address ?? "" } }
+            : undefined,
         membership: { create: { status: "ACTIVE" } }
       }
     });
@@ -34,7 +41,7 @@ export async function registerAction(formData: FormData) {
       redirect("/register?error=Der%20findes%20allerede%20en%20profil%20med%20den%20email.");
     }
 
-    redirect("/register?error=Profilen%20kunne%20ikke%20oprettes.%20Prøv%20igen.");
+    redirect("/register?error=Profilen%20kunne%20ikke%20oprettes.%20Pr%C3%B8v%20igen.");
   }
 
   redirect(dashboardPath);
