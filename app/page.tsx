@@ -1,27 +1,33 @@
 import Link from "next/link";
 import { Bus, CalendarCheck, HandHeart, MapPin, Route, ShieldCheck, UserPlus, Users } from "lucide-react";
 
+const driverApplicationUrl =
+  "https://forms.office.com/pages/responsepage.aspx?id=pfm-AYL47UmW96RSpRSJxtoHN0wvugVPt77tdHpuZBVUQks4VzY5MFY5QzA3T0hFS0ZaWVdDN1lYNy4u&origin=lprLink&route=shorturl";
+
 const paths = [
   {
     title: "Borger",
     text: "Book bussen til hverdagsture som indkøb, lægebesøg, transport til tog eller sociale aktiviteter.",
     href: "/register",
     action: "Opret bruger",
-    icon: MapPin
+    icon: MapPin,
+    external: false
   },
   {
     title: "Forening",
     text: "Book Bus Øst eller Bus Vest til træning, kampe, møder, arrangementer og fælles aktiviteter.",
     href: "/register",
     action: "Opret forening",
-    icon: Users
+    icon: Users,
+    external: false
   },
   {
     title: "Frivillig chauffør",
-    text: "Tag en tjans, når det passer dig, og hjælp andre med at komme afsted i hverdagen.",
-    href: "/register",
-    action: "Bliv chauffør",
-    icon: HandHeart
+    text: "Ansøg om at blive frivillig chauffør. Vi kontakter dig og opretter først adgang, når du er godkendt.",
+    href: driverApplicationUrl,
+    action: "Ansøg som chauffør",
+    icon: HandHeart,
+    external: true
   }
 ];
 
@@ -84,14 +90,20 @@ export default function HomePage() {
       </section>
 
       <section className="relative z-20 mx-auto -mt-20 grid max-w-6xl gap-4 px-4 md:grid-cols-3">
-        {paths.map(({ title, text, href, action, icon: Icon }) => (
+        {paths.map(({ title, text, href, action, icon: Icon, external }) => (
           <article key={title} className="rounded-[28px] border-2 border-fjord/25 bg-white p-6 shadow-xl shadow-ink/10">
             <Icon className="mb-5 text-bus" size={30} />
             <h2 className="text-2xl font-extrabold text-ink">{title}</h2>
             <p className="mt-3 min-h-24 text-sm leading-6 text-slate-600">{text}</p>
-            <Link href={href} className="button mt-5 w-full bg-ink text-white hover:bg-ink/90">
-              {action}
-            </Link>
+            {external ? (
+              <a href={href} target="_blank" rel="noreferrer" className="button mt-5 w-full bg-ink text-white hover:bg-ink/90">
+                {action}
+              </a>
+            ) : (
+              <Link href={href} className="button mt-5 w-full bg-ink text-white hover:bg-ink/90">
+                {action}
+              </Link>
+            )}
           </article>
         ))}
       </section>
