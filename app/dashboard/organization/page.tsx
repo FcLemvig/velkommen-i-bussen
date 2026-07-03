@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { CalendarDays } from "lucide-react";
 import { cancelOrganizationBookingAction, createOrganizationBookingAction } from "@/app/dashboard/organization/actions";
 import { FormMessage } from "@/components/FormMessage";
 import { requireUser } from "@/lib/auth";
@@ -29,11 +31,17 @@ export default async function OrganizationDashboardPage({
 
   return (
     <main className="mx-auto grid max-w-6xl gap-8 px-4 py-8">
-      <div>
-        <h1 className="text-3xl font-bold text-ink">Forening/institution</h1>
-        <p className="mt-2 text-slate-600">
-          Velkommen, {user.name}. Her kan I booke en frivilligbus og tilknytte en frivillig chauffør.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-ink">Forening/institution</h1>
+          <p className="mt-2 text-slate-600">
+            Velkommen, {user.name}. Her kan I booke en frivilligbus og tilknytte en frivillig chauffør.
+          </p>
+        </div>
+        <Link href="/dashboard/organization/buses" className="button gap-2 bg-bus text-white hover:bg-bus/90">
+          <CalendarDays size={16} />
+          Buskalender
+        </Link>
       </div>
 
       <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
