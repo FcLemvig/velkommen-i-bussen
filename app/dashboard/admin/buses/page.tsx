@@ -1,4 +1,4 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { ArrowLeft, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -74,7 +74,7 @@ export default async function BusCalendarPage({
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-ink">Buskalender</h1>
-          <p className="mt-2 text-slate-600">Se hvornÃ¥r Bus Ã˜st og Bus Vest er booket via vagter og foreningsbookinger.</p>
+          <p className="mt-2 text-slate-600">Se hvornår Bus Øst og Bus Vest er booket via vagter og foreningsbookinger.</p>
         </div>
         <Link href="/dashboard/admin" className="button gap-2 border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
           <ArrowLeft size={16} />
@@ -102,7 +102,7 @@ export default async function BusCalendarPage({
               Denne uge
             </Link>
             <Link href={`/dashboard/admin/buses?week=${nextWeek}`} className="button gap-2 bg-bus text-white hover:bg-bus/90">
-              NÃ¦ste uge
+              Næste uge
               <ChevronRight size={16} />
             </Link>
           </div>
@@ -123,7 +123,7 @@ export default async function BusCalendarPage({
 
           {busOptions.map((bus) => (
             <div key={bus} className="grid grid-cols-[140px_repeat(7,1fr)] border-b border-slate-100 last:border-b-0">
-              <div className="bg-cream px-4 py-4 font-bold text-ink">{busLabels[bus]}</div>
+              <div className="bg-cream px-4 py-4 font-bold text-ink">{busLabels[bus as BusName]}</div>
               {weekDays.map((day) => {
                 const dayShifts = shifts.filter((shift) => shift.bus === bus && sameDate(shift.shiftDate, day));
                 const dayBookings = bookings.filter((booking) => booking.bus === bus && sameDate(booking.bookingDate, day));
@@ -137,7 +137,7 @@ export default async function BusCalendarPage({
                             {booking.startTime} - {booking.endTime}
                           </div>
                           <div className="mt-1 text-xs text-slate-700">{booking.organizationProfile.user.name}</div>
-                          <div className="mt-1 text-xs text-slate-600">ChauffÃ¸r: {booking.driverProfile.user.name}</div>
+                          <div className="mt-1 text-xs text-slate-600">Chauffør: {booking.driverProfile.user.name}</div>
                           <div className="mt-1 text-xs text-slate-500">{booking.purpose}</div>
                         </div>
                       ))}
