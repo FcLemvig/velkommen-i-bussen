@@ -131,7 +131,8 @@ export async function assignDriverAction(formData: FormData) {
         userId: ride.assignment.driverProfile.user.id,
         title: "Du har fået en tur",
         body: `${ride.citizenProfile.user.name}: ${ride.pickupAddress} til ${ride.destinationAddress} den ${ride.rideDate.toLocaleDateString("da-DK")} kl. ${ride.rideTime}.`,
-        href: "/dashboard/driver"
+        href: "/dashboard/driver",
+        driverType: "ASSIGNED_RIDES"
       }
     ]);
   }
