@@ -7,6 +7,8 @@ import { AppBottomNav } from "@/components/AppBottomNav";
 import { clearSession, getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+export const preferredRegion = "lhr1";
+
 export const metadata: Metadata = {
   title: "Velkommen i Bussen",
   description: "Lokal transport og fællesskab i Sydlemvig.",
