@@ -64,3 +64,25 @@ export async function savePushSubscriptionAction(subscription: BrowserPushSubscr
     message: "Push-notifikationer er slået til på denne enhed."
   };
 }
+
+export async function updateDriverNotificationPreferencesAction(formData: FormData) {
+  const user = await requireUser(["DRIVER"]);
+
+  await prisma.driverNotificationPreference.upsert({
+    where: { userId: user.id },
+    create: {
+      userId: user.id,
+      newShifts: formData.get("newShifts") === "on",
+      assignedRides: formData.get("assignedRides") === "on",
+      rideChanges: formData.get("rideChanges") === "on"
+    },
+    update: {
+      newShifts: formData.get("newShifts") === "on",
+      assignedRides: formData.get("assignedRides") === "on",
+      rideChanges: formData.get("rideChanges") === "on"
+    }
+  });
+
+  revalidatePath("/dashboard/notifications");
+  redirect("/dashboard/notifications?success=Indstillingerne%20er%20gemt.");
+}
