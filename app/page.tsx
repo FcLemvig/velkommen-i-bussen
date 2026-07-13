@@ -53,30 +53,7 @@ export default async function HomePage() {
         <div className="absolute inset-0 bg-ink/72" />
         <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-cream to-transparent" />
 
-        <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
-          <Link href="/" className="flex items-center gap-3 text-white">
-            <img src="/velkommen-i-bussen-logo.png" alt="Velkommen i Bussen" className="h-12 w-12 rounded-full bg-white/20" />
-            <span className="text-base font-extrabold sm:text-lg">Velkommen i Bussen</span>
-          </Link>
-          <nav className="flex items-center gap-2">
-            {user ? (
-              <Link href={dashboardHref} className="button bg-white text-ink hover:bg-cream">
-                Åbn app
-              </Link>
-            ) : (
-              <>
-                <Link href="/login" className="button bg-white/12 px-4 text-white ring-1 ring-white/30 hover:bg-white/20">
-                  Log ind
-                </Link>
-                <Link href="/register" className="button hidden bg-bus text-white hover:bg-bus/90 sm:inline-flex">
-                  Opret
-                </Link>
-              </>
-            )}
-          </nav>
-        </header>
-
-        <div className="relative z-10 mx-auto grid min-h-[620px] max-w-6xl items-end gap-8 px-4 pb-24 pt-10 md:grid-cols-[1.05fr_0.95fr] md:items-center md:pb-28">
+        <div className="relative z-10 mx-auto grid min-h-[620px] max-w-6xl items-end gap-8 px-4 pb-24 pt-14 md:grid-cols-[1.05fr_0.95fr] md:items-center md:pb-28 md:pt-20">
           <div className="max-w-2xl">
             <p className="inline-flex rounded-full bg-white/14 px-4 py-2 text-xs font-extrabold uppercase text-white ring-1 ring-white/30">
               Naboer i bevægelse
