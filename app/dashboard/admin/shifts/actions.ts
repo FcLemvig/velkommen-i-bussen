@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
+import { notifyActiveDrivers } from "@/lib/notifications";
+import { busLabels, BusName } from "@/lib/shifts";
 import { addHoursToTime, shiftsOverlap } from "@/lib/shifts";
 import { prisma } from "@/lib/prisma";
 import { driverShiftSchema } from "@/lib/validation";
@@ -44,7 +46,7 @@ export async function createShiftAction(formData: FormData) {
     redirect("/dashboard/admin/shifts?error=Den%20bus%20er%20allerede%20booket%20i%20det%20tidsrum.");
   }
 
-  await prisma.driverShift.create({
+  const shift = await prisma.driverShift.create({
     data: {
       shiftDate: new Date(`${parsed.data.date}T00:00:00`),
       bus: parsed.data.bus,
@@ -53,6 +55,12 @@ export async function createShiftAction(formData: FormData) {
       notes: parsed.data.notes
     }
   });
+
+  await notifyActiveDrivers(
+    "Ny ledig vagt",
+    `${busLabels[(shift.bus || "EAST") as BusName]} den ${shift.shiftDate.toLocaleDateString("da-DK")} kl. ${shift.startTime}-${shift.endTime}.`,
+    "/dashboard/driver#vagter"
+  );
 
   revalidatePath("/dashboard/admin/shifts");
   redirect("/dashboard/admin/shifts?success=Vagten%20er%20oprettet.");
