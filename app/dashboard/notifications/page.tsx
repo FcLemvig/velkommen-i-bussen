@@ -2,8 +2,10 @@ import Link from "next/link";
 import { Bell, CheckCheck } from "lucide-react";
 import { markAllNotificationsReadAction } from "@/app/dashboard/notifications/actions";
 import { FormMessage } from "@/components/FormMessage";
+import { PushPermissionButton } from "@/components/PushPermissionButton";
 import { dashboardPathForRole, requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { vapidPublicKey } from "@/lib/push";
 
 export default async function NotificationsPage({
   searchParams
@@ -13,11 +15,16 @@ export default async function NotificationsPage({
   const user = await requireUser();
   const params = await searchParams;
 
-  const notifications = await prisma.notification.findMany({
-    where: { userId: user.id },
-    orderBy: { createdAt: "desc" },
-    take: 50
-  });
+  const [notifications, pushCount] = await Promise.all([
+    prisma.notification.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+      take: 50
+    }),
+    prisma.pushSubscription.count({
+      where: { userId: user.id }
+    })
+  ]);
 
   const unreadCount = notifications.filter((notification) => !notification.readAt).length;
 
@@ -40,6 +47,8 @@ export default async function NotificationsPage({
 
       <FormMessage message={params.error || params.success} />
 
+      <PushPermissionButton publicKey={vapidPublicKey} />
+
       <section className="flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-fjord/20 bg-white p-4 shadow-sm">
         <div className="flex items-center gap-3">
           <span className="grid h-11 w-11 place-items-center rounded-2xl bg-bus/15 text-brown">
@@ -47,7 +56,9 @@ export default async function NotificationsPage({
           </span>
           <div>
             <p className="font-bold text-ink">{unreadCount} ulæste besked(er)</p>
-            <p className="text-sm text-slate-600">{notifications.length} besked(er) i alt</p>
+            <p className="text-sm text-slate-600">
+              {notifications.length} besked(er) i alt · {pushCount} enhed(er) med push
+            </p>
           </div>
         </div>
         {unreadCount > 0 ? (
