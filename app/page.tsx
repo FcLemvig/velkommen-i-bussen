@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { Bell, Bus, CalendarCheck, HandHeart, LogIn, MapPin, Route, UserPlus, Users } from "lucide-react";
-import { dashboardPathForRole, getCurrentUser } from "@/lib/auth";
+import { Bell, CalendarCheck, HandHeart, MapPin, Route, Users } from "lucide-react";
 
 const driverApplicationUrl =
   "https://forms.office.com/pages/responsepage.aspx?id=pfm-AYL47UmW96RSpRSJxtoHN0wvugVPt77tdHpuZBVUQks4VzY5MFY5QzA3T0hFS0ZaWVdDN1lYNy4u&origin=lprLink&route=shorturl";
@@ -39,9 +38,6 @@ const appHighlights = [
 ];
 
 export default async function HomePage() {
-  const user = await getCurrentUser();
-  const dashboardHref = user ? dashboardPathForRole(user.role) : "/login";
-
   return (
     <main className="bg-cream">
       <section className="relative overflow-hidden bg-ink text-white">
@@ -64,16 +60,6 @@ export default async function HomePage() {
             <p className="mt-5 max-w-xl text-base leading-7 text-white/90 sm:text-lg">
               Book ture, find vagter og få besked, når der sker noget vigtigt i Velkommen i Bussen.
             </p>
-            <div className="mt-7 grid gap-3 sm:flex sm:flex-wrap">
-              <Link href={dashboardHref} className="button gap-2 bg-bus text-white hover:bg-bus/90">
-                {user ? <Bus size={18} /> : <LogIn size={18} />}
-                {user ? "Åbn min app" : "Log ind"}
-              </Link>
-              <Link href="/register" className="button gap-2 bg-white text-ink hover:bg-cream">
-                <UserPlus size={18} />
-                Opret bruger
-              </Link>
-            </div>
           </div>
 
           <div className="rounded-[32px] border border-white/20 bg-white/94 p-4 text-ink shadow-2xl shadow-ink/30 backdrop-blur md:ml-auto md:max-w-sm">
