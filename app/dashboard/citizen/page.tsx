@@ -1,3 +1,4 @@
+import { CalendarClock, MapPin, Navigation, Trash2, UsersRound } from "lucide-react";
 import { createRideRequestAction, deleteRideRequestAction } from "@/app/dashboard/citizen/actions";
 import { FormMessage } from "@/components/FormMessage";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -19,19 +20,57 @@ export default async function CitizenDashboardPage({
       })
     : [];
 
-  return (
-    <main className="mx-auto grid max-w-6xl gap-8 px-4 py-8">
-      <div>
-        <h1 className="text-3xl font-bold text-ink">Borgerdashboard</h1>
-        <p className="mt-2 text-slate-600">Velkommen, {user.name}. Her kan du anmode om kørsel og følge dine ture.</p>
-      </div>
+  const nextRide = rides.find((ride) => !["COMPLETED", "CANCELLED"].includes(ride.status));
 
-      <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-        <form action={createRideRequestAction} className="grid gap-4 rounded-[32px] border-2 border-fjord/25 bg-white shadow-sm p-6">
-          <div>
-            <h2 className="text-xl font-semibold text-ink">Ny kørselsanmodning</h2>
-            <p className="mt-1 text-sm text-slate-600">Udfyld oplysningerne, så kontoret kan planlægge turen.</p>
+  return (
+    <main className="mx-auto grid max-w-5xl gap-6 px-4 py-5 md:py-8">
+      <section className="rounded-[32px] bg-ink px-5 py-6 text-white shadow-xl shadow-ink/10 md:px-8">
+        <p className="text-sm font-bold uppercase text-white/75">Min side</p>
+        <h1 className="mt-2 text-3xl font-extrabold text-white md:text-4xl">Hej {user.name}</h1>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-white/85 md:text-base">
+          Her kan du oprette en tur, følge status og se hvem der kører, når turen er tildelt.
+        </p>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <a href="#ny-tur" className="button gap-2 bg-bus text-white hover:bg-bus/90">
+            <Navigation size={18} />
+            Opret tur
+          </a>
+          <a href="#mine-ture" className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20">
+            <CalendarClock size={18} />
+            Mine ture
+          </a>
+        </div>
+      </section>
+
+      {nextRide ? (
+        <section className="rounded-[28px] border-2 border-fjord/25 bg-white p-5 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-extrabold uppercase text-bus">Næste aktive tur</p>
+              <h2 className="mt-1 text-xl font-extrabold text-ink">
+                {nextRide.rideDate.toLocaleDateString("da-DK")} kl. {nextRide.rideTime}
+              </h2>
+            </div>
+            <StatusBadge status={nextRide.status} />
           </div>
+          <div className="mt-4 grid gap-2 text-sm text-slate-700">
+            <p className="flex gap-2">
+              <MapPin className="mt-0.5 shrink-0 text-bus" size={17} />
+              <span>
+                <strong className="text-ink">{nextRide.pickupAddress}</strong>
+                <span className="block">til {nextRide.destinationAddress}</span>
+              </span>
+            </p>
+          </div>
+        </section>
+      ) : null}
+
+      <section id="ny-tur" className="rounded-[32px] border-2 border-fjord/25 bg-white p-5 shadow-sm md:p-6">
+        <div className="mb-5">
+          <h2 className="text-2xl font-extrabold text-ink">Ny tur</h2>
+          <p className="mt-1 text-sm text-slate-600">Udfyld oplysningerne, så kontoret kan planlægge turen.</p>
+        </div>
+        <form action={createRideRequestAction} className="grid gap-4">
           <FormMessage message={params.error} />
           {params.success ? (
             <p className="rounded-2xl border border-fjord/30 bg-fjord/10 px-4 py-3 text-sm font-semibold text-ink">
@@ -40,7 +79,7 @@ export default async function CitizenDashboardPage({
           ) : null}
           <div className="grid gap-2">
             <label htmlFor="pickupAddress">Afhentningsadresse</label>
-            <input id="pickupAddress" name="pickupAddress" required />
+            <input id="pickupAddress" name="pickupAddress" autoComplete="street-address" required />
           </div>
           <div className="grid gap-2">
             <label htmlFor="destinationAddress">Destinationsadresse</label>
@@ -95,82 +134,92 @@ export default async function CitizenDashboardPage({
             <label htmlFor="notes">Noter</label>
             <textarea id="notes" name="notes" rows={4} />
           </div>
-          <button type="submit" className="bg-bus text-white hover:bg-bus/90">
+          <button type="submit" className="h-14 bg-bus text-base text-white hover:bg-bus/90">
             Send anmodning
           </button>
         </form>
+      </section>
 
-        <div className="rounded-[32px] border-2 border-fjord/25 bg-white shadow-sm p-6">
-          <h2 className="text-xl font-semibold text-ink">Mine ture</h2>
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[720px] text-left text-sm">
-              <thead className="border-b border-slate-200 text-slate-600">
-                <tr>
-                  <th className="py-3 pr-4">Dato</th>
-                  <th className="py-3 pr-4">Tur</th>
-                  <th className="py-3 pr-4">Chauffør</th>
-                  <th className="py-3 pr-4">Status</th>
-                  <th className="py-3 pr-4">Handling</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {rides.map((ride) => (
-                  <tr key={ride.id}>
-                    <td className="py-3 pr-4">
-                      {ride.rideDate.toLocaleDateString("da-DK")} kl. {ride.rideTime}
-                    </td>
-                    <td className="py-3 pr-4">
-                      <div className="font-medium text-ink">{ride.pickupAddress}</div>
-                      <div className="text-slate-600">til {ride.destinationAddress}</div>
-                    </td>
-                    <td className="py-3 pr-4">
-                      {ride.assignment?.driverProfile ? (
-                        <div className="flex items-center gap-3">
-                          {ride.assignment.driverProfile.imageUrl ? (
-                            <img
-                              src={ride.assignment.driverProfile.imageUrl}
-                              alt={ride.assignment.driverProfile.user.name}
-                              className="h-10 w-10 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-bus text-sm font-bold text-ink">
-                              {ride.assignment.driverProfile.user.name.slice(0, 1)}
-                            </div>
-                          )}
-                          <span>{ride.assignment.driverProfile.user.name}</span>
-                        </div>
-                      ) : (
-                        "Ikke tildelt"
-                      )}
-                    </td>
-                    <td className="py-3 pr-4">
-                      <StatusBadge status={ride.status} />
-                    </td>
-                    <td className="py-3 pr-4">
-                      {ride.status !== "COMPLETED" ? (
-                        <form action={deleteRideRequestAction}>
-                          <input type="hidden" name="rideRequestId" value={ride.id} />
-                          <button type="submit" className="border border-red-200 bg-white text-red-700 hover:bg-red-50">
-                            Slet
-                          </button>
-                        </form>
-                      ) : (
-                        <span className="text-slate-400">Låst</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {rides.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="py-8 text-center text-slate-500">
-                      Du har ingen kørselsanmodninger endnu.
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
+      <section id="mine-ture" className="grid gap-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-extrabold text-ink">Mine ture</h2>
+            <p className="text-sm text-slate-600">{rides.length} tur(e)</p>
           </div>
         </div>
+
+        {rides.map((ride) => (
+          <article key={ride.id} className="rounded-[28px] border-2 border-fjord/20 bg-white p-5 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="flex items-center gap-2 text-sm font-bold text-slate-500">
+                  <CalendarClock size={16} />
+                  {ride.rideDate.toLocaleDateString("da-DK")} kl. {ride.rideTime}
+                </p>
+                <h3 className="mt-2 text-lg font-extrabold text-ink">{ride.purpose}</h3>
+              </div>
+              <StatusBadge status={ride.status} />
+            </div>
+
+            <div className="mt-4 grid gap-3 text-sm text-slate-700">
+              <p className="flex gap-2">
+                <MapPin className="mt-0.5 shrink-0 text-bus" size={17} />
+                <span>
+                  <strong className="text-ink">{ride.pickupAddress}</strong>
+                  <span className="block">til {ride.destinationAddress}</span>
+                </span>
+              </p>
+              <p className="flex items-center gap-2">
+                <UsersRound className="text-bus" size={17} />
+                {ride.passengers} passager(er)
+              </p>
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
+              {ride.assignment?.driverProfile ? (
+                <div className="flex items-center gap-3">
+                  {ride.assignment.driverProfile.imageUrl ? (
+                    <img
+                      src={ride.assignment.driverProfile.imageUrl}
+                      alt={ride.assignment.driverProfile.user.name}
+                      className="h-11 w-11 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-bus text-sm font-bold text-ink">
+                      {ride.assignment.driverProfile.user.name.slice(0, 1)}
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-xs font-bold uppercase text-slate-500">Chauffør</p>
+                    <p className="font-bold text-ink">{ride.assignment.driverProfile.user.name}</p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm font-semibold text-slate-500">Chauffør ikke tildelt endnu</p>
+              )}
+
+              {ride.status !== "COMPLETED" ? (
+                <form action={deleteRideRequestAction}>
+                  <input type="hidden" name="rideRequestId" value={ride.id} />
+                  <button type="submit" className="gap-2 border border-red-200 bg-white text-red-700 hover:bg-red-50">
+                    <Trash2 size={16} />
+                    Slet
+                  </button>
+                </form>
+              ) : (
+                <span className="text-sm text-slate-400">Låst</span>
+              )}
+            </div>
+          </article>
+        ))}
+
+        {rides.length === 0 ? (
+          <div className="rounded-[28px] border-2 border-dashed border-fjord/25 bg-white p-8 text-center">
+            <CalendarClock className="mx-auto text-bus" size={34} />
+            <h3 className="mt-3 text-xl font-extrabold text-ink">Ingen ture endnu</h3>
+            <p className="mt-2 text-sm text-slate-600">Opret din første tur ovenfor.</p>
+          </div>
+        ) : null}
       </section>
     </main>
   );
