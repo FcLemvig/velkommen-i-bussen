@@ -22,6 +22,7 @@ model User {
   sessions       Session[]
   notifications  Notification[]
   pushSubscriptions PushSubscription[]
+  driverNotificationPreference DriverNotificationPreference?
 }
 
 model Session {
@@ -58,6 +59,17 @@ model PushSubscription {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model DriverNotificationPreference {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  newShifts           Boolean  @default(true)
+  assignedRides       Boolean  @default(true)
+  rideChanges         Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model CitizenProfile {
