@@ -125,7 +125,8 @@ export async function createOrganizationBookingAction(formData: FormData) {
       userId: driver.user.id,
       title: "Du er valgt som chauffør",
       body: `${user.name} har booket bus med dig som chauffør ${bookingText}.`,
-      href: "/dashboard/driver"
+      href: "/dashboard/driver",
+      driverType: "ASSIGNED_RIDES"
     }
   ]);
 
