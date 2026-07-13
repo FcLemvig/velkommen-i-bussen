@@ -5,6 +5,7 @@ import { LogOut } from "lucide-react";
 import "./globals.css";
 import { AppBottomNav } from "@/components/AppBottomNav";
 import { clearSession, getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
   title: "Velkommen i Bussen",
@@ -17,9 +18,7 @@ export const metadata: Metadata = {
     title: "Velkommen i Bussen"
   },
   icons: {
-    icon: [
-      { url: "/velkommen-i-bussen-logo.png", sizes: "512x512", type: "image/png" }
-    ],
+    icon: [{ url: "/velkommen-i-bussen-logo.png", sizes: "512x512", type: "image/png" }],
     apple: [{ url: "/velkommen-i-bussen-logo.png", sizes: "512x512", type: "image/png" }]
   }
 };
@@ -37,6 +36,14 @@ async function logoutAction() {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
+  const unreadNotifications = user
+    ? await prisma.notification.count({
+        where: {
+          userId: user.id,
+          readAt: null
+        }
+      })
+    : 0;
 
   return (
     <html lang="da">
@@ -52,6 +59,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <>
                   <Link href="/dashboard" className="font-semibold text-ink hover:text-bus">
                     Dashboard
+                  </Link>
+                  <Link href="/dashboard/notifications" className="hidden font-semibold text-ink hover:text-bus sm:inline">
+                    Beskeder{unreadNotifications > 0 ? ` (${unreadNotifications})` : ""}
                   </Link>
                   <form action={logoutAction}>
                     <button className="gap-2 bg-ink text-white hover:bg-brown" type="submit">
@@ -74,7 +84,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </div>
         </header>
         {children}
-        {user ? <AppBottomNav role={user.role} /> : null}
+        {user ? <AppBottomNav role={user.role} unreadCount={unreadNotifications} /> : null}
       </body>
     </html>
   );
