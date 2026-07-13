@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, CalendarDays, ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { busLabels, busOptions, BusName } from "@/lib/shifts";
@@ -70,46 +70,103 @@ export default async function BusCalendarPage({
   const thisWeek = toDateInputValue(new Date());
 
   return (
-    <main className="mx-auto grid max-w-6xl gap-6 px-4 py-8">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-ink">Buskalender</h1>
-          <p className="mt-2 text-slate-600">Se hvornår Bus Øst og Bus Vest er booket via vagter og foreningsbookinger.</p>
+    <main className="mx-auto grid max-w-6xl gap-5 px-4 pb-24 pt-5 md:py-8">
+      <section className="rounded-[28px] bg-ink p-5 text-white shadow-sm md:p-7">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-bus">ADMIN</p>
+            <h1 className="mt-2 text-3xl font-bold">Buskalender</h1>
+            <p className="mt-2 max-w-2xl text-sm text-white/75">
+              Se hvornår Bus Øst og Bus Vest er booket via vagter og foreningsbookinger.
+            </p>
+          </div>
+          <Link href="/dashboard/admin" className="button gap-2 border border-white/25 bg-white/10 text-white hover:bg-white/15">
+            <ArrowLeft size={16} />
+            Tilbage
+          </Link>
         </div>
-        <Link href="/dashboard/admin" className="button gap-2 border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
-          <ArrowLeft size={16} />
-          Tilbage
-        </Link>
-      </div>
+      </section>
 
-      <section className="rounded-[32px] border-2 border-fjord/25 bg-white p-5 shadow-sm">
+      <section className="rounded-[28px] border-2 border-fjord/25 bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <CalendarDays className="text-bus" size={24} />
             <div>
               <h2 className="text-xl font-semibold text-ink">
-                Uge {weekStart.toLocaleDateString("da-DK")} - {addDays(weekStart, 6).toLocaleDateString("da-DK")}
+                {weekStart.toLocaleDateString("da-DK")} - {addDays(weekStart, 6).toLocaleDateString("da-DK")}
               </h2>
               <p className="text-sm text-slate-600">Orange er foreningsbookinger. Turkis er vagter.</p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Link href={`/dashboard/admin/buses?week=${previousWeek}`} className="button gap-2 border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
+          <div className="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto sm:flex-wrap">
+            <Link href={`/dashboard/admin/buses?week=${previousWeek}`} className="button justify-center gap-1 border-2 border-fjord/30 bg-white px-3 text-ink hover:bg-cream">
               <ChevronLeft size={16} />
-              Forrige uge
+              Forrige
             </Link>
-            <Link href={`/dashboard/admin/buses?week=${thisWeek}`} className="button border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
-              Denne uge
+            <Link href={`/dashboard/admin/buses?week=${thisWeek}`} className="button justify-center border-2 border-fjord/30 bg-white px-3 text-ink hover:bg-cream">
+              I dag
             </Link>
-            <Link href={`/dashboard/admin/buses?week=${nextWeek}`} className="button gap-2 bg-bus text-white hover:bg-bus/90">
-              Næste uge
+            <Link href={`/dashboard/admin/buses?week=${nextWeek}`} className="button justify-center gap-1 bg-bus px-3 text-white hover:bg-bus/90">
+              Næste
               <ChevronRight size={16} />
             </Link>
           </div>
         </div>
       </section>
 
-      <section className="overflow-x-auto rounded-[32px] border-2 border-fjord/25 bg-white shadow-sm">
+      <section className="grid gap-4 md:hidden">
+        {busOptions.map((bus) => (
+          <div key={bus} className="rounded-[24px] border border-fjord/20 bg-white p-4 shadow-sm">
+            <h2 className="text-lg font-bold text-ink">{busLabels[bus as BusName]}</h2>
+            <div className="mt-4 grid gap-3">
+              {weekDays.map((day) => {
+                const dayShifts = shifts.filter((shift) => shift.bus === bus && sameDate(shift.shiftDate, day));
+                const dayBookings = bookings.filter((booking) => booking.bus === bus && sameDate(booking.bookingDate, day));
+                const hasItems = dayShifts.length > 0 || dayBookings.length > 0;
+
+                return (
+                  <div key={`${bus}-${day.toISOString()}`} className="rounded-2xl bg-cream/70 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-bold text-ink">{day.toLocaleDateString("da-DK", { weekday: "long" })}</p>
+                      <p className="text-xs font-semibold text-slate-500">{day.toLocaleDateString("da-DK")}</p>
+                    </div>
+                    <div className="mt-2 grid gap-2">
+                      {dayBookings.map((booking) => (
+                        <div key={booking.id} className="rounded-2xl border border-bus/30 bg-bus/10 p-3 text-sm text-ink">
+                          <div className="flex items-center gap-2 font-bold">
+                            <Clock size={14} />
+                            {booking.startTime} - {booking.endTime}
+                          </div>
+                          <p className="mt-1 text-xs text-slate-700">{booking.organizationProfile.user.name}</p>
+                          <p className="mt-1 text-xs text-slate-600">Chauffør: {booking.driverProfile.user.name}</p>
+                          <p className="mt-1 text-xs text-slate-500">{booking.purpose}</p>
+                        </div>
+                      ))}
+                      {dayShifts.map((shift) => (
+                        <Link
+                          key={shift.id}
+                          href={`/dashboard/admin/shifts/${shift.id}`}
+                          className="rounded-2xl border border-fjord/30 bg-fjord/10 p-3 text-sm text-ink hover:bg-fjord/20"
+                        >
+                          <div className="flex items-center gap-2 font-bold">
+                            <Clock size={14} />
+                            {shift.startTime} - {shift.endTime}
+                          </div>
+                          <p className="mt-1 text-xs text-slate-600">{shift.driverProfile?.user.name ?? "Mangler chauffør"}</p>
+                          {shift.notes ? <p className="mt-1 text-xs text-slate-500">{shift.notes}</p> : null}
+                        </Link>
+                      ))}
+                      {!hasItems ? <span className="text-xs text-slate-400">Ledig</span> : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <section className="hidden overflow-x-auto rounded-[28px] border-2 border-fjord/25 bg-white shadow-sm md:block">
         <div className="min-w-[980px]">
           <div className="grid grid-cols-[140px_repeat(7,1fr)] border-b border-slate-200 bg-slate-50 text-sm font-bold text-ink">
             <div className="px-4 py-3">Bus</div>
@@ -150,9 +207,7 @@ export default async function BusCalendarPage({
                           <div className="font-bold">
                             {shift.startTime} - {shift.endTime}
                           </div>
-                          <div className="mt-1 text-xs text-slate-600">
-                            {shift.driverProfile?.user.name ?? "Mangler chauffør"}
-                          </div>
+                          <div className="mt-1 text-xs text-slate-600">{shift.driverProfile?.user.name ?? "Mangler chauffør"}</div>
                           {shift.notes ? <div className="mt-1 text-xs text-slate-500">{shift.notes}</div> : null}
                         </Link>
                       ))}
