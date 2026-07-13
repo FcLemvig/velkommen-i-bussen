@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LogOut } from "lucide-react";
 import "./globals.css";
+import { AppBottomNav } from "@/components/AppBottomNav";
 import { clearSession, getCurrentUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
@@ -39,7 +40,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="da">
-      <body className="min-h-screen">
+      <body className="min-h-screen pb-24 md:pb-0">
         <header className="border-b border-bus/20 bg-white/95 shadow-sm">
           <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
             <Link href="/" className="flex items-center gap-3" aria-label="Velkommen i Bussen">
@@ -73,6 +74,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </div>
         </header>
         {children}
+        {user ? <AppBottomNav role={user.role} /> : null}
       </body>
     </html>
   );
