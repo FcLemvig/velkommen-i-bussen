@@ -5,8 +5,8 @@ import { Role } from "@/lib/domain";
 function navItems(role: Role | string) {
   if (role === "ADMIN") {
     return [
-      { href: "/", label: "Forside", icon: Home },
-      { href: "/dashboard/admin", label: "Admin", icon: ClipboardList, active: true },
+      { href: "/dashboard/admin", label: "Ture", icon: ClipboardList, active: true },
+      { href: "/dashboard/admin/shifts", label: "Vagter", icon: CalendarDays },
       { href: "/dashboard/admin/buses", label: "Kalender", icon: CalendarDays },
       { href: "/dashboard/profile", label: "Profil", icon: UserRound }
     ];
