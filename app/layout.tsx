@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LogOut } from "lucide-react";
@@ -7,7 +7,25 @@ import { clearSession, getCurrentUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Velkommen i Bussen",
-  description: "Frivillig bustjeneste for borgere i lokalomraadet"
+  description: "Lokal transport og fællesskab i Sydlemvig.",
+  applicationName: "Velkommen i Bussen",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Velkommen i Bussen"
+  },
+  icons: {
+    icon: [
+      { url: "/velkommen-i-bussen-logo.png", sizes: "512x512", type: "image/png" }
+    ],
+    apple: [{ url: "/velkommen-i-bussen-logo.png", sizes: "512x512", type: "image/png" }]
+  }
+};
+
+export const viewport: Viewport = {
+  themeColor: "#f5861f",
+  colorScheme: "light"
 };
 
 async function logoutAction() {
