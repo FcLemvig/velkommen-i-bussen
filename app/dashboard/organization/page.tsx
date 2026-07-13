@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarDays } from "lucide-react";
+import { Bus, CalendarClock, CalendarDays, Trash2, UserRound } from "lucide-react";
 import { cancelOrganizationBookingAction, createOrganizationBookingAction } from "@/app/dashboard/organization/actions";
 import { FormMessage } from "@/components/FormMessage";
 import { requireUser } from "@/lib/auth";
@@ -29,27 +29,58 @@ export default async function OrganizationDashboardPage({
       ])
     : [[], []];
 
-  return (
-    <main className="mx-auto grid max-w-6xl gap-8 px-4 py-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-ink">Forening/institution</h1>
-          <p className="mt-2 text-slate-600">
-            Velkommen, {user.name}. Her kan I booke en frivilligbus og tilknytte en frivillig chauffør.
-          </p>
-        </div>
-        <Link href="/dashboard/organization/buses" className="button gap-2 bg-bus text-white hover:bg-bus/90">
-          <CalendarDays size={16} />
-          Buskalender
-        </Link>
-      </div>
+  const nextBooking = bookings.find((booking) => booking.status !== "CANCELLED");
 
-      <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-        <form action={createOrganizationBookingAction} className="grid gap-4 rounded-[32px] border-2 border-fjord/25 bg-white p-6 shadow-sm">
-          <div>
-            <h2 className="text-xl font-semibold text-ink">Ny busbooking</h2>
-            <p className="mt-1 text-sm text-slate-600">Vælg bus, tidspunkt og frivillig chauffør.</p>
+  return (
+    <main className="mx-auto grid max-w-5xl gap-6 px-4 py-5 md:py-8">
+      <section className="rounded-[32px] bg-ink px-5 py-6 text-white shadow-xl shadow-ink/10 md:px-8">
+        <p className="text-sm font-bold uppercase text-white/75">Forening/institution</p>
+        <h1 className="mt-2 text-3xl font-extrabold text-white md:text-4xl">Hej {user.name}</h1>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-white/85 md:text-base">
+          Her kan I booke en frivilligbus, vælge chauffør og se jeres egne bookinger.
+        </p>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <a href="#ny-booking" className="button gap-2 bg-bus text-white hover:bg-bus/90">
+            <Bus size={18} />
+            Book bus
+          </a>
+          <Link href="/dashboard/organization/buses" className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20">
+            <CalendarDays size={18} />
+            Buskalender
+          </Link>
+        </div>
+      </section>
+
+      {nextBooking ? (
+        <section className="rounded-[28px] border-2 border-fjord/25 bg-white p-5 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-extrabold uppercase text-bus">Næste booking</p>
+              <h2 className="mt-1 text-xl font-extrabold text-ink">
+                {nextBooking.bookingDate.toLocaleDateString("da-DK")} kl. {nextBooking.startTime}-{nextBooking.endTime}
+              </h2>
+            </div>
+            <span className="rounded-full bg-fjord/25 px-3 py-1.5 text-xs font-bold text-ink">Bekræftet</span>
           </div>
+          <div className="mt-4 grid gap-2 text-sm text-slate-700">
+            <p className="flex items-center gap-2">
+              <Bus className="text-bus" size={17} />
+              {busLabels[(nextBooking.bus || "EAST") as BusName]}
+            </p>
+            <p className="flex items-center gap-2">
+              <UserRound className="text-bus" size={17} />
+              {nextBooking.driverProfile.user.name}
+            </p>
+          </div>
+        </section>
+      ) : null}
+
+      <section id="ny-booking" className="rounded-[32px] border-2 border-fjord/25 bg-white p-5 shadow-sm md:p-6">
+        <div className="mb-5">
+          <h2 className="text-2xl font-extrabold text-ink">Ny busbooking</h2>
+          <p className="mt-1 text-sm text-slate-600">Vælg bus, tidspunkt og frivillig chauffør.</p>
+        </div>
+        <form action={createOrganizationBookingAction} className="grid gap-4">
           <FormMessage message={params.error} />
           {params.success ? (
             <p className="rounded-2xl border border-fjord/30 bg-fjord/10 px-4 py-3 text-sm font-semibold text-ink">
@@ -103,67 +134,68 @@ export default async function OrganizationDashboardPage({
             <label htmlFor="notes">Noter</label>
             <textarea id="notes" name="notes" rows={4} />
           </div>
-          <button type="submit" className="bg-bus text-white hover:bg-bus/90">
+          <button type="submit" className="h-14 bg-bus text-base text-white hover:bg-bus/90">
             Book bus
           </button>
         </form>
+      </section>
 
-        <div className="rounded-[32px] border-2 border-fjord/25 bg-white p-6 shadow-sm">
-          <h2 className="text-xl font-semibold text-ink">Mine bookinger</h2>
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-sm">
-              <thead className="border-b border-slate-200 text-slate-600">
-                <tr>
-                  <th className="py-3 pr-4">Dato</th>
-                  <th className="py-3 pr-4">Bus</th>
-                  <th className="py-3 pr-4">Chauffør</th>
-                  <th className="py-3 pr-4">Formål</th>
-                  <th className="py-3 pr-4">Status</th>
-                  <th className="py-3 pr-4">Handling</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {bookings.map((booking) => (
-                  <tr key={booking.id}>
-                    <td className="py-3 pr-4">
-                      {booking.bookingDate.toLocaleDateString("da-DK")} kl. {booking.startTime}-{booking.endTime}
-                    </td>
-                    <td className="py-3 pr-4">{busLabels[(booking.bus || "EAST") as BusName]}</td>
-                    <td className="py-3 pr-4">{booking.driverProfile.user.name}</td>
-                    <td className="py-3 pr-4">
-                      <div className="font-medium text-ink">{booking.purpose}</div>
-                      {booking.notes ? <div className="text-slate-500">Note: {booking.notes}</div> : null}
-                    </td>
-                    <td className="py-3 pr-4">
-                      <span className={`rounded-full px-3 py-1.5 text-xs font-bold ${booking.status === "CANCELLED" ? "bg-red-100 text-red-800" : "bg-fjord/25 text-ink"}`}>
-                        {booking.status === "CANCELLED" ? "Annulleret" : "Bekræftet"}
-                      </span>
-                    </td>
-                    <td className="py-3 pr-4">
-                      {booking.status !== "CANCELLED" ? (
-                        <form action={cancelOrganizationBookingAction}>
-                          <input type="hidden" name="bookingId" value={booking.id} />
-                          <button type="submit" className="border border-red-200 bg-white text-red-700 hover:bg-red-50">
-                            Annuller
-                          </button>
-                        </form>
-                      ) : (
-                        <span className="text-slate-400">Lukket</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {bookings.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-8 text-center text-slate-500">
-                      I har ingen busbookinger endnu.
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
+      <section id="mine-bookinger" className="grid gap-4">
+        <div>
+          <h2 className="text-2xl font-extrabold text-ink">Mine bookinger</h2>
+          <p className="text-sm text-slate-600">{bookings.length} booking(er)</p>
         </div>
+
+        {bookings.map((booking) => (
+          <article key={booking.id} className="rounded-[28px] border-2 border-fjord/20 bg-white p-5 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="flex items-center gap-2 text-sm font-bold text-slate-500">
+                  <CalendarClock size={16} />
+                  {booking.bookingDate.toLocaleDateString("da-DK")} kl. {booking.startTime}-{booking.endTime}
+                </p>
+                <h3 className="mt-2 text-lg font-extrabold text-ink">{booking.purpose}</h3>
+              </div>
+              <span className={`rounded-full px-3 py-1.5 text-xs font-bold ${booking.status === "CANCELLED" ? "bg-red-100 text-red-800" : "bg-fjord/25 text-ink"}`}>
+                {booking.status === "CANCELLED" ? "Annulleret" : "Bekræftet"}
+              </span>
+            </div>
+
+            <div className="mt-4 grid gap-3 text-sm text-slate-700">
+              <p className="flex items-center gap-2">
+                <Bus className="text-bus" size={17} />
+                {busLabels[(booking.bus || "EAST") as BusName]}
+              </p>
+              <p className="flex items-center gap-2">
+                <UserRound className="text-bus" size={17} />
+                {booking.driverProfile.user.name}
+              </p>
+              {booking.notes ? <p className="rounded-2xl bg-cream px-4 py-3 text-sm text-slate-700">Note: {booking.notes}</p> : null}
+            </div>
+
+            <div className="mt-5 border-t border-slate-100 pt-4">
+              {booking.status !== "CANCELLED" ? (
+                <form action={cancelOrganizationBookingAction}>
+                  <input type="hidden" name="bookingId" value={booking.id} />
+                  <button type="submit" className="w-full gap-2 border border-red-200 bg-white text-red-700 hover:bg-red-50 sm:w-fit">
+                    <Trash2 size={16} />
+                    Annuller
+                  </button>
+                </form>
+              ) : (
+                <span className="text-sm text-slate-400">Lukket</span>
+              )}
+            </div>
+          </article>
+        ))}
+
+        {bookings.length === 0 ? (
+          <div className="rounded-[28px] border-2 border-dashed border-fjord/25 bg-white p-8 text-center text-slate-500">
+            <Bus className="mx-auto text-bus" size={34} />
+            <h3 className="mt-3 text-xl font-extrabold text-ink">Ingen bookinger endnu</h3>
+            <p className="mt-2 text-sm text-slate-600">Book jeres første tur ovenfor.</p>
+          </div>
+        ) : null}
       </section>
     </main>
   );
