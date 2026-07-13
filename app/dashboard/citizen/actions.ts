@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { notifyAdminAboutNewRide } from "@/lib/email";
+import { createNotification, notifyAdmins } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { rideRequestSchema } from "@/lib/validation";
 
@@ -46,6 +47,19 @@ export async function createRideRequestAction(formData: FormData) {
     purpose: ride.purpose,
     notes: ride.notes
   });
+
+  await createNotification({
+    userId: user.id,
+    title: "Din tur er oprettet",
+    body: `${ride.pickupAddress} til ${ride.destinationAddress} den ${ride.rideDate.toLocaleDateString("da-DK")} kl. ${ride.rideTime}.`,
+    href: "/dashboard/citizen#mine-ture"
+  });
+
+  await notifyAdmins(
+    "Ny kørselsanmodning",
+    `${user.name} ønsker en tur den ${ride.rideDate.toLocaleDateString("da-DK")} kl. ${ride.rideTime}.`,
+    "/dashboard/admin"
+  );
 
   revalidatePath("/dashboard/citizen");
   redirect("/dashboard/citizen?success=Din%20tur%20er%20oprettet.");
