@@ -44,3 +44,24 @@ export async function notifyAdmins(title: string, body: string, href = "/dashboa
     }))
   );
 }
+
+export async function notifyActiveDrivers(title: string, body: string, href = "/dashboard/driver") {
+  const drivers = await prisma.user.findMany({
+    where: {
+      role: "DRIVER",
+      driverProfile: {
+        isActive: true
+      }
+    },
+    select: { id: true }
+  });
+
+  await createNotifications(
+    drivers.map((driver) => ({
+      userId: driver.id,
+      title,
+      body,
+      href
+    }))
+  );
+}
