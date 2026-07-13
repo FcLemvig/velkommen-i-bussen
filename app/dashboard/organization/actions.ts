@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
+import { createNotification, createNotifications, notifyAdmins } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { shiftsOverlap } from "@/lib/shifts";
 import { organizationBookingSchema } from "@/lib/validation";
@@ -82,7 +83,8 @@ export async function createOrganizationBookingAction(formData: FormData) {
     where: {
       id: parsed.data.driverProfileId,
       isActive: true
-    }
+    },
+    include: { user: true }
   });
 
   if (!driver) {
@@ -97,7 +99,7 @@ export async function createOrganizationBookingAction(formData: FormData) {
     redirect("/dashboard/organization?error=Chauff%C3%B8ren%20er%20allerede%20optaget%20i%20det%20tidsrum.");
   }
 
-  await prisma.busBooking.create({
+  const booking = await prisma.busBooking.create({
     data: {
       organizationProfileId: user.organizationProfile.id,
       driverProfileId: parsed.data.driverProfileId,
@@ -109,6 +111,29 @@ export async function createOrganizationBookingAction(formData: FormData) {
       notes: parsed.data.notes
     }
   });
+
+  const bookingText = `${booking.bookingDate.toLocaleDateString("da-DK")} kl. ${booking.startTime}-${booking.endTime}`;
+
+  await createNotifications([
+    {
+      userId: user.id,
+      title: "Busbooking er oprettet",
+      body: `Jeres booking ${bookingText} er bekræftet.`,
+      href: "/dashboard/organization#mine-bookinger"
+    },
+    {
+      userId: driver.user.id,
+      title: "Du er valgt som chauffør",
+      body: `${user.name} har booket bus med dig som chauffør ${bookingText}.`,
+      href: "/dashboard/driver"
+    }
+  ]);
+
+  await notifyAdmins(
+    "Ny busbooking",
+    `${user.name} har booket bus ${bookingText}.`,
+    "/dashboard/admin/buses"
+  );
 
   revalidatePath("/dashboard/organization");
   revalidatePath("/dashboard/admin/buses");
@@ -137,6 +162,13 @@ export async function cancelOrganizationBookingAction(formData: FormData) {
   await prisma.busBooking.update({
     where: { id: booking.id },
     data: { status: "CANCELLED" }
+  });
+
+  await createNotification({
+    userId: user.id,
+    title: "Busbooking er annulleret",
+    body: `Jeres booking den ${booking.bookingDate.toLocaleDateString("da-DK")} kl. ${booking.startTime}-${booking.endTime} er annulleret.`,
+    href: "/dashboard/organization#mine-bookinger"
   });
 
   revalidatePath("/dashboard/organization");
