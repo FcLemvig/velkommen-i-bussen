@@ -9,6 +9,8 @@ import {
   notifyCitizenAboutStatus,
   notifyDriverAboutAssignment
 } from "@/lib/email";
+import { rideStatusLabels } from "@/lib/labels";
+import { createNotifications } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 
 function toRideEmailData(ride: {
@@ -61,6 +63,15 @@ export async function updateRideStatusAction(formData: FormData) {
     status as RideStatus
   );
 
+  await createNotifications([
+    {
+      userId: ride.citizenProfile.user.id,
+      title: `Status på din tur: ${rideStatusLabels[status as RideStatus]}`,
+      body: `Din tur den ${ride.rideDate.toLocaleDateString("da-DK")} kl. ${ride.rideTime} er opdateret.`,
+      href: "/dashboard/citizen#mine-ture"
+    }
+  ]);
+
   revalidatePath("/dashboard/admin");
 }
 
@@ -109,6 +120,20 @@ export async function assignDriverAction(formData: FormData) {
 
     await notifyCitizenAboutAssignment(citizen, rideData, driver);
     await notifyDriverAboutAssignment(driver, rideData);
+    await createNotifications([
+      {
+        userId: ride.citizenProfile.user.id,
+        title: "Din tur er tildelt",
+        body: `${driver.name} er sat på din tur den ${ride.rideDate.toLocaleDateString("da-DK")} kl. ${ride.rideTime}.`,
+        href: "/dashboard/citizen#mine-ture"
+      },
+      {
+        userId: ride.assignment.driverProfile.user.id,
+        title: "Du har fået en tur",
+        body: `${ride.citizenProfile.user.name}: ${ride.pickupAddress} til ${ride.destinationAddress} den ${ride.rideDate.toLocaleDateString("da-DK")} kl. ${ride.rideTime}.`,
+        href: "/dashboard/driver"
+      }
+    ]);
   }
 
   revalidatePath("/dashboard/admin");
