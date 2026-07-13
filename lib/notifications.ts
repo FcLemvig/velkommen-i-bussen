@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { sendPushToUser } from "@/lib/push";
 
 type NotificationInput = {
   userId: string;
@@ -12,6 +13,7 @@ export async function createNotification(input: NotificationInput) {
     await prisma.notification.create({
       data: input
     });
+    await sendPushToUser(input.userId, input.title, input.body, input.href);
   } catch (error) {
     console.error("[notification error]", error);
   }
@@ -24,6 +26,7 @@ export async function createNotifications(inputs: NotificationInput[]) {
     await prisma.notification.createMany({
       data: inputs
     });
+    await Promise.all(inputs.map((input) => sendPushToUser(input.userId, input.title, input.body, input.href)));
   } catch (error) {
     console.error("[notification error]", error);
   }
