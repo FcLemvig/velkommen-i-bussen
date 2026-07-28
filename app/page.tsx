@@ -1,20 +1,32 @@
 import Link from "next/link";
-import { Bell, CalendarCheck, HandHeart, MapPin, Route, Users } from "lucide-react";
+import {
+  ArrowRight,
+  Bell,
+  Bus,
+  CalendarDays,
+  CheckCircle2,
+  Clock3,
+  HandHeart,
+  MapPin,
+  Route,
+  ShieldCheck,
+  Users
+} from "lucide-react";
 
 const driverApplicationUrl =
   "https://forms.office.com/pages/responsepage.aspx?id=pfm-AYL47UmW96RSpRSJxtoHN0wvugVPt77tdHpuZBVUQks4VzY5MFY5QzA3T0hFS0ZaWVdDN1lYNy4u&origin=lprLink&route=shorturl";
 
 const primaryActions = [
   {
-    title: "Jeg vil booke en tur",
-    text: "Opret en profil og send en kørselsanmodning.",
+    title: "Borger",
+    text: "Opret profil og send en kørselsanmodning.",
     href: "/register",
-    action: "Opret bruger",
+    action: "Opret profil",
     icon: MapPin,
     external: false
   },
   {
-    title: "Vi er en forening",
+    title: "Forening",
     text: "Book Bus Øst eller Bus Vest til aktiviteter.",
     href: "/register",
     action: "Opret forening",
@@ -22,8 +34,8 @@ const primaryActions = [
     external: false
   },
   {
-    title: "Jeg vil køre frivilligt",
-    text: "Ansøg som chauffør og bliv godkendt først.",
+    title: "Chauffør",
+    text: "Ansøg og bliv godkendt, før du kan køre.",
     href: driverApplicationUrl,
     action: "Ansøg",
     icon: HandHeart,
@@ -32,54 +44,110 @@ const primaryActions = [
 ];
 
 const appHighlights = [
-  { title: "Ture", text: "Følg status på egne ture.", icon: Route },
-  { title: "Vagter", text: "Chauffører kan tage ledige vagter.", icon: CalendarCheck },
-  { title: "Beskeder", text: "Push og beskeder samlet ét sted.", icon: Bell }
+  { title: "Ture", text: "Se status og beskeder.", icon: Route, color: "bg-fjord/15 text-ink" },
+  { title: "Vagter", text: "Tag ledige vagter.", icon: CalendarDays, color: "bg-bus/15 text-brown" },
+  { title: "Tryghed", text: "Godkendte chauffører.", icon: ShieldCheck, color: "bg-ink/10 text-ink" }
 ];
 
 export default async function HomePage() {
   return (
     <main className="bg-cream">
-      <section className="relative overflow-hidden bg-ink text-white">
+      <section className="relative overflow-hidden">
         <img
           src="/hero-bus-community.jpg"
           alt="Frivillige foran bussen"
           className="absolute inset-0 h-full w-full object-cover object-center"
         />
-        <div className="absolute inset-0 bg-ink/72" />
-        <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-cream to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-b from-ink/82 via-ink/64 to-cream" />
 
-        <div className="relative z-10 mx-auto grid min-h-[620px] max-w-6xl items-end gap-8 px-4 pb-24 pt-14 md:grid-cols-[1.05fr_0.95fr] md:items-center md:pb-28 md:pt-20">
-          <div className="max-w-2xl">
-            <p className="inline-flex rounded-full bg-white/14 px-4 py-2 text-xs font-extrabold uppercase text-white ring-1 ring-white/30">
-              Naboer i bevægelse
-            </p>
-            <h1 className="mt-5 text-4xl font-extrabold leading-tight text-white sm:text-5xl md:text-6xl">
-              Lokal transport med mennesker bag rattet
+        <div className="relative z-10 mx-auto grid min-h-[calc(100vh-88px)] max-w-6xl gap-8 px-4 pb-12 pt-8 md:grid-cols-[1fr_390px] md:items-center md:pb-20 md:pt-14">
+          <div className="max-w-2xl text-white">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/16 px-3 py-2 text-xs font-extrabold uppercase ring-1 ring-white/25">
+              <Bus size={16} />
+              Velkommen i Bussen
+            </div>
+            <h1 className="mt-5 text-4xl font-extrabold leading-tight sm:text-5xl md:text-6xl">
+              Transport, vagter og busbooking samlet i en enkel app
             </h1>
             <p className="mt-5 max-w-xl text-base leading-7 text-white/90 sm:text-lg">
-              Book ture, find vagter og få besked, når der sker noget vigtigt i Velkommen i Bussen.
+              For borgere, frivillige chauffører og lokale foreninger i Sydlemvig.
             </p>
+
+            <div className="mt-7 grid max-w-xl gap-3 sm:grid-cols-3">
+              {primaryActions.map(({ title, text, href, action, icon: Icon, external }) => (
+                <div key={title} className="rounded-3xl bg-white/94 p-4 text-ink shadow-xl shadow-ink/20 backdrop-blur">
+                  <span className="grid h-11 w-11 place-items-center rounded-2xl bg-bus/15 text-brown">
+                    <Icon size={21} />
+                  </span>
+                  <h2 className="mt-3 text-base font-extrabold">{title}</h2>
+                  <p className="mt-1 min-h-12 text-sm leading-5 text-slate-600">{text}</p>
+                  {external ? (
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-4 inline-flex w-full items-center justify-between rounded-2xl bg-ink px-4 py-3 text-sm font-bold text-white transition hover:bg-brown"
+                    >
+                      {action}
+                      <ArrowRight size={17} />
+                    </a>
+                  ) : (
+                    <Link
+                      href={href}
+                      className="mt-4 inline-flex w-full items-center justify-between rounded-2xl bg-ink px-4 py-3 text-sm font-bold text-white transition hover:bg-brown"
+                    >
+                      {action}
+                      <ArrowRight size={17} />
+                    </Link>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div className="rounded-[32px] border border-white/20 bg-white/94 p-4 text-ink shadow-2xl shadow-ink/30 backdrop-blur md:ml-auto md:max-w-sm">
-            <div className="flex items-center gap-3 border-b border-fjord/20 pb-4">
-              <img src="/velkommen-i-bussen-logo.png" alt="" className="h-12 w-12 rounded-full" />
-              <div>
-                <p className="text-sm font-extrabold text-ink">Velkommen i Bussen</p>
-                <p className="text-xs text-slate-600">Din lokale transport-app</p>
+          <div className="mx-auto w-full max-w-sm rounded-[34px] border border-white/35 bg-white/95 p-4 shadow-2xl shadow-ink/35 backdrop-blur">
+            <div className="flex items-center justify-between border-b border-fjord/20 pb-4">
+              <div className="flex items-center gap-3">
+                <img src="/velkommen-i-bussen-logo.png" alt="" className="h-12 w-12 rounded-full" />
+                <div>
+                  <p className="font-extrabold text-ink">Min oversigt</p>
+                  <p className="text-xs text-slate-600">Klar til test</p>
+                </div>
+              </div>
+              <span className="grid h-10 w-10 place-items-center rounded-full bg-fjord/15 text-ink">
+                <Bell size={19} />
+              </span>
+            </div>
+
+            <div className="mt-4 rounded-3xl bg-ink p-4 text-white">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-bold text-white/80">Næste tur</p>
+                <span className="rounded-full bg-bus px-3 py-1 text-xs font-extrabold text-white">Afventer</span>
+              </div>
+              <p className="mt-4 text-2xl font-extrabold">Frivilligcenter Lemvig</p>
+              <div className="mt-4 grid gap-2 text-sm text-white/82">
+                <p className="flex items-center gap-2">
+                  <Clock3 size={16} />
+                  I dag kl. 10:00
+                </p>
+                <p className="flex items-center gap-2">
+                  <MapPin size={16} />
+                  Afhentning og destination samlet
+                </p>
               </div>
             </div>
+
             <div className="mt-4 grid gap-3">
-              {appHighlights.map(({ title, text, icon: Icon }) => (
-                <div key={title} className="flex items-center gap-3 rounded-2xl bg-cream p-3">
-                  <span className="grid h-10 w-10 place-items-center rounded-2xl bg-bus/15 text-brown">
-                    <Icon size={20} />
+              {appHighlights.map(({ title, text, icon: Icon, color }) => (
+                <div key={title} className="flex items-center gap-3 rounded-3xl bg-cream p-3">
+                  <span className={`grid h-10 w-10 place-items-center rounded-2xl ${color}`}>
+                    <Icon size={19} />
                   </span>
-                  <div>
-                    <p className="font-bold text-ink">{title}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-extrabold text-ink">{title}</p>
                     <p className="text-xs text-slate-600">{text}</p>
                   </div>
+                  <CheckCircle2 className="text-fjord" size={19} />
                 </div>
               ))}
             </div>
@@ -87,32 +155,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="relative z-20 mx-auto -mt-16 grid max-w-6xl gap-3 px-4 md:grid-cols-3">
-        {primaryActions.map(({ title, text, href, action, icon: Icon, external }) => (
-          <article key={title} className="rounded-[24px] border border-fjord/20 bg-white p-5 shadow-lg shadow-ink/10">
-            <div className="flex items-start gap-3">
-              <span className="grid h-11 w-11 place-items-center rounded-2xl bg-bus/15 text-brown">
-                <Icon size={22} />
-              </span>
-              <div>
-                <h2 className="font-extrabold text-ink">{title}</h2>
-                <p className="mt-1 text-sm leading-6 text-slate-600">{text}</p>
-              </div>
-            </div>
-            {external ? (
-              <a href={href} target="_blank" rel="noreferrer" className="button mt-4 w-full bg-ink text-white hover:bg-ink/90">
-                {action}
-              </a>
-            ) : (
-              <Link href={href} className="button mt-4 w-full bg-ink text-white hover:bg-ink/90">
-                {action}
-              </Link>
-            )}
-          </article>
-        ))}
-      </section>
-
-      <section className="mx-auto grid max-w-6xl gap-5 px-4 py-12 md:grid-cols-[0.9fr_1.1fr] md:items-center">
+      <section className="mx-auto grid max-w-6xl gap-5 px-4 py-12 md:grid-cols-[0.8fr_1.2fr] md:items-center">
         <div>
           <p className="text-sm font-extrabold uppercase text-bus">Om projektet</p>
           <h2 className="mt-2 text-3xl font-extrabold text-ink">Bedre transport og stærkere fællesskab</h2>
@@ -126,14 +169,16 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-6xl gap-4 px-4 pb-14 md:grid-cols-[1fr_auto] md:items-center">
-        <div className="rounded-[28px] bg-ink p-5 text-white md:p-7">
-          <p className="text-sm font-extrabold uppercase text-bus">Spørgsmål</p>
-          <h2 className="mt-2 text-2xl font-extrabold">Vil du høre mere om ordningen?</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-white/75">
-            Kontakt Frivilligcenter Lemvig om medlemskab, booking eller frivillige chauffører.
-          </p>
-          <a href="mailto:info@frivilligcenterlemvig.dk" className="button mt-5 gap-2 bg-bus text-white hover:bg-bus/90">
+      <section className="mx-auto max-w-6xl px-4 pb-14">
+        <div className="grid gap-4 rounded-[30px] bg-white p-5 shadow-lg shadow-ink/8 md:grid-cols-[1fr_auto] md:items-center md:p-7">
+          <div>
+            <p className="text-sm font-extrabold uppercase text-fjord">Spørgsmål</p>
+            <h2 className="mt-2 text-2xl font-extrabold text-ink">Vil du høre mere om ordningen?</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+              Kontakt Frivilligcenter Lemvig om medlemskab, booking eller frivillige chauffører.
+            </p>
+          </div>
+          <a href="mailto:info@frivilligcenterlemvig.dk" className="button gap-2 bg-bus text-white hover:bg-bus/90">
             <Route size={18} />
             Skriv til os
           </a>
