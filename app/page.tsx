@@ -75,10 +75,10 @@ export default async function HomePage() {
               For borgere, frivillige chauffører og lokale foreninger i Sydlemvig.
             </p>
 
-            <div className="mt-7 grid max-w-xl gap-3 sm:grid-cols-3">
+            <div className="mt-7 grid max-w-xl gap-3 rounded-[30px] bg-ink/55 p-3 shadow-2xl shadow-ink/35 ring-1 ring-white/20 backdrop-blur sm:grid-cols-3">
               {primaryActions.map(({ title, text, href, action, icon: Icon, external }) => (
-                <div key={title} className="rounded-3xl bg-white/94 p-4 text-ink shadow-xl shadow-ink/20 backdrop-blur">
-                  <span className="grid h-11 w-11 place-items-center rounded-2xl bg-bus/15 text-brown">
+                <div key={title} className="rounded-3xl border-2 border-white bg-white p-4 text-ink shadow-2xl shadow-ink/35">
+                  <span className="grid h-11 w-11 place-items-center rounded-2xl bg-bus text-white shadow-md shadow-bus/25">
                     <Icon size={21} />
                   </span>
                   <h2 className="mt-3 text-base font-extrabold">{title}</h2>
@@ -88,7 +88,7 @@ export default async function HomePage() {
                       href={href}
                       target="_blank"
                       rel="noreferrer"
-                      className="mt-4 inline-flex w-full items-center justify-between rounded-2xl bg-ink px-4 py-3 text-sm font-bold text-white transition hover:bg-brown"
+                      className="mt-4 inline-flex w-full items-center justify-between rounded-2xl bg-bus px-4 py-3 text-sm font-bold text-white shadow-md shadow-bus/25 transition hover:bg-bus/90"
                     >
                       {action}
                       <ArrowRight size={17} />
@@ -96,7 +96,7 @@ export default async function HomePage() {
                   ) : (
                     <Link
                       href={href}
-                      className="mt-4 inline-flex w-full items-center justify-between rounded-2xl bg-ink px-4 py-3 text-sm font-bold text-white transition hover:bg-brown"
+                      className="mt-4 inline-flex w-full items-center justify-between rounded-2xl bg-bus px-4 py-3 text-sm font-bold text-white shadow-md shadow-bus/25 transition hover:bg-bus/90"
                     >
                       {action}
                       <ArrowRight size={17} />
