@@ -52,24 +52,26 @@ const appHighlights = [
 export default async function HomePage() {
   return (
     <main className="bg-cream">
-      <section className="relative overflow-hidden">
+      <section className="relative overflow-hidden bg-ink">
         <img
           src="/hero-bus-community.jpg"
           alt="Frivillige foran bussen"
           className="absolute inset-0 h-full w-full object-cover object-center"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-ink/82 via-ink/64 to-cream" />
+        <div className="absolute inset-0 bg-ink/78" />
+        <div className="absolute inset-0 bg-gradient-to-b from-ink/95 via-ink/72 to-cream" />
+        <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-ink to-transparent" />
 
-        <div className="relative z-10 mx-auto grid min-h-[calc(100vh-88px)] max-w-6xl gap-8 px-4 pb-12 pt-8 md:grid-cols-[1fr_390px] md:items-center md:pb-20 md:pt-14">
+        <div className="relative z-10 mx-auto grid min-h-[calc(100vh-88px)] max-w-6xl gap-8 px-4 pb-12 pt-10 md:grid-cols-[1fr_390px] md:items-center md:pb-20 md:pt-16">
           <div className="max-w-2xl text-white">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/16 px-3 py-2 text-xs font-extrabold uppercase ring-1 ring-white/25">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-extrabold uppercase text-ink shadow-lg shadow-ink/20">
               <Bus size={16} />
               Velkommen i Bussen
             </div>
-            <h1 className="mt-5 text-4xl font-extrabold leading-tight sm:text-5xl md:text-6xl">
+            <h1 className="mt-5 max-w-3xl text-4xl font-extrabold leading-tight text-white drop-shadow-[0_3px_18px_rgba(0,0,0,0.55)] sm:text-5xl md:text-6xl">
               Transport, vagter og busbooking samlet i en enkel app
             </h1>
-            <p className="mt-5 max-w-xl text-base leading-7 text-white/90 sm:text-lg">
+            <p className="mt-5 max-w-xl text-base font-semibold leading-7 text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.5)] sm:text-lg">
               For borgere, frivillige chauffører og lokale foreninger i Sydlemvig.
             </p>
 
