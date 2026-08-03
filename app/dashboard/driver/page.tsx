@@ -18,12 +18,20 @@ export default async function DriverDashboardPage({
 }) {
   const params = await searchParams;
   const user = await requireUser(["DRIVER"]);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   const [assignments, myShifts, openShifts] = user.driverProfile
     ? await Promise.all([
         prisma.rideAssignment.findMany({
-          where: { driverProfileId: user.driverProfile.id },
+          where: {
+            driverProfileId: user.driverProfile.id,
+            rideRequest: {
+              OR: [{ rideDate: { gte: today } }, { status: { notIn: ["COMPLETED", "CANCELLED"] } }]
+            }
+          },
           orderBy: { rideRequest: { rideDate: "asc" } },
+          take: 40,
           include: {
             rideRequest: {
               include: {
@@ -33,12 +41,14 @@ export default async function DriverDashboardPage({
           }
         }),
         prisma.driverShift.findMany({
-          where: { driverProfileId: user.driverProfile.id },
-          orderBy: [{ shiftDate: "asc" }, { startTime: "asc" }]
+          where: { driverProfileId: user.driverProfile.id, shiftDate: { gte: today } },
+          orderBy: [{ shiftDate: "asc" }, { startTime: "asc" }],
+          take: 40
         }),
         prisma.driverShift.findMany({
-          where: { driverProfileId: null },
-          orderBy: [{ shiftDate: "asc" }, { startTime: "asc" }]
+          where: { driverProfileId: null, shiftDate: { gte: today } },
+          orderBy: [{ shiftDate: "asc" }, { startTime: "asc" }],
+          take: 40
         })
       ])
     : [[], [], []];
