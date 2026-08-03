@@ -16,6 +16,7 @@ export default async function CitizenDashboardPage({
     ? await prisma.rideRequest.findMany({
         where: { citizenProfileId: user.citizenProfile.id },
         orderBy: [{ rideDate: "desc" }, { rideTime: "desc" }],
+        take: 40,
         include: { assignment: { include: { driverProfile: { include: { user: true } } } } }
       })
     : [];
