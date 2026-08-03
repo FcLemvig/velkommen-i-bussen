@@ -32,6 +32,9 @@ model Session {
   expiresAt DateTime
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model Notification {
@@ -123,6 +126,9 @@ model RideRequest {
   updatedAt          DateTime         @updatedAt
   citizenProfile     CitizenProfile   @relation(fields: [citizenProfileId], references: [id], onDelete: Cascade)
   assignment         RideAssignment?
+
+  @@index([status, rideDate, rideTime])
+  @@index([citizenProfileId, rideDate, rideTime])
 }
 
 model RideAssignment {
@@ -132,6 +138,8 @@ model RideAssignment {
   assignedAt      DateTime      @default(now())
   rideRequest     RideRequest   @relation(fields: [rideRequestId], references: [id], onDelete: Cascade)
   driverProfile   DriverProfile @relation(fields: [driverProfileId], references: [id], onDelete: Cascade)
+
+  @@index([driverProfileId])
 }
 
 model DriverShift {
@@ -145,6 +153,10 @@ model DriverShift {
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   driverProfile   DriverProfile? @relation(fields: [driverProfileId], references: [id], onDelete: SetNull)
+
+  @@index([shiftDate, startTime])
+  @@index([bus, shiftDate, startTime])
+  @@index([driverProfileId, shiftDate])
 }
 
 model BusBooking {
@@ -162,6 +174,12 @@ model BusBooking {
   updatedAt             DateTime            @updatedAt
   organizationProfile   OrganizationProfile @relation(fields: [organizationProfileId], references: [id], onDelete: Cascade)
   driverProfile         DriverProfile       @relation(fields: [driverProfileId], references: [id], onDelete: Cascade)
+
+  @@index([bookingDate, startTime])
+  @@index([bus, bookingDate, startTime])
+  @@index([organizationProfileId, bookingDate])
+  @@index([driverProfileId, bookingDate])
+  @@index([status])
 }
 
 model Membership {
