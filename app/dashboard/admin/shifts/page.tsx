@@ -13,9 +13,13 @@ export default async function AdminShiftsPage({
 }) {
   await requireUser(["ADMIN"]);
   const params = await searchParams;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   const shifts = await prisma.driverShift.findMany({
+    where: { shiftDate: { gte: today } },
     orderBy: [{ shiftDate: "asc" }, { startTime: "asc" }],
+    take: 120,
     include: { driverProfile: { include: { user: true } } }
   });
 
