@@ -24,6 +24,7 @@ export default async function OrganizationDashboardPage({
         prisma.busBooking.findMany({
           where: { organizationProfileId: user.organizationProfile.id },
           orderBy: [{ bookingDate: "desc" }, { startTime: "desc" }],
+          take: 40,
           include: { driverProfile: { include: { user: true } } }
         })
       ])
