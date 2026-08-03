@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { compare, hash } from "bcryptjs";
 import { createHash, randomBytes } from "crypto";
+import { cache } from "react";
 import { Role, isRole } from "@/lib/domain";
 import { prisma } from "@/lib/prisma";
 
@@ -55,7 +56,7 @@ export async function clearSession() {
   cookieStore.delete(SESSION_COOKIE);
 }
 
-export async function getCurrentUser() {
+export const getCurrentUser = cache(async () => {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
 
@@ -86,7 +87,7 @@ export async function getCurrentUser() {
   }
 
   return session.user;
-}
+});
 
 export async function deleteExpiredSessions() {
   await prisma.session.deleteMany({
