@@ -5,6 +5,7 @@ import { LogOut } from "lucide-react";
 import "./globals.css";
 import { AppBottomNav } from "@/components/AppBottomNav";
 import { AppNavigationProgress } from "@/components/AppNavigationProgress";
+import { AppRoutePrefetcher } from "@/components/AppRoutePrefetcher";
 import { clearSession, getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -87,6 +88,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </nav>
           </div>
         </header>
+        {user ? <AppRoutePrefetcher role={user.role} /> : null}
         {children}
         {user ? <AppBottomNav role={user.role} unreadCount={unreadNotifications} /> : null}
       </body>
