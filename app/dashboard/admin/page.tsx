@@ -35,10 +35,11 @@ export default async function AdminDashboardPage({
   const params = await searchParams;
   const selectedStatus = params.status && isRideStatus(params.status) ? params.status : undefined;
 
-  const [rides, drivers, shifts] = await Promise.all([
+  const [rides, drivers] = await Promise.all([
     prisma.rideRequest.findMany({
       where: selectedStatus ? { status: selectedStatus } : {},
       orderBy: [{ rideDate: "asc" }, { rideTime: "asc" }],
+      take: 100,
       include: {
         citizenProfile: { include: { user: true } },
         assignment: { include: { driverProfile: { include: { user: true } } } }
@@ -48,12 +49,24 @@ export default async function AdminDashboardPage({
       where: { isActive: true },
       orderBy: { user: { name: "asc" } },
       include: { user: true }
-    }),
-    prisma.driverShift.findMany({
-      orderBy: [{ shiftDate: "asc" }, { startTime: "asc" }],
-      include: { driverProfile: { include: { user: true } } }
     })
   ]);
+
+  const firstRideDate = rides[0]?.rideDate;
+  const lastRideDate = rides[rides.length - 1]?.rideDate;
+  const shifts =
+    firstRideDate && lastRideDate
+      ? await prisma.driverShift.findMany({
+          where: {
+            shiftDate: {
+              gte: firstRideDate,
+              lte: lastRideDate
+            }
+          },
+          orderBy: [{ shiftDate: "asc" }, { startTime: "asc" }],
+          include: { driverProfile: { include: { user: true } } }
+        })
+      : [];
 
   const pendingCount = rides.filter((ride) => ride.status === "PENDING").length;
   const assignedCount = rides.filter((ride) => ride.assignment).length;
