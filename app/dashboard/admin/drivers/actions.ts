@@ -27,25 +27,48 @@ export async function createDriverAction(formData: FormData) {
     redirect(`/dashboard/admin/drivers/new?error=${encodeURIComponent(parsed.error.issues[0].message)}`);
   }
 
+  const email = parsed.data.email.toLowerCase();
+  const existingUser = await prisma.user.findUnique({
+    where: { email },
+    include: { driverProfile: true }
+  });
+
+  if (existingUser?.driverProfile) {
+    redirect("/dashboard/admin/drivers/new?error=Brugeren%20er%20allerede%20oprettet%20som%20chauff%C3%B8r.");
+  }
+
   try {
-    await prisma.user.create({
-      data: {
-        name: parsed.data.name,
-        email: parsed.data.email.toLowerCase(),
-        passwordHash: await hashPassword(parsed.data.password),
-        role: "DRIVER",
-        driverProfile: {
-          create: {
-            phone: parsed.data.phone,
-            licenseNumber: parsed.data.licenseNumber,
-            imageUrl,
-            notes: parsed.data.notes,
-            isActive: parsed.data.isActive
-          }
-        },
-        membership: { create: { status: "ACTIVE" } }
-      }
-    });
+    if (existingUser) {
+      await prisma.driverProfile.create({
+        data: {
+          userId: existingUser.id,
+          phone: parsed.data.phone,
+          licenseNumber: parsed.data.licenseNumber,
+          imageUrl,
+          notes: parsed.data.notes,
+          isActive: parsed.data.isActive
+        }
+      });
+    } else {
+      await prisma.user.create({
+        data: {
+          name: parsed.data.name,
+          email,
+          passwordHash: await hashPassword(parsed.data.password),
+          role: "DRIVER",
+          driverProfile: {
+            create: {
+              phone: parsed.data.phone,
+              licenseNumber: parsed.data.licenseNumber,
+              imageUrl,
+              notes: parsed.data.notes,
+              isActive: parsed.data.isActive
+            }
+          },
+          membership: { create: { status: "ACTIVE" } }
+        }
+      });
+    }
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       redirect("/dashboard/admin/drivers/new?error=Emailen%20er%20allerede%20i%20brug.");
