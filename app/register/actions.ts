@@ -2,7 +2,7 @@
 
 import { Prisma } from "@prisma/client";
 import { redirect } from "next/navigation";
-import { createSession, dashboardPathForRole, hashPassword } from "@/lib/auth";
+import { createSession, hashPassword } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { registerSchema } from "@/lib/validation";
 
@@ -12,8 +12,6 @@ export async function registerAction(formData: FormData) {
   if (!parsed.success) {
     redirect(`/register?error=${encodeURIComponent(parsed.error.issues[0].message)}`);
   }
-
-  let dashboardPath = parsed.data.accountType === "ORGANIZATION" ? "/dashboard/organization" : "/dashboard/citizen";
 
   try {
     const user = await prisma.user.create({
@@ -35,7 +33,6 @@ export async function registerAction(formData: FormData) {
     });
 
     await createSession(user.id);
-    dashboardPath = dashboardPathForRole(user.role);
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       redirect("/register?error=Der%20findes%20allerede%20en%20profil%20med%20den%20email.");
@@ -44,5 +41,5 @@ export async function registerAction(formData: FormData) {
     redirect("/register?error=Profilen%20kunne%20ikke%20oprettes.%20Pr%C3%B8v%20igen.");
   }
 
-  redirect(dashboardPath);
+  redirect("/dashboard");
 }
