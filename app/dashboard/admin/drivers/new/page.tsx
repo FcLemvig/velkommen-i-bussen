@@ -11,7 +11,9 @@ export default async function NewDriverPage({ searchParams }: { searchParams: Pr
     <main className="mx-auto grid max-w-2xl gap-6 px-4 py-8">
       <div>
         <h1 className="text-3xl font-bold text-ink">Ny chauffør</h1>
-        <p className="mt-2 text-slate-600">Opret login og profiloplysninger for en frivillig chauffør.</p>
+        <p className="mt-2 text-slate-600">
+          Opret en ny chauffør eller brug samme email som en eksisterende borger for at give personen chaufføradgang.
+        </p>
       </div>
       <form action={createDriverAction} className="grid gap-4 rounded-[32px] border-2 border-fjord/25 bg-white shadow-sm p-6">
         <FormMessage message={params.error} />
@@ -43,6 +45,7 @@ export default async function NewDriverPage({ searchParams }: { searchParams: Pr
         <div className="grid gap-2">
           <label htmlFor="password">Midlertidig adgangskode</label>
           <input id="password" name="password" type="password" minLength={8} required />
+          <p className="text-xs text-slate-500">Bruges kun, hvis emailen ikke allerede findes som bruger.</p>
         </div>
         <div className="grid gap-2">
           <label htmlFor="notes">Noter</label>
