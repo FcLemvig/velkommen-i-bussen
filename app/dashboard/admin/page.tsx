@@ -6,6 +6,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { requireUser } from "@/lib/auth";
 import { RideStatus, isRideStatus, rideStatuses } from "@/lib/domain";
 import { rideStatusLabels } from "@/lib/labels";
+import { isMembershipActive, membershipLabel } from "@/lib/membership";
 import { prisma } from "@/lib/prisma";
 import { busLabels, BusName, isRideWithinShift } from "@/lib/shifts";
 
@@ -41,7 +42,7 @@ export default async function AdminDashboardPage({
       orderBy: [{ rideDate: "asc" }, { rideTime: "asc" }],
       take: 100,
       include: {
-        citizenProfile: { include: { user: true } },
+        citizenProfile: { include: { user: { include: { membership: true } } } },
         assignment: { include: { driverProfile: { include: { user: true } } } }
       }
     }),
@@ -158,6 +159,11 @@ export default async function AdminDashboardPage({
                   </p>
                   <h2 className="mt-2 text-lg font-extrabold text-ink">{ride.citizenProfile.user.name}</h2>
                   <p className="text-sm text-slate-600">{ride.passengers} passager(er)</p>
+                  {!isMembershipActive(ride.citizenProfile.user.membership) ? (
+                    <p className="mt-2 w-fit rounded-full bg-bus/20 px-3 py-1 text-xs font-bold text-brown">
+                      {membershipLabel(ride.citizenProfile.user.membership)}
+                    </p>
+                  ) : null}
                 </div>
                 <StatusBadge status={ride.status} />
               </div>
@@ -281,6 +287,11 @@ export default async function AdminDashboardPage({
                   <td className="px-4 py-3">
                     <div className="font-medium text-ink">{ride.citizenProfile.user.name}</div>
                     <div className="text-slate-500">{ride.passengers} passager(er)</div>
+                    {!isMembershipActive(ride.citizenProfile.user.membership) ? (
+                      <div className="mt-2 w-fit rounded-full bg-bus/20 px-3 py-1 text-xs font-bold text-brown">
+                        {membershipLabel(ride.citizenProfile.user.membership)}
+                      </div>
+                    ) : null}
                   </td>
                   <td className="px-4 py-3">
                     <div className="font-medium text-ink">{ride.pickupAddress}</div>
