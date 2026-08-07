@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BusFront, CalendarClock, MapPin, Plus, SlidersHorizontal, Users } from "lucide-react";
+import { Building2, BusFront, CalendarClock, MapPin, Plus, SlidersHorizontal, Users } from "lucide-react";
 import { assignDriverAction, updateRideStatusAction } from "@/app/dashboard/admin/actions";
 import { FormMessage } from "@/components/FormMessage";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -80,7 +80,7 @@ export default async function AdminDashboardPage({
         <p className="mt-3 max-w-2xl text-sm leading-6 text-white/85 md:text-base">
           Tildel chauffører, følg status og se hvor der mangler vagter.
         </p>
-        <div className="mt-5 grid gap-3 sm:grid-cols-4">
+        <div className="mt-5 grid gap-3 sm:grid-cols-5">
           <Link href="/dashboard/admin/buses" className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20">
             <BusFront size={18} />
             Buskalender
@@ -92,6 +92,10 @@ export default async function AdminDashboardPage({
           <Link href="/dashboard/admin/citizens" className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20">
             <Users size={18} />
             Borgere
+          </Link>
+          <Link href="/dashboard/admin/organizations" className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20">
+            <Building2 size={18} />
+            Foreninger
           </Link>
           <Link href="/dashboard/admin/drivers" className="button gap-2 bg-bus text-white hover:bg-bus/90">
             <Plus size={18} />
