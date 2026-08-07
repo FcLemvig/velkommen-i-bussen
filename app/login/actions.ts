@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createSession, dashboardPathForRole, verifyPassword } from "@/lib/auth";
+import { createSession, verifyPassword } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { loginSchema } from "@/lib/validation";
 
@@ -19,5 +19,5 @@ export async function loginAction(formData: FormData) {
   }
 
   await createSession(user.id);
-  redirect(dashboardPathForRole(user.role));
+  redirect("/dashboard");
 }
