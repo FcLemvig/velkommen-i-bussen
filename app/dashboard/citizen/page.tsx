@@ -84,6 +84,7 @@ export default async function CitizenDashboardPage({
             name="pickupAddress"
             label="Afhentningsadresse"
             autoComplete="street-address"
+            initialValue={user.citizenProfile?.address ?? ""}
             required
           />
           <AddressAutocompleteInput
