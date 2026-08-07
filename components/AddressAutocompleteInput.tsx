@@ -16,6 +16,7 @@ type AddressAutocompleteInputProps = {
   autoComplete?: string;
   required?: boolean;
   placeholder?: string;
+  initialValue?: string;
 };
 
 export function AddressAutocompleteInput({
@@ -24,9 +25,10 @@ export function AddressAutocompleteInput({
   label,
   autoComplete,
   required = false,
-  placeholder
+  placeholder,
+  initialValue = ""
 }: AddressAutocompleteInputProps) {
-  const [value, setValue] = useState("");
+  const [value, setValue] = useState(initialValue);
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
