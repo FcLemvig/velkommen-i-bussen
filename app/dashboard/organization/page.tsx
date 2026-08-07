@@ -3,6 +3,7 @@ import { Bus, CalendarClock, CalendarDays, Trash2, UserRound } from "lucide-reac
 import { cancelOrganizationBookingAction, createOrganizationBookingAction } from "@/app/dashboard/organization/actions";
 import { FormMessage } from "@/components/FormMessage";
 import { requireUser } from "@/lib/auth";
+import { isMembershipActive } from "@/lib/membership";
 import { prisma } from "@/lib/prisma";
 import { busLabels, busOptions, BusName } from "@/lib/shifts";
 
@@ -31,6 +32,7 @@ export default async function OrganizationDashboardPage({
     : [[], []];
 
   const nextBooking = bookings.find((booking) => booking.status !== "CANCELLED");
+  const hasActiveMembership = isMembershipActive(user.membership);
 
   return (
     <main className="mx-auto grid max-w-5xl gap-6 px-4 py-5 md:py-8">
@@ -73,6 +75,15 @@ export default async function OrganizationDashboardPage({
               {nextBooking.driverProfile.user.name}
             </p>
           </div>
+        </section>
+      ) : null}
+
+      {!hasActiveMembership ? (
+        <section className="rounded-[28px] border-2 border-bus/30 bg-bus/10 p-5 text-ink shadow-sm">
+          <h2 className="text-xl font-extrabold">Medlemskab afventer betaling</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-700">
+            I kan se jeres profil, men busbooking åbner først, når medlemskabet er betalt og registreret af kontoret.
+          </p>
         </section>
       ) : null}
 
@@ -135,7 +146,7 @@ export default async function OrganizationDashboardPage({
             <label htmlFor="notes">Noter</label>
             <textarea id="notes" name="notes" rows={4} />
           </div>
-          <button type="submit" className="h-14 bg-bus text-base text-white hover:bg-bus/90">
+          <button type="submit" disabled={!hasActiveMembership} className="h-14 bg-bus text-base text-white hover:bg-bus/90 disabled:cursor-not-allowed disabled:bg-slate-300">
             Book bus
           </button>
         </form>
