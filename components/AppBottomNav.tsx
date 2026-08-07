@@ -1,8 +1,24 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Bell, Bus, CalendarDays, ClipboardList, Home, MapPin, UserRound } from "lucide-react";
 import { Role } from "@/lib/domain";
 
-function navItems(role: Role | string) {
+function visibleRole(pathname: string, fallbackRole: Role | string, accessRoles: string[]) {
+  if (pathname.startsWith("/dashboard/admin") && accessRoles.includes("ADMIN")) return "ADMIN";
+  if (pathname.startsWith("/dashboard/driver") && accessRoles.includes("DRIVER")) return "DRIVER";
+  if (pathname.startsWith("/dashboard/organization") && accessRoles.includes("ORGANIZATION")) return "ORGANIZATION";
+  if (pathname.startsWith("/dashboard/citizen") && accessRoles.includes("CITIZEN")) return "CITIZEN";
+
+  return fallbackRole;
+}
+
+function navItems(role: Role | string, hasMultipleAccesses: boolean) {
+  const firstItem = hasMultipleAccesses
+    ? { href: "/dashboard", label: "Min side", icon: Home }
+    : { href: "/", label: "Forside", icon: Home };
+
   if (role === "ADMIN") {
     return [
       { href: "/dashboard/admin", label: "Ture", icon: ClipboardList, active: true },
@@ -15,7 +31,7 @@ function navItems(role: Role | string) {
 
   if (role === "DRIVER") {
     return [
-      { href: "/", label: "Forside", icon: Home },
+      firstItem,
       { href: "/dashboard/driver", label: "Ture", icon: ClipboardList, active: true },
       { href: "/dashboard/driver#vagter", label: "Vagter", icon: CalendarDays },
       { href: "/dashboard/notifications", label: "Beskeder", icon: Bell },
@@ -25,7 +41,7 @@ function navItems(role: Role | string) {
 
   if (role === "ORGANIZATION") {
     return [
-      { href: "/", label: "Forside", icon: Home },
+      firstItem,
       { href: "/dashboard/organization", label: "Book", icon: Bus, active: true },
       { href: "/dashboard/organization/buses", label: "Kalender", icon: CalendarDays },
       { href: "/dashboard/notifications", label: "Beskeder", icon: Bell },
@@ -34,7 +50,7 @@ function navItems(role: Role | string) {
   }
 
   return [
-    { href: "/", label: "Forside", icon: Home },
+    firstItem,
     { href: "/dashboard/citizen#ny-tur", label: "Ny tur", icon: MapPin },
     { href: "/dashboard/citizen#mine-ture", label: "Mine ture", icon: ClipboardList, active: true },
     { href: "/dashboard/notifications", label: "Beskeder", icon: Bell },
@@ -42,8 +58,18 @@ function navItems(role: Role | string) {
   ];
 }
 
-export function AppBottomNav({ role, unreadCount = 0 }: { role: Role | string; unreadCount?: number }) {
-  const items = navItems(role);
+export function AppBottomNav({
+  role,
+  accessRoles,
+  unreadCount = 0
+}: {
+  role: Role | string;
+  accessRoles: string[];
+  unreadCount?: number;
+}) {
+  const pathname = usePathname();
+  const currentRole = visibleRole(pathname, role, accessRoles);
+  const items = navItems(currentRole, accessRoles.length > 1);
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-fjord/20 bg-white/95 px-3 py-2 shadow-[0_-10px_30px_rgba(14,37,91,0.10)] backdrop-blur md:hidden">
