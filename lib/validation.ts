@@ -11,16 +11,8 @@ export const registerSchema = z.object({
   name: z.string().min(2, "Skriv dit navn."),
   email: z.string().email("Skriv en gyldig email."),
   phone: z.string().min(8, "Skriv et telefonnummer med mindst 8 cifre."),
-  address: z.string().optional(),
+  address: z.string().min(3, "Skriv adressen."),
   password: z.string().min(8, "Adgangskoden skal være mindst 8 tegn.")
-}).superRefine((data, ctx) => {
-  if (data.accountType === "ORGANIZATION" && (!data.address || data.address.trim().length < 3)) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["address"],
-      message: "Skriv foreningens eller institutionens adresse."
-    });
-  }
 });
 
 export const rideRequestSchema = z.object({
