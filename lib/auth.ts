@@ -82,7 +82,6 @@ export const getCurrentUser = cache(async () => {
     await prisma.session.deleteMany({
       where: { tokenHash: hashSessionToken(token) }
     });
-    cookieStore.delete(SESSION_COOKIE);
     return null;
   }
 
