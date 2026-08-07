@@ -104,11 +104,40 @@ export async function requireUser(roles?: Role[]) {
     redirect("/login");
   }
 
-  if (!isRole(user.role) || (roles && !roles.includes(user.role))) {
+  if (!isRole(user.role) || (roles && !roles.some((role) => userHasAccess(user, role)))) {
     redirect("/dashboard");
   }
 
   return user;
+}
+
+export function accessRolesForUser(user: {
+  role: string;
+  citizenProfile?: unknown;
+  driverProfile?: unknown;
+  organizationProfile?: unknown;
+}) {
+  const roles = new Set<Role>();
+
+  if (user.role === "ADMIN") roles.add("ADMIN");
+  if (user.citizenProfile) roles.add("CITIZEN");
+  if (user.driverProfile) roles.add("DRIVER");
+  if (user.organizationProfile) roles.add("ORGANIZATION");
+  if (isRole(user.role)) roles.add(user.role);
+
+  return Array.from(roles);
+}
+
+export function userHasAccess(
+  user: {
+    role: string;
+    citizenProfile?: unknown;
+    driverProfile?: unknown;
+    organizationProfile?: unknown;
+  },
+  role: Role
+) {
+  return accessRolesForUser(user).includes(role);
 }
 
 export function dashboardPathForRole(role: Role | string) {
