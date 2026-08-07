@@ -1,5 +1,6 @@
 import { CalendarClock, MapPin, Navigation, Trash2, UsersRound } from "lucide-react";
 import { createRideRequestAction, deleteRideRequestAction } from "@/app/dashboard/citizen/actions";
+import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { FormMessage } from "@/components/FormMessage";
 import { StatusBadge } from "@/components/StatusBadge";
 import { requireUser } from "@/lib/auth";
@@ -78,14 +79,19 @@ export default async function CitizenDashboardPage({
               {params.success}
             </p>
           ) : null}
-          <div className="grid gap-2">
-            <label htmlFor="pickupAddress">Afhentningsadresse</label>
-            <input id="pickupAddress" name="pickupAddress" autoComplete="street-address" required />
-          </div>
-          <div className="grid gap-2">
-            <label htmlFor="destinationAddress">Destinationsadresse</label>
-            <input id="destinationAddress" name="destinationAddress" required />
-          </div>
+          <AddressAutocompleteInput
+            id="pickupAddress"
+            name="pickupAddress"
+            label="Afhentningsadresse"
+            autoComplete="street-address"
+            required
+          />
+          <AddressAutocompleteInput
+            id="destinationAddress"
+            name="destinationAddress"
+            label="Destinationsadresse"
+            required
+          />
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
               <label htmlFor="date">Dato</label>
