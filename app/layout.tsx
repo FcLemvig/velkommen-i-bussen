@@ -6,7 +6,7 @@ import "./globals.css";
 import { AppBottomNav } from "@/components/AppBottomNav";
 import { AppNavigationProgress } from "@/components/AppNavigationProgress";
 import { AppRoutePrefetcher } from "@/components/AppRoutePrefetcher";
-import { clearSession, getCurrentUser } from "@/lib/auth";
+import { accessRolesForUser, clearSession, getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const preferredRegion = "lhr1";
@@ -40,6 +40,7 @@ async function logoutAction() {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
+  const accessRoles = user ? accessRolesForUser(user) : [];
   const unreadNotifications = user
     ? await prisma.notification.count({
         where: {
@@ -88,9 +89,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </nav>
           </div>
         </header>
-        {user ? <AppRoutePrefetcher role={user.role} /> : null}
+        {user ? <AppRoutePrefetcher role={user.role} accessRoles={accessRoles} /> : null}
         {children}
-        {user ? <AppBottomNav role={user.role} unreadCount={unreadNotifications} /> : null}
+        {user ? <AppBottomNav role={user.role} accessRoles={accessRoles} unreadCount={unreadNotifications} /> : null}
       </body>
     </html>
   );
