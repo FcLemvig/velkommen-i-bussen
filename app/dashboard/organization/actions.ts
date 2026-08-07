@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { createNotification, createNotifications, notifyAdmins } from "@/lib/notifications";
+import { isMembershipActive } from "@/lib/membership";
 import { prisma } from "@/lib/prisma";
 import { shiftsOverlap } from "@/lib/shifts";
 import { organizationBookingSchema } from "@/lib/validation";
@@ -71,6 +72,10 @@ export async function createOrganizationBookingAction(formData: FormData) {
 
   if (!user.organizationProfile) {
     redirect("/dashboard/organization?error=Foreningsprofilen%20mangler.");
+  }
+
+  if (!isMembershipActive(user.membership)) {
+    redirect("/dashboard/organization?error=Medlemskabet%20skal%20v%C3%A6re%20betalt%2C%20f%C3%B8r%20I%20kan%20booke%20en%20bus.");
   }
 
   const parsed = organizationBookingSchema.safeParse(Object.fromEntries(formData));
