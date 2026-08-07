@@ -20,11 +20,13 @@ const routesByRole: Record<string, string[]> = {
   CITIZEN: ["/dashboard/citizen", "/dashboard/notifications", "/dashboard/profile"]
 };
 
-export function AppRoutePrefetcher({ role }: { role: Role | string }) {
+export function AppRoutePrefetcher({ role, accessRoles = [role] }: { role: Role | string; accessRoles?: string[] }) {
   const router = useRouter();
 
   useEffect(() => {
-    const routes = routesByRole[role] ?? routesByRole.CITIZEN;
+    const routes = Array.from(
+      new Set(accessRoles.flatMap((accessRole) => routesByRole[accessRole] ?? []).concat(routesByRole[role] ?? routesByRole.CITIZEN))
+    );
 
     const prefetch = () => {
       routes.forEach((route) => router.prefetch(route));
@@ -37,7 +39,7 @@ export function AppRoutePrefetcher({ role }: { role: Role | string }) {
 
     const timeout = setTimeout(prefetch, 900);
     return () => clearTimeout(timeout);
-  }, [role, router]);
+  }, [accessRoles, role, router]);
 
   return null;
 }
