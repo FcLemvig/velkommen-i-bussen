@@ -63,7 +63,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               {user ? (
                 <>
                   <Link href="/dashboard" className="font-semibold text-ink hover:text-bus">
-                    Dashboard
+                    Min side
                   </Link>
                   <Link href="/dashboard/notifications" className="hidden font-semibold text-ink hover:text-bus sm:inline">
                     Beskeder{unreadNotifications > 0 ? ` (${unreadNotifications})` : ""}
