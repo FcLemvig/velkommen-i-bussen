@@ -4,6 +4,7 @@ import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput"
 import { FormMessage } from "@/components/FormMessage";
 import { StatusBadge } from "@/components/StatusBadge";
 import { requireUser } from "@/lib/auth";
+import { isMembershipActive } from "@/lib/membership";
 import { prisma } from "@/lib/prisma";
 
 export default async function CitizenDashboardPage({
@@ -23,6 +24,7 @@ export default async function CitizenDashboardPage({
     : [];
 
   const nextRide = rides.find((ride) => !["COMPLETED", "CANCELLED"].includes(ride.status));
+  const hasActiveMembership = isMembershipActive(user.membership);
 
   return (
     <main className="mx-auto grid max-w-5xl gap-6 px-4 py-5 md:py-8">
@@ -64,6 +66,15 @@ export default async function CitizenDashboardPage({
               </span>
             </p>
           </div>
+        </section>
+      ) : null}
+
+      {!hasActiveMembership ? (
+        <section className="rounded-[28px] border-2 border-bus/30 bg-bus/10 p-5 text-ink shadow-sm">
+          <h2 className="text-xl font-extrabold">Medlemskab afventer betaling</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-700">
+            Du kan godt sende en turanmodning, men kontoret kan først godkende og planlægge turen, når medlemskabet er betalt og registreret.
+          </p>
         </section>
       ) : null}
 
