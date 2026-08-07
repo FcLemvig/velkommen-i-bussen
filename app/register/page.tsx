@@ -46,7 +46,7 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
         </div>
         <div className="grid gap-2">
           <label htmlFor="address">Adresse</label>
-          <input id="address" name="address" autoComplete="street-address" placeholder="Påkrævet for forening/institution" />
+          <input id="address" name="address" autoComplete="street-address" placeholder="Adresse" required />
         </div>
         <div className="grid gap-2">
           <label htmlFor="password">Adgangskode</label>
