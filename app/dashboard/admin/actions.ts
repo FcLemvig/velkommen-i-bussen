@@ -10,6 +10,7 @@ import {
   notifyDriverAboutAssignment
 } from "@/lib/email";
 import { rideStatusLabels } from "@/lib/labels";
+import { isMembershipActive } from "@/lib/membership";
 import { createNotifications } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 
@@ -42,6 +43,17 @@ export async function updateRideStatusAction(formData: FormData) {
 
   if (!rideRequestId || !isRideStatus(status)) {
     redirect("/dashboard/admin?error=Status%20kunne%20ikke%20opdateres.");
+  }
+
+  if (["APPROVED", "ASSIGNED", "IN_PROGRESS", "COMPLETED"].includes(status)) {
+    const currentRide = await prisma.rideRequest.findUnique({
+      where: { id: rideRequestId },
+      include: { citizenProfile: { include: { user: { include: { membership: true } } } } }
+    });
+
+    if (!currentRide || !isMembershipActive(currentRide.citizenProfile.user.membership)) {
+      redirect("/dashboard/admin?error=Medlemskabet%20skal%20v%C3%A6re%20aktivt%2C%20f%C3%B8r%20turen%20kan%20godkendes.");
+    }
   }
 
   const ride = await prisma.rideRequest.update({
@@ -82,6 +94,15 @@ export async function assignDriverAction(formData: FormData) {
 
   if (!rideRequestId || !driverProfileId) {
     redirect("/dashboard/admin?error=V%C3%A6lg%20en%20aktiv%20chauff%C3%B8r.");
+  }
+
+  const currentRide = await prisma.rideRequest.findUnique({
+    where: { id: rideRequestId },
+    include: { citizenProfile: { include: { user: { include: { membership: true } } } } }
+  });
+
+  if (!currentRide || !isMembershipActive(currentRide.citizenProfile.user.membership)) {
+    redirect("/dashboard/admin?error=Medlemskabet%20skal%20v%C3%A6re%20aktivt%2C%20f%C3%B8r%20turen%20kan%20tildeles.");
   }
 
   await prisma.rideAssignment.upsert({
