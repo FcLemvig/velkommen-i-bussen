@@ -30,7 +30,7 @@ export async function registerAction(formData: FormData) {
           parsed.data.accountType === "ORGANIZATION"
             ? { create: { phone: parsed.data.phone, address: parsed.data.address ?? "" } }
             : undefined,
-        membership: { create: { status: "ACTIVE" } }
+        membership: { create: { status: "PENDING_PAYMENT" } }
       }
     });
 
