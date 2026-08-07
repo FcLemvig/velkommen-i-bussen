@@ -2,14 +2,15 @@ import Link from "next/link";
 import { registerAction } from "@/app/register/actions";
 import { FormMessage } from "@/components/FormMessage";
 
-export default async function RegisterPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+export default async function RegisterPage({ searchParams }: { searchParams: Promise<{ error?: string; type?: string }> }) {
   const params = await searchParams;
+  const accountType = params.type === "organization" ? "ORGANIZATION" : "CITIZEN";
 
   return (
     <main className="mx-auto grid max-w-xl gap-6 px-4 py-12">
       <div>
         <h1 className="text-3xl font-extrabold text-ink">Opret profil</h1>
-        <p className="mt-2 text-slate-600">Opret dig som borger eller som forening/institution.</p>
+        <p className="mt-2 text-slate-600">Opret dig som privat borger eller som forening/institution.</p>
       </div>
       <form action={registerAction} className="grid gap-4 rounded-[32px] border-2 border-fjord/25 bg-white p-6 shadow-sm">
         <FormMessage message={params.error} />
@@ -17,14 +18,20 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
           <legend className="text-sm font-bold text-ink">Profiltype</legend>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="flex items-start gap-3 rounded-2xl border border-fjord/30 bg-cream p-4">
-              <input className="mt-1 h-4 w-4" type="radio" name="accountType" value="CITIZEN" defaultChecked />
+              <input className="mt-1 h-4 w-4" type="radio" name="accountType" value="CITIZEN" defaultChecked={accountType === "CITIZEN"} />
               <span>
-                Borger
+                Privat borger
                 <span className="block text-xs font-normal text-slate-600">Til private kørselsanmodninger.</span>
               </span>
             </label>
             <label className="flex items-start gap-3 rounded-2xl border border-fjord/30 bg-cream p-4">
-              <input className="mt-1 h-4 w-4" type="radio" name="accountType" value="ORGANIZATION" />
+              <input
+                className="mt-1 h-4 w-4"
+                type="radio"
+                name="accountType"
+                value="ORGANIZATION"
+                defaultChecked={accountType === "ORGANIZATION"}
+              />
               <span>
                 Forening/institution
                 <span className="block text-xs font-normal text-slate-600">Til booking af bus og frivillig chauffør.</span>

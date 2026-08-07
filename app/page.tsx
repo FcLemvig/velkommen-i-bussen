@@ -20,7 +20,7 @@ const primaryActions = [
   {
     title: "Borger",
     text: "Opret profil og send en kørselsanmodning.",
-    href: "/register",
+    href: "/register?type=citizen",
     action: "Opret profil",
     icon: MapPin,
     external: false
@@ -28,7 +28,7 @@ const primaryActions = [
   {
     title: "Forening",
     text: "Book Bus Øst eller Bus Vest til aktiviteter.",
-    href: "/register",
+    href: "/register?type=organization",
     action: "Opret forening",
     icon: Users,
     external: false
