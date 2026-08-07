@@ -10,6 +10,7 @@ const routesByRole: Record<string, string[]> = {
     "/dashboard/admin/shifts",
     "/dashboard/admin/buses",
     "/dashboard/admin/citizens",
+    "/dashboard/admin/organizations",
     "/dashboard/admin/drivers",
     "/dashboard/notifications",
     "/dashboard/profile"
