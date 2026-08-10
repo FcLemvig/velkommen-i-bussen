@@ -3,6 +3,7 @@ import { ArrowLeft, CalendarDays, ChevronLeft, ChevronRight, Clock } from "lucid
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { busLabels, busOptions, BusName } from "@/lib/shifts";
+import { getSuperSaaSBookings } from "@/lib/supersaas-calendar";
 
 function startOfWeek(date: Date) {
   const next = new Date(date);
@@ -38,7 +39,7 @@ export default async function BusCalendarPage({
   const weekDays = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
   const weekEnd = addDays(weekStart, 7);
 
-  const [shifts, bookings] = await Promise.all([
+  const [shifts, bookings, supersaasBookings] = await Promise.all([
     prisma.driverShift.findMany({
       where: {
         shiftDate: {
@@ -62,7 +63,8 @@ export default async function BusCalendarPage({
         organizationProfile: { include: { user: true } },
         driverProfile: { include: { user: true } }
       }
-    })
+    }),
+    getSuperSaaSBookings(weekStart, weekEnd)
   ]);
 
   const previousWeek = toDateInputValue(addDays(weekStart, -7));
@@ -95,7 +97,7 @@ export default async function BusCalendarPage({
               <h2 className="text-xl font-semibold text-ink">
                 {weekStart.toLocaleDateString("da-DK")} - {addDays(weekStart, 6).toLocaleDateString("da-DK")}
               </h2>
-              <p className="text-sm text-slate-600">Orange er foreningsbookinger. Turkis er vagter.</p>
+              <p className="text-sm text-slate-600">Orange er app-bookinger. Turkis er vagter. Lys er SuperSaaS.</p>
             </div>
           </div>
           <div className="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto sm:flex-wrap">
@@ -122,7 +124,8 @@ export default async function BusCalendarPage({
               {weekDays.map((day) => {
                 const dayShifts = shifts.filter((shift) => shift.bus === bus && sameDate(shift.shiftDate, day));
                 const dayBookings = bookings.filter((booking) => booking.bus === bus && sameDate(booking.bookingDate, day));
-                const hasItems = dayShifts.length > 0 || dayBookings.length > 0;
+                const daySuperSaaSBookings = supersaasBookings.filter((booking) => booking.bus === bus && sameDate(booking.date, day));
+                const hasItems = dayShifts.length > 0 || dayBookings.length > 0 || daySuperSaaSBookings.length > 0;
 
                 return (
                   <div key={`${bus}-${day.toISOString()}`} className="rounded-2xl bg-cream/70 p-3">
@@ -141,6 +144,23 @@ export default async function BusCalendarPage({
                           <p className="mt-1 text-xs text-slate-600">Chauffør: {booking.driverProfile.user.name}</p>
                           <p className="mt-1 text-xs text-slate-500">{booking.purpose}</p>
                         </div>
+                      ))}
+                      {daySuperSaaSBookings.map((booking) => (
+                        <a
+                          key={booking.id}
+                          href={booking.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="rounded-2xl border border-ink/15 bg-cream p-3 text-sm text-ink hover:bg-cream/80"
+                        >
+                          <div className="flex items-center gap-2 font-bold">
+                            <Clock size={14} />
+                            {booking.startTime} - {booking.endTime}
+                          </div>
+                          <p className="mt-1 text-xs text-slate-700">{booking.title}</p>
+                          {booking.organizer ? <p className="mt-1 text-xs text-slate-600">{booking.organizer}</p> : null}
+                          <p className="mt-1 text-xs font-bold text-brown">SuperSaaS</p>
+                        </a>
                       ))}
                       {dayShifts.map((shift) => (
                         <Link
@@ -184,6 +204,7 @@ export default async function BusCalendarPage({
               {weekDays.map((day) => {
                 const dayShifts = shifts.filter((shift) => shift.bus === bus && sameDate(shift.shiftDate, day));
                 const dayBookings = bookings.filter((booking) => booking.bus === bus && sameDate(booking.bookingDate, day));
+                const daySuperSaaSBookings = supersaasBookings.filter((booking) => booking.bus === bus && sameDate(booking.date, day));
 
                 return (
                   <div key={`${bus}-${day.toISOString()}`} className="min-h-36 border-l border-slate-100 p-3">
@@ -198,6 +219,22 @@ export default async function BusCalendarPage({
                           <div className="mt-1 text-xs text-slate-500">{booking.purpose}</div>
                         </div>
                       ))}
+                      {daySuperSaaSBookings.map((booking) => (
+                        <a
+                          key={booking.id}
+                          href={booking.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="rounded-2xl border border-ink/15 bg-cream px-3 py-2 text-sm text-ink hover:bg-cream/80"
+                        >
+                          <div className="font-bold">
+                            {booking.startTime} - {booking.endTime}
+                          </div>
+                          <div className="mt-1 text-xs text-slate-700">{booking.title}</div>
+                          {booking.organizer ? <div className="mt-1 text-xs text-slate-600">{booking.organizer}</div> : null}
+                          <div className="mt-1 text-xs font-bold text-brown">SuperSaaS</div>
+                        </a>
+                      ))}
                       {dayShifts.map((shift) => (
                         <Link
                           key={shift.id}
@@ -211,7 +248,9 @@ export default async function BusCalendarPage({
                           {shift.notes ? <div className="mt-1 text-xs text-slate-500">{shift.notes}</div> : null}
                         </Link>
                       ))}
-                      {dayShifts.length === 0 && dayBookings.length === 0 ? <span className="text-xs text-slate-400">Ledig</span> : null}
+                      {dayShifts.length === 0 && dayBookings.length === 0 && daySuperSaaSBookings.length === 0 ? (
+                        <span className="text-xs text-slate-400">Ledig</span>
+                      ) : null}
                     </div>
                   </div>
                 );
