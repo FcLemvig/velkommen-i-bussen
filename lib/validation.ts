@@ -6,6 +6,15 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Skriv din adgangskode.")
 });
 
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Skriv din nuværende adgangskode."),
+  newPassword: z.string().min(8, "Den nye adgangskode skal være mindst 8 tegn."),
+  confirmPassword: z.string().min(8, "Gentag den nye adgangskode.")
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  path: ["confirmPassword"],
+  message: "De to nye adgangskoder er ikke ens."
+});
+
 export const registerSchema = z.object({
   accountType: z.enum(["CITIZEN", "ORGANIZATION"]).default("CITIZEN"),
   name: z.string().min(2, "Skriv dit navn."),
@@ -63,7 +72,11 @@ export const driverSchema = z.object({
   phone: z.string().optional(),
   licenseNumber: z.string().optional(),
   notes: z.string().max(500, "Noter må højst være 500 tegn.").optional(),
-  isActive: z.coerce.boolean().default(true)
+  isActive: z.coerce.boolean().default(true),
+  password: z.preprocess(
+    (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+    z.string().min(8, "Den nye adgangskode skal være mindst 8 tegn.").optional()
+  )
 });
 
 export const createDriverSchema = driverSchema.extend({

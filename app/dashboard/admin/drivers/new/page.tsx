@@ -45,7 +45,10 @@ export default async function NewDriverPage({ searchParams }: { searchParams: Pr
         <div className="grid gap-2">
           <label htmlFor="password">Midlertidig adgangskode</label>
           <input id="password" name="password" type="password" minLength={8} required />
-          <p className="text-xs text-slate-500">Bruges kun, hvis emailen ikke allerede findes som bruger.</p>
+          <p className="text-xs text-slate-500">
+            Skriv en midlertidig kode og send den til chauffÃ¸ren. ChauffÃ¸ren kan selv skifte den under Profil efter login.
+            Bruges kun, hvis emailen ikke allerede findes som bruger.
+          </p>
         </div>
         <div className="grid gap-2">
           <label htmlFor="notes">Noter</label>

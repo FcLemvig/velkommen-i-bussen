@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { ArrowLeft, BadgeCheck, Mail, MapPin, Phone, UserRound } from "lucide-react";
+import { ArrowLeft, BadgeCheck, KeyRound, Mail, MapPin, Phone, UserRound } from "lucide-react";
+import { changePasswordAction } from "@/app/dashboard/profile/actions";
+import { FormMessage } from "@/components/FormMessage";
 import { requireUser } from "@/lib/auth";
 import { roleLabels } from "@/lib/labels";
 import { isRole } from "@/lib/domain";
@@ -12,8 +14,13 @@ function profileAddress(user: Awaited<ReturnType<typeof requireUser>>) {
   return user.citizenProfile?.address ?? user.organizationProfile?.address ?? "Ikke angivet";
 }
 
-export default async function ProfilePage() {
+export default async function ProfilePage({
+  searchParams
+}: {
+  searchParams: Promise<{ error?: string; success?: string }>;
+}) {
   const user = await requireUser();
+  const params = await searchParams;
   const role = isRole(user.role) ? user.role : "CITIZEN";
 
   return (
@@ -28,6 +35,8 @@ export default async function ProfilePage() {
           Tilbage
         </Link>
       </div>
+
+      <FormMessage message={params.error || params.success} />
 
       <section className="rounded-[32px] border-2 border-fjord/25 bg-white p-6 shadow-sm">
         <div className="flex items-center gap-4">
@@ -75,6 +84,40 @@ export default async function ProfilePage() {
             </div>
           ) : null}
         </dl>
+      </section>
+
+      <section className="rounded-[32px] border-2 border-fjord/25 bg-white p-6 shadow-sm">
+        <div className="flex items-start gap-3">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-bus/15 text-brown">
+            <KeyRound size={22} />
+          </span>
+          <div>
+            <h2 className="text-xl font-extrabold text-ink">Skift adgangskode</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Brug denne, nÃ¥r du har fÃ¥et en midlertidig adgangskode og vil vÃ¦lge din egen.
+            </p>
+          </div>
+        </div>
+
+        <form action={changePasswordAction} className="mt-5 grid gap-4">
+          <div className="grid gap-2">
+            <label htmlFor="currentPassword">NuvÃ¦rende adgangskode</label>
+            <input id="currentPassword" name="currentPassword" type="password" autoComplete="current-password" required />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-2">
+              <label htmlFor="newPassword">Ny adgangskode</label>
+              <input id="newPassword" name="newPassword" type="password" autoComplete="new-password" minLength={8} required />
+            </div>
+            <div className="grid gap-2">
+              <label htmlFor="confirmPassword">Gentag ny adgangskode</label>
+              <input id="confirmPassword" name="confirmPassword" type="password" autoComplete="new-password" minLength={8} required />
+            </div>
+          </div>
+          <button type="submit" className="w-full bg-bus text-white hover:bg-bus/90 sm:w-fit">
+            Skift adgangskode
+          </button>
+        </form>
       </section>
     </main>
   );

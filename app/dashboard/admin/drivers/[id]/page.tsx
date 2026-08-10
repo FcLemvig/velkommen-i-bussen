@@ -65,6 +65,13 @@ export default async function EditDriverPage({
           <label htmlFor="notes">Noter</label>
           <textarea id="notes" name="notes" rows={4} defaultValue={driver.notes ?? ""} />
         </div>
+        <div className="grid gap-2 rounded-2xl bg-cream p-4">
+          <label htmlFor="password">Ny midlertidig adgangskode</label>
+          <input id="password" name="password" type="password" minLength={8} autoComplete="new-password" />
+          <p className="text-xs text-slate-600">
+            Udfyld kun feltet, hvis chauffÃ¸ren skal have nulstillet sin adgangskode. ChauffÃ¸ren kan selv skifte den bagefter under Profil.
+          </p>
+        </div>
         <label className="flex items-center gap-2">
           <input className="h-4 w-4" type="checkbox" name="isActive" defaultChecked={driver.isActive} />
           Aktiv chauffør

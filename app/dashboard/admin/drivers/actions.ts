@@ -112,7 +112,8 @@ export async function updateDriverAction(driverProfileId: string, formData: Form
         user: {
           update: {
             name: parsed.data.name,
-            email: parsed.data.email.toLowerCase()
+            email: parsed.data.email.toLowerCase(),
+            ...(parsed.data.password ? { passwordHash: await hashPassword(parsed.data.password) } : {})
           }
         }
       }
