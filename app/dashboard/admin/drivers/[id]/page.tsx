@@ -69,7 +69,7 @@ export default async function EditDriverPage({
           <label htmlFor="password">Ny midlertidig adgangskode</label>
           <input id="password" name="password" type="password" minLength={8} autoComplete="new-password" />
           <p className="text-xs text-slate-600">
-            Udfyld kun feltet, hvis chauffÃ¸ren skal have nulstillet sin adgangskode. ChauffÃ¸ren kan selv skifte den bagefter under Profil.
+            Udfyld kun feltet, hvis chauff&oslash;ren skal have nulstillet sin adgangskode. Chauff&oslash;ren kan selv skifte den bagefter under Profil.
           </p>
         </div>
         <label className="flex items-center gap-2">

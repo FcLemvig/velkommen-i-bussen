@@ -46,7 +46,7 @@ export default async function NewDriverPage({ searchParams }: { searchParams: Pr
           <label htmlFor="password">Midlertidig adgangskode</label>
           <input id="password" name="password" type="password" minLength={8} required />
           <p className="text-xs text-slate-500">
-            Skriv en midlertidig kode og send den til chauffÃ¸ren. ChauffÃ¸ren kan selv skifte den under Profil efter login.
+            Skriv en midlertidig kode og send den til chauff&oslash;ren. Chauff&oslash;ren kan selv skifte den under Profil efter login.
             Bruges kun, hvis emailen ikke allerede findes som bruger.
           </p>
         </div>

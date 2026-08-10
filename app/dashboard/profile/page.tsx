@@ -94,14 +94,14 @@ export default async function ProfilePage({
           <div>
             <h2 className="text-xl font-extrabold text-ink">Skift adgangskode</h2>
             <p className="mt-1 text-sm text-slate-600">
-              Brug denne, nÃ¥r du har fÃ¥et en midlertidig adgangskode og vil vÃ¦lge din egen.
+              Brug denne, n&aring;r du har f&aring;et en midlertidig adgangskode og vil v&aelig;lge din egen.
             </p>
           </div>
         </div>
 
         <form action={changePasswordAction} className="mt-5 grid gap-4">
           <div className="grid gap-2">
-            <label htmlFor="currentPassword">NuvÃ¦rende adgangskode</label>
+            <label htmlFor="currentPassword">Nuv&aelig;rende adgangskode</label>
             <input id="currentPassword" name="currentPassword" type="password" autoComplete="current-password" required />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
