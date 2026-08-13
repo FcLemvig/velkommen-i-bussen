@@ -21,7 +21,7 @@ export default async function DriverDashboardPage({
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const [assignments, myShifts, openShifts] = user.driverProfile
+  const [assignments, myShifts, openShifts, myEvents] = user.driverProfile
     ? await Promise.all([
         prisma.rideAssignment.findMany({
           where: {
@@ -49,9 +49,25 @@ export default async function DriverDashboardPage({
           where: { driverProfileId: null, shiftDate: { gte: today } },
           orderBy: [{ shiftDate: "asc" }, { startTime: "asc" }],
           take: 40
+        }),
+        prisma.event.findMany({
+          where: {
+            driverProfileId: user.driverProfile.id,
+            eventDate: { gte: today },
+            status: { not: "CANCELLED" }
+          },
+          orderBy: [{ eventDate: "asc" }, { startTime: "asc" }],
+          take: 20,
+          include: {
+            signups: {
+              include: {
+                citizenProfile: { include: { user: true } }
+              }
+            }
+          }
         })
       ])
-    : [[], [], []];
+    : [[], [], [], []];
 
   const nextRide = assignments.find(({ rideRequest }) => rideRequest.status !== "COMPLETED")?.rideRequest;
 
@@ -240,6 +256,53 @@ export default async function DriverDashboardPage({
             <Bus className="mx-auto text-bus" size={34} />
             <h3 className="mt-3 text-xl font-extrabold text-ink">Ingen ture lige nu</h3>
             <p className="mt-2 text-sm text-slate-600">Når admin tildeler dig en tur, vises den her.</p>
+          </div>
+        ) : null}
+      </section>
+
+      <section className="grid gap-4">
+        <div>
+          <h2 className="text-2xl font-extrabold text-ink">Mine begivenheder</h2>
+          <p className="text-sm text-slate-600">{myEvents.length} begivenhed(er)</p>
+        </div>
+        {myEvents.map((event) => {
+          const passengers = event.signups.reduce((sum, signup) => sum + signup.passengers, 0);
+
+          return (
+            <article key={event.id} className="rounded-[28px] border-2 border-fjord/25 bg-white p-5 shadow-sm">
+              <p className="flex items-center gap-2 text-sm font-bold text-slate-500">
+                <CalendarClock size={16} />
+                {event.eventDate.toLocaleDateString("da-DK")} kl. {event.startTime}-{event.endTime}
+              </p>
+              <h3 className="mt-2 text-lg font-extrabold text-ink">{event.title}</h3>
+              <div className="mt-4 grid gap-3 text-sm text-slate-700 sm:grid-cols-2">
+                <p className="flex items-center gap-2">
+                  <MapPin className="text-bus" size={17} />
+                  {event.location}
+                </p>
+                <p className="flex items-center gap-2">
+                  <Bus className="text-bus" size={17} />
+                  {busLabels[(event.bus || "EAST") as BusName]} · {passengers} passager(er)
+                </p>
+              </div>
+              {event.pickupInfo ? <p className="mt-4 rounded-2xl bg-cream px-4 py-3 text-sm text-slate-700">{event.pickupInfo}</p> : null}
+              <div className="mt-4 grid gap-2">
+                {event.signups.map((signup) => (
+                  <div key={signup.id} className="rounded-2xl bg-cream/70 px-4 py-3 text-sm text-slate-700">
+                    <strong className="text-ink">{signup.citizenProfile.user.name}</strong> · {signup.passengers} passager(er)
+                    {signup.pickupAddress ? <span className="block">{signup.pickupAddress}</span> : null}
+                  </div>
+                ))}
+                {event.signups.length === 0 ? <p className="text-sm text-slate-500">Ingen tilmeldte endnu.</p> : null}
+              </div>
+            </article>
+          );
+        })}
+        {myEvents.length === 0 ? (
+          <div className="rounded-[28px] border-2 border-dashed border-fjord/25 bg-white p-8 text-center text-slate-500">
+            <CalendarClock className="mx-auto text-bus" size={34} />
+            <h3 className="mt-3 text-xl font-extrabold text-ink">Ingen begivenheder lige nu</h3>
+            <p className="mt-2 text-sm text-slate-600">Når admin sætter dig på en begivenhed, vises den her.</p>
           </div>
         ) : null}
       </section>

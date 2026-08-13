@@ -1,4 +1,5 @@
-import { CalendarClock, MapPin, Navigation, Trash2, UsersRound } from "lucide-react";
+import Link from "next/link";
+import { CalendarClock, CalendarPlus, MapPin, Navigation, Trash2, UsersRound } from "lucide-react";
 import { createRideRequestAction, deleteRideRequestAction } from "@/app/dashboard/citizen/actions";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { FormMessage } from "@/components/FormMessage";
@@ -34,11 +35,15 @@ export default async function CitizenDashboardPage({
         <p className="mt-3 max-w-2xl text-sm leading-6 text-white/85 md:text-base">
           Her kan du oprette en tur, følge status og se hvem der kører, når turen er tildelt.
         </p>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
           <a href="#ny-tur" className="button gap-2 bg-bus text-white hover:bg-bus/90">
             <Navigation size={18} />
             Opret tur
           </a>
+          <Link href="/dashboard/citizen/events" className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20">
+            <CalendarPlus size={18} />
+            Begivenheder
+          </Link>
           <a href="#mine-ture" className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20">
             <CalendarClock size={18} />
             Mine ture

@@ -9,6 +9,7 @@ const routesByRole: Record<string, string[]> = {
     "/dashboard/admin",
     "/dashboard/admin/shifts",
     "/dashboard/admin/buses",
+    "/dashboard/admin/events",
     "/dashboard/admin/citizens",
     "/dashboard/admin/organizations",
     "/dashboard/admin/drivers",
@@ -17,7 +18,7 @@ const routesByRole: Record<string, string[]> = {
   ],
   DRIVER: ["/dashboard/driver", "/dashboard/notifications", "/dashboard/profile"],
   ORGANIZATION: ["/dashboard/organization", "/dashboard/organization/buses", "/dashboard/notifications", "/dashboard/profile"],
-  CITIZEN: ["/dashboard/citizen", "/dashboard/notifications", "/dashboard/profile"]
+  CITIZEN: ["/dashboard/citizen", "/dashboard/citizen/events", "/dashboard/notifications", "/dashboard/profile"]
 };
 
 export function AppRoutePrefetcher({ role, accessRoles = [role] }: { role: Role | string; accessRoles?: string[] }) {

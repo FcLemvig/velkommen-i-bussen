@@ -39,7 +39,7 @@ export default async function BusCalendarPage({
   const weekDays = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
   const weekEnd = addDays(weekStart, 7);
 
-  const [shifts, bookings, supersaasBookings] = await Promise.all([
+  const [shifts, bookings, events, supersaasBookings] = await Promise.all([
     prisma.driverShift.findMany({
       where: {
         shiftDate: {
@@ -62,6 +62,20 @@ export default async function BusCalendarPage({
       include: {
         organizationProfile: { include: { user: true } },
         driverProfile: { include: { user: true } }
+      }
+    }),
+    prisma.event.findMany({
+      where: {
+        eventDate: {
+          gte: weekStart,
+          lt: weekEnd
+        },
+        status: { not: "CANCELLED" }
+      },
+      orderBy: [{ eventDate: "asc" }, { startTime: "asc" }],
+      include: {
+        driverProfile: { include: { user: true } },
+        signups: true
       }
     }),
     getSuperSaaSBookings(weekStart, weekEnd)
@@ -125,7 +139,8 @@ export default async function BusCalendarPage({
                 const dayShifts = shifts.filter((shift) => shift.bus === bus && sameDate(shift.shiftDate, day));
                 const dayBookings = bookings.filter((booking) => booking.bus === bus && sameDate(booking.bookingDate, day));
                 const daySuperSaaSBookings = supersaasBookings.filter((booking) => booking.bus === bus && sameDate(booking.date, day));
-                const hasItems = dayShifts.length > 0 || dayBookings.length > 0 || daySuperSaaSBookings.length > 0;
+                const dayEvents = events.filter((event) => event.bus === bus && sameDate(event.eventDate, day));
+                const hasItems = dayShifts.length > 0 || dayBookings.length > 0 || dayEvents.length > 0 || daySuperSaaSBookings.length > 0;
 
                 return (
                   <div key={`${bus}-${day.toISOString()}`} className="rounded-2xl bg-cream/70 p-3">
@@ -144,6 +159,23 @@ export default async function BusCalendarPage({
                           <p className="mt-1 text-xs text-slate-600">Chauffør: {booking.driverProfile.user.name}</p>
                           <p className="mt-1 text-xs text-slate-500">{booking.purpose}</p>
                         </div>
+                      ))}
+                      {dayEvents.map((event) => (
+                        <Link
+                          key={event.id}
+                          href="/dashboard/admin/events"
+                          className="rounded-2xl border border-bus/30 bg-bus/10 p-3 text-sm text-ink hover:bg-bus/15"
+                        >
+                          <div className="flex items-center gap-2 font-bold">
+                            <Clock size={14} />
+                            {event.startTime} - {event.endTime}
+                          </div>
+                          <p className="mt-1 text-xs text-slate-700">{event.title}</p>
+                          <p className="mt-1 text-xs text-slate-600">
+                            {event.signups.reduce((sum, signup) => sum + signup.passengers, 0)}/{event.capacity} tilmeldte
+                          </p>
+                          <p className="mt-1 text-xs font-bold text-brown">Begivenhed</p>
+                        </Link>
                       ))}
                       {daySuperSaaSBookings.map((booking) => (
                         <a
@@ -205,6 +237,7 @@ export default async function BusCalendarPage({
                 const dayShifts = shifts.filter((shift) => shift.bus === bus && sameDate(shift.shiftDate, day));
                 const dayBookings = bookings.filter((booking) => booking.bus === bus && sameDate(booking.bookingDate, day));
                 const daySuperSaaSBookings = supersaasBookings.filter((booking) => booking.bus === bus && sameDate(booking.date, day));
+                const dayEvents = events.filter((event) => event.bus === bus && sameDate(event.eventDate, day));
 
                 return (
                   <div key={`${bus}-${day.toISOString()}`} className="min-h-36 border-l border-slate-100 p-3">
@@ -218,6 +251,22 @@ export default async function BusCalendarPage({
                           <div className="mt-1 text-xs text-slate-600">Chauffør: {booking.driverProfile.user.name}</div>
                           <div className="mt-1 text-xs text-slate-500">{booking.purpose}</div>
                         </div>
+                      ))}
+                      {dayEvents.map((event) => (
+                        <Link
+                          key={event.id}
+                          href="/dashboard/admin/events"
+                          className="rounded-2xl border border-bus/30 bg-bus/10 px-3 py-2 text-sm text-ink hover:bg-bus/15"
+                        >
+                          <div className="font-bold">
+                            {event.startTime} - {event.endTime}
+                          </div>
+                          <div className="mt-1 text-xs text-slate-700">{event.title}</div>
+                          <div className="mt-1 text-xs text-slate-600">{event.location}</div>
+                          <div className="mt-1 text-xs font-bold text-brown">
+                            Begivenhed · {event.signups.reduce((sum, signup) => sum + signup.passengers, 0)}/{event.capacity}
+                          </div>
+                        </Link>
                       ))}
                       {daySuperSaaSBookings.map((booking) => (
                         <a
@@ -248,7 +297,7 @@ export default async function BusCalendarPage({
                           {shift.notes ? <div className="mt-1 text-xs text-slate-500">{shift.notes}</div> : null}
                         </Link>
                       ))}
-                      {dayShifts.length === 0 && dayBookings.length === 0 && daySuperSaaSBookings.length === 0 ? (
+                      {dayShifts.length === 0 && dayBookings.length === 0 && dayEvents.length === 0 && daySuperSaaSBookings.length === 0 ? (
                         <span className="text-xs text-slate-400">Ledig</span>
                       ) : null}
                     </div>

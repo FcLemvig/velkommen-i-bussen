@@ -39,7 +39,7 @@ export default async function OrganizationBusCalendarPage({
   const weekDays = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
   const weekEnd = addDays(weekStart, 7);
 
-  const [shifts, bookings, supersaasBookings] = await Promise.all([
+  const [shifts, bookings, events, supersaasBookings] = await Promise.all([
     prisma.driverShift.findMany({
       where: {
         shiftDate: {
@@ -59,6 +59,16 @@ export default async function OrganizationBusCalendarPage({
       },
       orderBy: [{ bookingDate: "asc" }, { startTime: "asc" }]
     }),
+    prisma.event.findMany({
+      where: {
+        eventDate: {
+          gte: weekStart,
+          lt: weekEnd
+        },
+        status: { not: "CANCELLED" }
+      },
+      orderBy: [{ eventDate: "asc" }, { startTime: "asc" }]
+    }),
     getSuperSaaSBookings(weekStart, weekEnd)
   ]);
 
@@ -76,6 +86,13 @@ export default async function OrganizationBusCalendarPage({
       date: shift.shiftDate,
       startTime: shift.startTime,
       endTime: shift.endTime
+    })),
+    ...events.map((event) => ({
+      id: `event-${event.id}`,
+      bus: event.bus,
+      date: event.eventDate,
+      startTime: event.startTime,
+      endTime: event.endTime
     })),
     ...supersaasBookings.map((booking) => ({
       id: booking.id,
@@ -181,11 +198,12 @@ export default async function OrganizationBusCalendarPage({
                 const dayShifts = shifts.filter((shift) => shift.bus === bus && sameDate(shift.shiftDate, day));
                 const dayBookings = bookings.filter((booking) => booking.bus === bus && sameDate(booking.bookingDate, day));
                 const daySuperSaaSBookings = supersaasBookings.filter((booking) => booking.bus === bus && sameDate(booking.date, day));
+                const dayEvents = events.filter((event) => event.bus === bus && sameDate(event.eventDate, day));
 
                 return (
                   <div key={`${bus}-${day.toISOString()}`} className="min-h-36 border-l border-slate-100 p-3">
                     <div className="grid gap-2">
-                      {[...dayBookings, ...dayShifts, ...daySuperSaaSBookings].map((item) => (
+                      {[...dayBookings, ...dayShifts, ...dayEvents, ...daySuperSaaSBookings].map((item) => (
                         <div key={item.id} className="rounded-2xl border border-bus/30 bg-bus/10 px-3 py-2 text-sm text-ink">
                           <div className="font-bold">
                             {item.startTime} - {item.endTime}
@@ -193,7 +211,7 @@ export default async function OrganizationBusCalendarPage({
                           <div className="mt-1 text-xs text-slate-600">Optaget</div>
                         </div>
                       ))}
-                      {dayShifts.length === 0 && dayBookings.length === 0 && daySuperSaaSBookings.length === 0 ? (
+                      {dayShifts.length === 0 && dayBookings.length === 0 && dayEvents.length === 0 && daySuperSaaSBookings.length === 0 ? (
                         <span className="text-xs text-slate-400">Ledig</span>
                       ) : null}
                     </div>

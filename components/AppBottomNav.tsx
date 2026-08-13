@@ -51,9 +51,9 @@ function navItems(role: Role | string, hasMultipleAccesses: boolean) {
 
   return [
     firstItem,
+    { href: "/dashboard/citizen/events", label: "Events", icon: CalendarDays },
     { href: "/dashboard/citizen#ny-tur", label: "Ny tur", icon: MapPin },
     { href: "/dashboard/citizen#mine-ture", label: "Mine ture", icon: ClipboardList, active: true },
-    { href: "/dashboard/notifications", label: "Beskeder", icon: Bell },
     { href: "/dashboard/profile", label: "Profil", icon: UserRound }
   ];
 }
