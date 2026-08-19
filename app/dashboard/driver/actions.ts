@@ -133,7 +133,7 @@ export async function sendRideMessageAction(formData: FormData) {
     userId: ride.citizenProfile.user.id,
     title: "Besked fra din chauffør",
     body: `${user.name}: ${message}`,
-    href: "/dashboard/notifications"
+    href: "/dashboard/citizen#mine-ture"
   });
 
   await notifyCitizenAboutDriverMessage(citizen, toRideEmailData(ride), driver, message);

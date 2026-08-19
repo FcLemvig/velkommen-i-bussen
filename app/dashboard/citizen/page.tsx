@@ -118,6 +118,12 @@ export default async function CitizenDashboardPage({
                 </div>
                 {!notification.readAt ? <span className="rounded-full bg-bus px-2.5 py-1 text-xs font-bold text-white">Ny</span> : null}
               </div>
+              {notification.title === "Besked fra din chauffør" ? (
+                <a href="#mine-ture" className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-ink px-4 py-3 text-sm font-bold text-white hover:bg-brown sm:w-fit">
+                  <MessageSquare size={16} />
+                  Svar chaufføren
+                </a>
+              ) : null}
             </article>
           ))}
           {latestNotifications.length === 0 ? (
@@ -288,15 +294,15 @@ export default async function CitizenDashboardPage({
             </div>
 
             {ride.assignment?.driverProfile && ride.status !== "COMPLETED" && ride.status !== "CANCELLED" ? (
-              <form action={sendCitizenRideMessageAction} className="mt-4 grid gap-3 rounded-2xl border-2 border-fjord/20 bg-cream/60 p-4">
+              <form action={sendCitizenRideMessageAction} className="mt-4 grid gap-3 rounded-[24px] border-2 border-bus/35 bg-bus/10 p-4 shadow-sm">
                 <input type="hidden" name="rideRequestId" value={ride.id} />
                 <div>
-                  <label htmlFor={`citizen-message-${ride.id}`} className="flex items-center gap-2 text-ink">
+                  <label htmlFor={`citizen-message-${ride.id}`} className="flex items-center gap-2 text-lg font-extrabold text-ink">
                     <MessageSquare size={16} />
-                    Svar chaufføren
+                    Skriv svar til {ride.assignment.driverProfile.user.name}
                   </label>
-                  <p className="mt-1 text-xs font-normal text-slate-600">
-                    Skriv fx hvor du eller barnet skal hentes.
+                  <p className="mt-1 text-sm font-semibold text-slate-700">
+                    Brug feltet her, hvis chaufføren har skrevet, eller hvis afhentningsstedet skal uddybes.
                   </p>
                 </div>
                 <textarea
@@ -307,9 +313,9 @@ export default async function CitizenDashboardPage({
                   placeholder="Fx Barnet hentes ved hovedindgangen."
                   required
                 />
-                <button type="submit" className="w-full gap-2 bg-ink text-white hover:bg-brown sm:w-fit">
+                <button type="submit" className="h-12 w-full gap-2 bg-ink text-white hover:bg-brown sm:w-fit">
                   <MessageSquare size={16} />
-                  Send svar
+                  Send svar til chaufføren
                 </button>
               </form>
             ) : null}
