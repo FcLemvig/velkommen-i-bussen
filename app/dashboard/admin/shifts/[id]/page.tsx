@@ -34,6 +34,9 @@ export default async function EditShiftPage({
   }
 
   const action = updateShiftAction.bind(null, shift.id);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayInput = today.toISOString().slice(0, 10);
 
   return (
     <main className="mx-auto grid max-w-2xl gap-6 px-4 pb-24 pt-5 md:py-8">
@@ -53,7 +56,7 @@ export default async function EditShiftPage({
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="grid min-w-0 gap-2">
             <label htmlFor="date">Dato</label>
-            <input id="date" name="date" type="date" defaultValue={shift.shiftDate.toISOString().slice(0, 10)} required className="min-w-0" />
+            <input id="date" name="date" type="date" min={todayInput} defaultValue={shift.shiftDate.toISOString().slice(0, 10)} required className="min-w-0" />
           </div>
           <div className="grid min-w-0 gap-2">
             <label htmlFor="bus">Bus</label>

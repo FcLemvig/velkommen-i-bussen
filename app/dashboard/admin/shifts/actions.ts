@@ -27,6 +27,12 @@ async function findOverlappingBusShift(data: {
   return shifts.find((shift) => shiftsOverlap(data.startTime, data.endTime, shift.startTime, shift.endTime));
 }
 
+function isBeforeToday(date: string) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return new Date(`${date}T00:00:00`) < today;
+}
+
 export async function createShiftAction(formData: FormData) {
   await requireUser(["ADMIN"]);
 
@@ -38,6 +44,10 @@ export async function createShiftAction(formData: FormData) {
 
   if (!parsed.success) {
     redirect(`/dashboard/admin/shifts?error=${encodeURIComponent(parsed.error.issues[0].message)}`);
+  }
+
+  if (isBeforeToday(parsed.data.date)) {
+    redirect("/dashboard/admin/shifts?error=Vagten%20kan%20ikke%20oprettes%20i%20fortiden.");
   }
 
   const overlap = await findOverlappingBusShift(parsed.data);
@@ -94,6 +104,10 @@ export async function updateShiftAction(shiftId: string, formData: FormData) {
 
   if (!parsed.success) {
     redirect(`/dashboard/admin/shifts/${shiftId}?error=${encodeURIComponent(parsed.error.issues[0].message)}`);
+  }
+
+  if (isBeforeToday(parsed.data.date)) {
+    redirect(`/dashboard/admin/shifts/${shiftId}?error=Vagten%20kan%20ikke%20gemmes%20i%20fortiden.`);
   }
 
   const driverProfileId = String(formData.get("driverProfileId") ?? "");

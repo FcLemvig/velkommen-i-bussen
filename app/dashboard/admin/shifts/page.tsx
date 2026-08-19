@@ -15,6 +15,7 @@ export default async function AdminShiftsPage({
   const params = await searchParams;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const todayInput = today.toISOString().slice(0, 10);
 
   const shifts = await prisma.driverShift.findMany({
     where: { shiftDate: { gte: today } },
@@ -82,7 +83,7 @@ export default async function AdminShiftsPage({
       <form action={createShiftAction} className="grid gap-4 rounded-[28px] border-2 border-fjord/25 bg-white p-5 shadow-sm lg:grid-cols-[1fr_1fr_1fr_1fr_2fr_auto] lg:items-end">
         <div className="grid min-w-0 gap-2">
           <label htmlFor="date">Dato</label>
-          <input id="date" name="date" type="date" required className="min-w-0" />
+          <input id="date" name="date" type="date" min={todayInput} required className="min-w-0" />
         </div>
         <div className="grid min-w-0 gap-2">
           <label htmlFor="bus">Bus</label>
