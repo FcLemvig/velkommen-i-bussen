@@ -12,6 +12,8 @@ import {
   ShieldCheck,
   Users
 } from "lucide-react";
+import { prisma } from "@/lib/prisma";
+import { busLabels, BusName } from "@/lib/shifts";
 
 const driverApplicationUrl =
   "https://forms.office.com/pages/responsepage.aspx?id=pfm-AYL47UmW96RSpRSJxtoHN0wvugVPt77tdHpuZBVUQks4VzY5MFY5QzA3T0hFS0ZaWVdDN1lYNy4u&origin=lprLink&route=shorturl";
@@ -50,6 +52,18 @@ const appHighlights = [
 ];
 
 export default async function HomePage() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const events = await prisma.event.findMany({
+    where: {
+      eventDate: { gte: today },
+      status: "OPEN"
+    },
+    orderBy: [{ eventDate: "asc" }, { startTime: "asc" }],
+    take: 3,
+    include: { signups: true }
+  });
+
   return (
     <main className="bg-cream">
       <section className="relative overflow-hidden bg-ink">
@@ -155,6 +169,62 @@ export default async function HomePage() {
             </div>
           </div>
         </div>
+      </section>
+
+      <section className="mx-auto grid max-w-6xl gap-5 px-4 py-12">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-sm font-extrabold uppercase text-bus">Kommende begivenheder</p>
+            <h2 className="mt-2 text-3xl font-extrabold text-ink">Fælles ture du kan hoppe med på</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-700">
+              Se aktuelle arrangementer uden login. Du skal oprette en profil eller logge ind for at tilmelde dig.
+            </p>
+          </div>
+          <Link href="/register?type=citizen" className="button gap-2 bg-bus text-white hover:bg-bus/90">
+            Opret profil
+            <ArrowRight size={18} />
+          </Link>
+        </div>
+
+        {events.length > 0 ? (
+          <div className="grid gap-4 md:grid-cols-3">
+            {events.map((event) => {
+              const takenSeats = event.signups.reduce((sum, signup) => sum + signup.passengers, 0);
+              const remainingSeats = Math.max(event.capacity - takenSeats, 0);
+
+              return (
+                <article key={event.id} className="rounded-[30px] border-2 border-fjord/20 bg-white p-5 shadow-lg shadow-ink/8">
+                  <p className="flex items-center gap-2 text-sm font-bold text-slate-500">
+                    <CalendarDays size={16} />
+                    {event.eventDate.toLocaleDateString("da-DK")} kl. {event.startTime}
+                  </p>
+                  <h3 className="mt-3 text-xl font-extrabold text-ink">{event.title}</h3>
+                  <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-700">{event.description}</p>
+                  <div className="mt-4 grid gap-2 text-sm text-slate-700">
+                    <p className="flex items-center gap-2">
+                      <MapPin className="text-bus" size={17} />
+                      {event.location}
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <Bus className="text-bus" size={17} />
+                      {busLabels[(event.bus || "EAST") as BusName]} · {remainingSeats} ledige plads(er)
+                    </p>
+                  </div>
+                  <Link href="/login" className="mt-5 inline-flex w-full items-center justify-between rounded-2xl bg-ink px-4 py-3 text-sm font-bold text-white transition hover:bg-brown">
+                    Log ind og tilmeld
+                    <ArrowRight size={17} />
+                  </Link>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="rounded-[30px] border-2 border-dashed border-fjord/25 bg-white p-7 text-center shadow-sm">
+            <CalendarDays className="mx-auto text-bus" size={34} />
+            <h3 className="mt-3 text-xl font-extrabold text-ink">Ingen åbne begivenheder lige nu</h3>
+            <p className="mt-2 text-sm text-slate-600">Når der oprettes fælles ture, bliver de vist her på forsiden.</p>
+          </div>
+        )}
       </section>
 
       <section className="mx-auto grid max-w-6xl gap-5 px-4 py-12 md:grid-cols-[0.8fr_1.2fr] md:items-center">

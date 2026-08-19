@@ -63,6 +63,8 @@ export async function createShiftAction(formData: FormData) {
   );
 
   revalidatePath("/dashboard/admin/shifts");
+  revalidatePath("/dashboard/admin/buses");
+  revalidatePath("/dashboard/driver");
   redirect("/dashboard/admin/shifts?success=Vagten%20er%20oprettet.");
 }
 
@@ -76,6 +78,8 @@ export async function deleteShiftAction(formData: FormData) {
 
   await prisma.driverShift.delete({ where: { id: shiftId } });
   revalidatePath("/dashboard/admin/shifts");
+  revalidatePath("/dashboard/admin/buses");
+  revalidatePath("/dashboard/driver");
   redirect("/dashboard/admin/shifts?success=Vagten%20er%20slettet.");
 }
 
@@ -112,5 +116,7 @@ export async function updateShiftAction(shiftId: string, formData: FormData) {
   });
 
   revalidatePath("/dashboard/admin/shifts");
+  revalidatePath("/dashboard/admin/buses");
+  revalidatePath("/dashboard/driver");
   redirect("/dashboard/admin/shifts?success=Vagten%20er%20opdateret.");
 }
