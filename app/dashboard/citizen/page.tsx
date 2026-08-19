@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarClock, CalendarPlus, MapPin, Navigation, Trash2, UsersRound } from "lucide-react";
+import { Bell, CalendarClock, CalendarPlus, MapPin, Navigation, Trash2, UsersRound } from "lucide-react";
 import { createRideRequestAction, deleteRideRequestAction } from "@/app/dashboard/citizen/actions";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { FormMessage } from "@/components/FormMessage";
@@ -15,14 +15,21 @@ export default async function CitizenDashboardPage({
 }) {
   const params = await searchParams;
   const user = await requireUser(["CITIZEN"]);
-  const rides = user.citizenProfile
-    ? await prisma.rideRequest.findMany({
-        where: { citizenProfileId: user.citizenProfile.id },
-        orderBy: [{ rideDate: "desc" }, { rideTime: "desc" }],
-        take: 40,
-        include: { assignment: { include: { driverProfile: { include: { user: true } } } } }
-      })
-    : [];
+  const [rides, latestNotifications] = user.citizenProfile
+    ? await Promise.all([
+        prisma.rideRequest.findMany({
+          where: { citizenProfileId: user.citizenProfile.id },
+          orderBy: [{ rideDate: "desc" }, { rideTime: "desc" }],
+          take: 40,
+          include: { assignment: { include: { driverProfile: { include: { user: true } } } } }
+        }),
+        prisma.notification.findMany({
+          where: { userId: user.id },
+          orderBy: { createdAt: "desc" },
+          take: 3
+        })
+      ])
+    : [[], []];
 
   const nextRide = rides.find((ride) => !["COMPLETED", "CANCELLED"].includes(ride.status));
   const hasActiveMembership = isMembershipActive(user.membership);
@@ -35,7 +42,7 @@ export default async function CitizenDashboardPage({
         <p className="mt-3 max-w-2xl text-sm leading-6 text-white/85 md:text-base">
           Her kan du oprette en tur, følge status og se hvem der kører, når turen er tildelt.
         </p>
-        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        <div className="mt-5 grid gap-3 sm:grid-cols-4">
           <a href="#ny-tur" className="button gap-2 bg-bus text-white hover:bg-bus/90">
             <Navigation size={18} />
             Opret tur
@@ -48,6 +55,10 @@ export default async function CitizenDashboardPage({
             <CalendarClock size={18} />
             Mine ture
           </a>
+          <Link href="/dashboard/notifications" className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20">
+            <Bell size={18} />
+            Beskeder
+          </Link>
         </div>
       </section>
 
@@ -73,6 +84,47 @@ export default async function CitizenDashboardPage({
           </div>
         </section>
       ) : null}
+
+      <section className="rounded-[28px] border-2 border-fjord/25 bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="flex items-center gap-2 text-sm font-extrabold uppercase text-bus">
+              <Bell size={16} />
+              Seneste beskeder
+            </p>
+            <h2 className="mt-1 text-xl font-extrabold text-ink">Beskeder fra chauffør og kontor</h2>
+          </div>
+          <Link href="/dashboard/notifications" className="button gap-2 border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
+            <Bell size={16} />
+            Alle beskeder
+          </Link>
+        </div>
+        <div className="mt-4 grid gap-3">
+          {latestNotifications.map((notification) => (
+            <article
+              key={notification.id}
+              className={`rounded-2xl border px-4 py-3 ${
+                notification.readAt ? "border-fjord/15 bg-cream/60" : "border-bus/30 bg-bus/10"
+              }`}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <h3 className="font-extrabold text-ink">{notification.title}</h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-700">{notification.body}</p>
+                  <p className="mt-2 text-xs font-semibold text-slate-500">
+                    {notification.createdAt.toLocaleDateString("da-DK")} kl.{" "}
+                    {notification.createdAt.toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
+                {!notification.readAt ? <span className="rounded-full bg-bus px-2.5 py-1 text-xs font-bold text-white">Ny</span> : null}
+              </div>
+            </article>
+          ))}
+          {latestNotifications.length === 0 ? (
+            <p className="rounded-2xl bg-cream px-4 py-3 text-sm text-slate-600">Du har ingen beskeder endnu.</p>
+          ) : null}
+        </div>
+      </section>
 
       {!hasActiveMembership ? (
         <section className="rounded-[28px] border-2 border-bus/30 bg-bus/10 p-5 text-ink shadow-sm">
