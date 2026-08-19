@@ -6,7 +6,76 @@ import { requireUser } from "@/lib/auth";
 import { notifyAdminAboutNewRide } from "@/lib/email";
 import { createNotification, notifyAdmins } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
+import { getSuperSaaSBookings } from "@/lib/supersaas-calendar";
+import { addMinutesToDateAndTime, busLabels, BusName, preferredBusForAddress, shiftsOverlap } from "@/lib/shifts";
 import { rideRequestSchema } from "@/lib/validation";
+
+function dayRange(date: Date) {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  return { start, end };
+}
+
+async function busIsAvailable(data: {
+  bus: BusName;
+  date: Date;
+  startTime: string;
+  endTime: string;
+}) {
+  const { start, end } = dayRange(data.date);
+  const [shifts, bookings, events, supersaasBookings] = await Promise.all([
+    prisma.driverShift.findMany({
+      where: {
+        bus: data.bus,
+        shiftDate: { gte: start, lt: end }
+      }
+    }),
+    prisma.busBooking.findMany({
+      where: {
+        bus: data.bus,
+        bookingDate: { gte: start, lt: end },
+        status: { not: "CANCELLED" }
+      }
+    }),
+    prisma.event.findMany({
+      where: {
+        bus: data.bus,
+        eventDate: { gte: start, lt: end },
+        status: { not: "CANCELLED" }
+      }
+    }),
+    getSuperSaaSBookings(start, end)
+  ]);
+
+  return ![
+    ...shifts.map((shift) => ({ startTime: shift.startTime, endTime: shift.endTime })),
+    ...bookings.map((booking) => ({ startTime: booking.startTime, endTime: booking.endTime })),
+    ...events.map((event) => ({ startTime: event.startTime, endTime: event.endTime })),
+    ...supersaasBookings
+      .filter((booking) => booking.bus === data.bus)
+      .map((booking) => ({ startTime: booking.startTime, endTime: booking.endTime }))
+  ].some((item) => shiftsOverlap(data.startTime, data.endTime, item.startTime, item.endTime));
+}
+
+async function findAvailableBus(data: {
+  pickupAddress: string;
+  date: Date;
+  startTime: string;
+  endTime: string;
+}) {
+  const preferredBus = preferredBusForAddress(data.pickupAddress);
+  const busOrder: BusName[] = preferredBus === "EAST" ? ["EAST", "WEST"] : ["WEST", "EAST"];
+
+  for (const bus of busOrder) {
+    if (await busIsAvailable({ bus, date: data.date, startTime: data.startTime, endTime: data.endTime })) {
+      return bus;
+    }
+  }
+
+  return null;
+}
 
 export async function createRideRequestAction(formData: FormData) {
   const user = await requireUser(["CITIZEN"]);
@@ -20,21 +89,50 @@ export async function createRideRequestAction(formData: FormData) {
     redirect("/dashboard/citizen?error=Din%20borgerprofil%20mangler.%20Kontakt%20administrationen.");
   }
 
-  const ride = await prisma.rideRequest.create({
-    data: {
-      citizenProfileId: user.citizenProfile.id,
-      pickupAddress: parsed.data.pickupAddress,
-      destinationAddress: parsed.data.destinationAddress,
-      rideDate: new Date(`${parsed.data.date}T00:00:00`),
-      rideTime: parsed.data.time,
-      passengers: parsed.data.passengers,
-      purpose: parsed.data.purpose,
-      includesMinors: parsed.data.includesMinors,
-      parentalConsent: parsed.data.parentalConsent,
-      guardianName: parsed.data.includesMinors ? parsed.data.guardianName : undefined,
-      guardianPhone: parsed.data.includesMinors ? parsed.data.guardianPhone : undefined,
-      notes: parsed.data.notes
-    }
+  const rideDate = new Date(`${parsed.data.date}T00:00:00`);
+  const shiftStart = addMinutesToDateAndTime(rideDate, parsed.data.time, -30);
+  const shiftEnd = addMinutesToDateAndTime(shiftStart.date, shiftStart.time, 120);
+  const automaticShiftBus =
+    shiftStart.date.toDateString() === shiftEnd.date.toDateString()
+      ? await findAvailableBus({
+          pickupAddress: parsed.data.pickupAddress,
+          date: shiftStart.date,
+          startTime: shiftStart.time,
+          endTime: shiftEnd.time
+        })
+      : null;
+
+  const { ride, shift } = await prisma.$transaction(async (tx) => {
+    const createdRide = await tx.rideRequest.create({
+      data: {
+        citizenProfileId: user.citizenProfile!.id,
+        pickupAddress: parsed.data.pickupAddress,
+        destinationAddress: parsed.data.destinationAddress,
+        rideDate,
+        rideTime: parsed.data.time,
+        passengers: parsed.data.passengers,
+        purpose: parsed.data.purpose,
+        includesMinors: parsed.data.includesMinors,
+        parentalConsent: parsed.data.parentalConsent,
+        guardianName: parsed.data.includesMinors ? parsed.data.guardianName : undefined,
+        guardianPhone: parsed.data.includesMinors ? parsed.data.guardianPhone : undefined,
+        notes: parsed.data.notes
+      }
+    });
+
+    const createdShift = automaticShiftBus
+      ? await tx.driverShift.create({
+          data: {
+            bus: automaticShiftBus,
+            shiftDate: shiftStart.date,
+            startTime: shiftStart.time,
+            endTime: shiftEnd.time,
+            notes: `Automatisk oprettet fra turanmodning: ${user.name}, ${parsed.data.pickupAddress} til ${parsed.data.destinationAddress}.`
+          }
+        })
+      : null;
+
+    return { ride: createdRide, shift: createdShift };
   });
 
   await notifyAdminAboutNewRide({
@@ -56,12 +154,18 @@ export async function createRideRequestAction(formData: FormData) {
   });
 
   await notifyAdmins(
-    "Ny kørselsanmodning",
-    `${user.name} ønsker en tur den ${ride.rideDate.toLocaleDateString("da-DK")} kl. ${ride.rideTime}.`,
+    "Ny koerselsanmodning",
+    shift
+      ? `${user.name} ønsker en tur den ${ride.rideDate.toLocaleDateString("da-DK")} kl. ${ride.rideTime}. Der er automatisk oprettet en ledig vagt på ${busLabels[(shift.bus || "EAST") as BusName]} kl. ${shift.startTime}-${shift.endTime}.`
+      : `${user.name} ønsker en tur den ${ride.rideDate.toLocaleDateString("da-DK")} kl. ${ride.rideTime}. Ingen bus var ledig til automatisk vagt.`,
     "/dashboard/admin"
   );
 
   revalidatePath("/dashboard/citizen");
+  revalidatePath("/dashboard/admin");
+  revalidatePath("/dashboard/admin/shifts");
+  revalidatePath("/dashboard/admin/buses");
+  revalidatePath("/dashboard/driver");
   redirect("/dashboard/citizen?success=Din%20tur%20er%20oprettet.");
 }
 
