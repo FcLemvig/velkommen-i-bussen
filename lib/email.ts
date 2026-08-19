@@ -126,3 +126,16 @@ export async function notifyCitizenAboutStatus(
     `Hej ${citizen.name || ride.citizenName}\n\nStatus p\u00e5 din tur er \u00e6ndret til: ${rideStatusLabels[status]}.\n\n${rideSummary(ride)}\n\nVenlig hilsen\nVelkommen i Bussen`
   );
 }
+
+export async function notifyCitizenAboutDriverMessage(
+  citizen: EmailRecipient,
+  ride: RideEmailData,
+  driver: EmailRecipient,
+  message: string
+) {
+  await safelySendEmail(
+    citizen,
+    "Besked fra din chauff\u00f8r",
+    `Hej ${citizen.name || ride.citizenName}\n\n${driver.name || "Din chauff\u00f8r"} har sendt en besked om din tur:\n\n${message}\n\n${rideSummary(ride)}\n\nVenlig hilsen\nVelkommen i Bussen`
+  );
+}

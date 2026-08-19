@@ -1,8 +1,9 @@
-import { Bus, CalendarClock, CheckCircle2, MapPin, Upload, UserRound } from "lucide-react";
+import { Bus, CalendarClock, CheckCircle2, MapPin, MessageSquare, Upload, UserRound } from "lucide-react";
 import {
   claimShiftAction,
   completeRideAction,
   releaseShiftAction,
+  sendRideMessageAction,
   updateDriverProfileImageAction
 } from "@/app/dashboard/driver/actions";
 import { FormMessage } from "@/components/FormMessage";
@@ -234,6 +235,31 @@ export default async function DriverDashboardPage({
                 Børn/unge på turen. Forældresamtykke er {rideRequest.parentalConsent ? "bekræftet" : "ikke bekræftet"}.
               </p>
             ) : null}
+
+            <form action={sendRideMessageAction} className="mt-5 grid gap-3 rounded-2xl border-2 border-fjord/20 bg-cream/60 p-4">
+              <input type="hidden" name="rideRequestId" value={rideRequest.id} />
+              <div>
+                <label htmlFor={`message-${rideRequest.id}`} className="flex items-center gap-2 text-ink">
+                  <MessageSquare size={16} />
+                  Send besked til borger
+                </label>
+                <p className="mt-1 text-xs font-normal text-slate-600">
+                  Brug den fx til at aftale præcist afhentningssted.
+                </p>
+              </div>
+              <textarea
+                id={`message-${rideRequest.id}`}
+                name="message"
+                rows={3}
+                maxLength={500}
+                placeholder="Fx Jeg holder ved hovedindgangen kl. 08:45."
+                required
+              />
+              <button type="submit" className="w-full gap-2 bg-ink text-white hover:bg-brown sm:w-fit">
+                <MessageSquare size={16} />
+                Send besked
+              </button>
+            </form>
 
             {rideRequest.status !== "COMPLETED" ? (
               <form action={completeRideAction} className="mt-5">

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import {
   notifyCitizenAboutAssignment,
+  notifyCitizenAboutDriverMessage,
   notifyCitizenAboutStatus,
   notifyDriverAboutAssignment
 } from "@/lib/email";
@@ -81,6 +82,65 @@ export async function completeRideAction(formData: FormData) {
   });
 
   revalidatePath("/dashboard/driver");
+}
+
+export async function sendRideMessageAction(formData: FormData) {
+  const user = await requireUser(["DRIVER"]);
+  const rideRequestId = String(formData.get("rideRequestId") ?? "");
+  const message = String(formData.get("message") ?? "").trim();
+
+  if (!user.driverProfile || !rideRequestId) {
+    redirect("/dashboard/driver?error=Beskeden%20kunne%20ikke%20sendes.");
+  }
+
+  if (message.length < 2) {
+    redirect("/dashboard/driver?error=Skriv%20en%20besked%20f%C3%B8rst.");
+  }
+
+  if (message.length > 500) {
+    redirect("/dashboard/driver?error=Beskeden%20m%C3%A5%20h%C3%B8jst%20v%C3%A6re%20500%20tegn.");
+  }
+
+  const assignment = await prisma.rideAssignment.findFirst({
+    where: {
+      rideRequestId,
+      driverProfileId: user.driverProfile.id
+    },
+    include: {
+      rideRequest: {
+        include: {
+          citizenProfile: { include: { user: true } }
+        }
+      }
+    }
+  });
+
+  if (!assignment) {
+    redirect("/dashboard/driver?error=Du%20kan%20kun%20skrive%20til%20borgere%20p%C3%A5%20dine%20egne%20ture.");
+  }
+
+  const ride = assignment.rideRequest;
+  const citizen = {
+    email: ride.citizenProfile.user.email,
+    name: ride.citizenProfile.user.name
+  };
+  const driver = {
+    email: user.email,
+    name: user.name
+  };
+
+  await createNotification({
+    userId: ride.citizenProfile.user.id,
+    title: "Besked fra din chauffør",
+    body: `${user.name}: ${message}`,
+    href: "/dashboard/notifications"
+  });
+
+  await notifyCitizenAboutDriverMessage(citizen, toRideEmailData(ride), driver, message);
+
+  revalidatePath("/dashboard/driver");
+  revalidatePath("/dashboard/notifications");
+  redirect("/dashboard/driver?success=Beskeden%20er%20sendt%20til%20borgeren.");
 }
 
 export async function updateDriverProfileImageAction(formData: FormData) {
