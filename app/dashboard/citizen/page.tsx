@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { Bell, CalendarClock, CalendarPlus, MapPin, Navigation, Trash2, UsersRound } from "lucide-react";
-import { createRideRequestAction, deleteRideRequestAction } from "@/app/dashboard/citizen/actions";
+import { Bell, CalendarClock, CalendarPlus, MapPin, MessageSquare, Navigation, Trash2, UsersRound } from "lucide-react";
+import { createRideRequestAction, deleteRideRequestAction, sendCitizenRideMessageAction } from "@/app/dashboard/citizen/actions";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { FormMessage } from "@/components/FormMessage";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -286,6 +286,33 @@ export default async function CitizenDashboardPage({
                 <span className="text-sm text-slate-400">Låst</span>
               )}
             </div>
+
+            {ride.assignment?.driverProfile && ride.status !== "COMPLETED" && ride.status !== "CANCELLED" ? (
+              <form action={sendCitizenRideMessageAction} className="mt-4 grid gap-3 rounded-2xl border-2 border-fjord/20 bg-cream/60 p-4">
+                <input type="hidden" name="rideRequestId" value={ride.id} />
+                <div>
+                  <label htmlFor={`citizen-message-${ride.id}`} className="flex items-center gap-2 text-ink">
+                    <MessageSquare size={16} />
+                    Svar chaufføren
+                  </label>
+                  <p className="mt-1 text-xs font-normal text-slate-600">
+                    Skriv fx hvor du eller barnet skal hentes.
+                  </p>
+                </div>
+                <textarea
+                  id={`citizen-message-${ride.id}`}
+                  name="message"
+                  rows={3}
+                  maxLength={500}
+                  placeholder="Fx Barnet hentes ved hovedindgangen."
+                  required
+                />
+                <button type="submit" className="w-full gap-2 bg-ink text-white hover:bg-brown sm:w-fit">
+                  <MessageSquare size={16} />
+                  Send svar
+                </button>
+              </form>
+            ) : null}
           </article>
         ))}
 

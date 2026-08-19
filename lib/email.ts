@@ -139,3 +139,16 @@ export async function notifyCitizenAboutDriverMessage(
     `Hej ${citizen.name || ride.citizenName}\n\n${driver.name || "Din chauff\u00f8r"} har sendt en besked om din tur:\n\n${message}\n\n${rideSummary(ride)}\n\nVenlig hilsen\nVelkommen i Bussen`
   );
 }
+
+export async function notifyDriverAboutCitizenMessage(
+  driver: EmailRecipient,
+  ride: RideEmailData,
+  citizen: EmailRecipient,
+  message: string
+) {
+  await safelySendEmail(
+    driver,
+    "Svar fra borger",
+    `Hej ${driver.name || "chauff\u00f8r"}\n\n${citizen.name || ride.citizenName} har sendt et svar om turen:\n\n${message}\n\n${rideSummary(ride)}\n\nVenlig hilsen\nVelkommen i Bussen`
+  );
+}

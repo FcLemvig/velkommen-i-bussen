@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { notifyAdminAboutNewRide } from "@/lib/email";
+import { notifyAdminAboutNewRide, notifyDriverAboutCitizenMessage } from "@/lib/email";
 import { createNotification, notifyAdmins } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { getSuperSaaSBookings } from "@/lib/supersaas-calendar";
@@ -198,4 +198,76 @@ export async function deleteRideRequestAction(formData: FormData) {
 
   revalidatePath("/dashboard/citizen");
   redirect("/dashboard/citizen?success=Turen%20er%20slettet.");
+}
+
+export async function sendCitizenRideMessageAction(formData: FormData) {
+  const user = await requireUser(["CITIZEN"]);
+  const rideRequestId = String(formData.get("rideRequestId") ?? "");
+  const message = String(formData.get("message") ?? "").trim();
+
+  if (!user.citizenProfile || !rideRequestId) {
+    redirect("/dashboard/citizen?error=Beskeden%20kunne%20ikke%20sendes.");
+  }
+
+  if (message.length < 2) {
+    redirect("/dashboard/citizen?error=Skriv%20en%20besked%20f%C3%B8rst.");
+  }
+
+  if (message.length > 500) {
+    redirect("/dashboard/citizen?error=Beskeden%20m%C3%A5%20h%C3%B8jst%20v%C3%A6re%20500%20tegn.");
+  }
+
+  const ride = await prisma.rideRequest.findFirst({
+    where: {
+      id: rideRequestId,
+      citizenProfileId: user.citizenProfile.id
+    },
+    include: {
+      citizenProfile: { include: { user: true } },
+      assignment: {
+        include: {
+          driverProfile: { include: { user: true } }
+        }
+      }
+    }
+  });
+
+  if (!ride?.assignment?.driverProfile) {
+    redirect("/dashboard/citizen?error=Der%20er%20ikke%20tildelt%20en%20chauff%C3%B8r%20endnu.");
+  }
+
+  const driverUser = ride.assignment.driverProfile.user;
+  const driver = {
+    email: driverUser.email,
+    name: driverUser.name
+  };
+  const citizen = {
+    email: user.email,
+    name: user.name
+  };
+  const rideData = {
+    citizenName: user.name,
+    pickupAddress: ride.pickupAddress,
+    destinationAddress: ride.destinationAddress,
+    rideDate: ride.rideDate,
+    rideTime: ride.rideTime,
+    passengers: ride.passengers,
+    purpose: ride.purpose,
+    notes: ride.notes
+  };
+
+  await createNotification({
+    userId: driverUser.id,
+    title: "Svar fra borger",
+    body: `${user.name}: ${message}`,
+    href: "/dashboard/driver",
+    driverType: "RIDE_CHANGES"
+  });
+
+  await notifyDriverAboutCitizenMessage(driver, rideData, citizen, message);
+
+  revalidatePath("/dashboard/citizen");
+  revalidatePath("/dashboard/driver");
+  revalidatePath("/dashboard/notifications");
+  redirect("/dashboard/citizen?success=Beskeden%20er%20sendt%20til%20chauff%C3%B8ren.");
 }
