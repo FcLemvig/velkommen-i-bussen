@@ -152,3 +152,13 @@ export async function notifyDriverAboutCitizenMessage(
     `Hej ${driver.name || "chauff\u00f8r"}\n\n${citizen.name || ride.citizenName} har sendt et svar om turen:\n\n${message}\n\n${rideSummary(ride)}\n\nVenlig hilsen\nVelkommen i Bussen`
   );
 }
+
+export async function sendPasswordResetEmail(to: EmailRecipient, token: string) {
+  const resetUrl = `${appUrl}/reset-password?token=${encodeURIComponent(token)}`;
+
+  await safelySendEmail(
+    to,
+    "Vælg en ny adgangskode",
+    `Hej ${to.name || ""}\n\nVi har modtaget en anmodning om at vælge en ny adgangskode til din profil i Velkommen i Bussen.\n\nVælg en ny adgangskode her:\n${resetUrl}\n\nLinket virker i 1 time og kan kun bruges én gang. Hvis du ikke har bedt om dette, kan du blot se bort fra mailen.\n\nVenlig hilsen\nVelkommen i Bussen`
+  );
+}

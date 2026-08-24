@@ -3,7 +3,7 @@ import { Bus } from "lucide-react";
 import { loginAction } from "@/app/login/actions";
 import { FormMessage } from "@/components/FormMessage";
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; passwordReset?: string }> }) {
   const params = await searchParams;
 
   return (
@@ -15,6 +15,11 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       </div>
       <form action={loginAction} className="grid gap-4 rounded-[32px] border-2 border-fjord/25 bg-white p-6 shadow-sm">
         <FormMessage message={params.error} />
+        {params.passwordReset === "1" ? (
+          <p className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-900">
+            Din adgangskode er ændret. Du kan nu logge ind.
+          </p>
+        ) : null}
         <div className="grid gap-2">
           <label htmlFor="email">Email</label>
           <input id="email" name="email" type="email" autoComplete="email" required />
@@ -22,6 +27,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <div className="grid gap-2">
           <label htmlFor="password">Adgangskode</label>
           <input id="password" name="password" type="password" autoComplete="current-password" required />
+          <Link href="/forgot-password" className="justify-self-end text-sm font-bold text-ink hover:text-bus">
+            Glemt adgangskode?
+          </Link>
         </div>
         <button type="submit" className="bg-bus text-white hover:bg-bus/90">
           Log ind

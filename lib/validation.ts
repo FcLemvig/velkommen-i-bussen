@@ -6,6 +6,19 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Skriv din adgangskode.")
 });
 
+export const forgotPasswordSchema = z.object({
+  email: z.string().email("Skriv en gyldig email.")
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, "Linket mangler eller er ugyldigt."),
+  newPassword: z.string().min(8, "Den nye adgangskode skal være mindst 8 tegn."),
+  confirmPassword: z.string().min(8, "Gentag den nye adgangskode.")
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  path: ["confirmPassword"],
+  message: "De to adgangskoder er ikke ens."
+});
+
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, "Skriv din nuværende adgangskode."),
   newPassword: z.string().min(8, "Den nye adgangskode skal være mindst 8 tegn."),
