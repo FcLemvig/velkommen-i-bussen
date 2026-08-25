@@ -117,7 +117,7 @@ export default async function AdminEventsPage({
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="grid gap-2">
               <label htmlFor="capacity">Pladser</label>
-              <input id="capacity" name="capacity" type="number" min="1" max="60" defaultValue="8" required />
+              <input id="capacity" name="capacity" type="number" min="1" max="6" defaultValue="6" required />
             </div>
             <div className="grid gap-2">
               <label htmlFor="driverProfileId">Chauffør</label>

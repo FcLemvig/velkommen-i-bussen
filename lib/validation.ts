@@ -127,7 +127,7 @@ export const eventSchema = z.object({
   startTime: z.string().regex(/^\d{2}:\d{2}$/, "Vælg starttidspunkt."),
   endTime: z.string().regex(/^\d{2}:\d{2}$/, "Vælg sluttidspunkt."),
   pickupInfo: z.string().max(500, "Opsamlingsinfo må højst være 500 tegn.").optional(),
-  capacity: z.coerce.number().int().min(1, "Der skal være mindst 1 plads.").max(60, "Skriv højst 60 pladser."),
+  capacity: z.coerce.number().int().min(1, "Der skal være mindst 1 plads.").max(6, "Der er højst plads til 6 passagerer i bussen."),
   bus: z.enum(busOptions, { required_error: "Vælg en bus." }),
   driverProfileId: z.preprocess(
     (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
