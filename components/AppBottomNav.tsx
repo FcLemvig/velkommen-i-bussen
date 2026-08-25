@@ -11,6 +11,7 @@ function visibleRole(pathname: string, fallbackRole: Role | string, accessRoles:
   if (pathname.startsWith("/dashboard/organization") && accessRoles.includes("ORGANIZATION")) return "ORGANIZATION";
   if (pathname.startsWith("/dashboard/citizen") && accessRoles.includes("CITIZEN")) return "CITIZEN";
 
+  if (accessRoles.includes("CITIZEN") && accessRoles.includes("DRIVER")) return "MULTI";
   return fallbackRole;
 }
 
@@ -18,6 +19,16 @@ function navItems(role: Role | string, hasMultipleAccesses: boolean) {
   const firstItem = hasMultipleAccesses
     ? { href: "/dashboard", label: "Min side", icon: Home }
     : { href: "/", label: "Forside", icon: Home };
+
+  if (role === "MULTI") {
+    return [
+      { href: "/dashboard", label: "Min side", icon: Home, active: true },
+      { href: "/dashboard/citizen", label: "Borger", icon: UserRound },
+      { href: "/dashboard/driver", label: "Chauffør", icon: Bus },
+      { href: "/dashboard/notifications", label: "Beskeder", icon: Bell },
+      { href: "/dashboard/profile", label: "Profil", icon: UserRound }
+    ];
+  }
 
   if (role === "ADMIN") {
     return [

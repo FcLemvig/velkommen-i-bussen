@@ -4,13 +4,18 @@ import { updateMembershipAction } from "@/app/dashboard/admin/citizens/actions";
 import { FormMessage } from "@/components/FormMessage";
 import { StatusBadge } from "@/components/StatusBadge";
 import { requireUser } from "@/lib/auth";
-import { membershipLabel } from "@/lib/membership";
+import { membershipLabel, membershipTypeLabel } from "@/lib/membership";
 import { prisma } from "@/lib/prisma";
 
-function MembershipForm({ userId, status }: { userId: string; status?: string }) {
+function MembershipForm({ userId, status, type }: { userId: string; status?: string; type?: string }) {
   return (
     <form action={updateMembershipAction} className="grid gap-2">
       <input type="hidden" name="userId" value={userId} />
+      <input type="hidden" name="returnTo" value="citizens" />
+      <select name="membershipType" defaultValue={type ?? "INDIVIDUAL"} className="min-w-44">
+        <option value="INDIVIDUAL">Borger</option>
+        <option value="FAMILY">Familie</option>
+      </select>
       <select name="membershipStatus" defaultValue={status ?? "PENDING_PAYMENT"} className="min-w-44">
         <option value="PENDING_PAYMENT">Afventer betaling</option>
         <option value="ACTIVE">Aktiv</option>
@@ -89,8 +94,9 @@ export default async function CitizensPage({
                   <td className="px-4 py-3">{citizen.phone || "Ikke angivet"}</td>
                   <td className="px-4 py-3">{citizen.address || "Ikke angivet"}</td>
                   <td className="px-4 py-3">
-                    <div className="mb-2 font-bold text-ink">{membershipLabel(citizen.user.membership)}</div>
-                    <MembershipForm userId={citizen.user.id} status={citizen.user.membership?.status} />
+                    <div className="mb-1 font-bold text-ink">{membershipTypeLabel(citizen.user.membership)}</div>
+                    <div className="mb-2 text-xs text-slate-500">{membershipLabel(citizen.user.membership)}</div>
+                    <MembershipForm userId={citizen.user.id} status={citizen.user.membership?.status} type={citizen.user.membership?.type} />
                   </td>
                   <td className="px-4 py-3">{citizen._count.rideRequests}</td>
                   <td className="px-4 py-3">

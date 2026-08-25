@@ -3,7 +3,7 @@ import { Bell, CheckCheck, SlidersHorizontal } from "lucide-react";
 import { markAllNotificationsReadAction, updateDriverNotificationPreferencesAction } from "@/app/dashboard/notifications/actions";
 import { FormMessage } from "@/components/FormMessage";
 import { PushPermissionButton } from "@/components/PushPermissionButton";
-import { dashboardPathForRole, requireUser } from "@/lib/auth";
+import { accessRolesForUser, dashboardPathForRole, requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { vapidPublicKey } from "@/lib/push";
 
@@ -14,6 +14,8 @@ export default async function NotificationsPage({
 }) {
   const user = await requireUser();
   const params = await searchParams;
+  const accessRoles = accessRolesForUser(user);
+  const backHref = accessRoles.length > 1 ? "/dashboard" : dashboardPathForRole(user.role);
 
   const [notifications, pushCount, driverPreferences] = await Promise.all([
     prisma.notification.findMany({
@@ -24,7 +26,7 @@ export default async function NotificationsPage({
     prisma.pushSubscription.count({
       where: { userId: user.id }
     }),
-    user.role === "DRIVER"
+    user.driverProfile
       ? prisma.driverNotificationPreference.findUnique({
           where: { userId: user.id }
         })
@@ -49,7 +51,7 @@ export default async function NotificationsPage({
               Her samles beskeder om ture, vagter og busbookinger.
             </p>
           </div>
-          <Link href={dashboardPathForRole(user.role)} className="button bg-white text-ink hover:bg-cream">
+          <Link href={backHref} className="button bg-white text-ink hover:bg-cream">
             Tilbage
           </Link>
         </div>
@@ -59,7 +61,7 @@ export default async function NotificationsPage({
 
       <PushPermissionButton publicKey={vapidPublicKey} />
 
-      {user.role === "DRIVER" ? (
+      {user.driverProfile ? (
         <form action={updateDriverNotificationPreferencesAction} className="grid gap-4 rounded-[24px] border border-fjord/20 bg-white p-4 shadow-sm">
           <div className="flex items-center gap-3">
             <span className="grid h-11 w-11 place-items-center rounded-2xl bg-fjord/20 text-ink">

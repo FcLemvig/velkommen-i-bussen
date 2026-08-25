@@ -13,22 +13,24 @@ export async function registerAction(formData: FormData) {
     redirect(`/register?error=${encodeURIComponent(parsed.error.issues[0].message)}`);
   }
 
+  const accountType = parsed.data.registrationType === "ORGANIZATION" ? "ORGANIZATION" : "CITIZEN";
+
   try {
     const user = await prisma.user.create({
       data: {
         name: parsed.data.name,
         email: parsed.data.email.toLowerCase(),
         passwordHash: await hashPassword(parsed.data.password),
-        role: parsed.data.accountType,
+        role: accountType,
         citizenProfile:
-          parsed.data.accountType === "CITIZEN"
+          accountType === "CITIZEN"
             ? { create: { phone: parsed.data.phone, address: parsed.data.address || null } }
             : undefined,
         organizationProfile:
-          parsed.data.accountType === "ORGANIZATION"
+          accountType === "ORGANIZATION"
             ? { create: { phone: parsed.data.phone, address: parsed.data.address ?? "" } }
             : undefined,
-        membership: { create: { status: "PENDING_PAYMENT" } }
+        membership: { create: { status: "PENDING_PAYMENT", type: parsed.data.registrationType } }
       }
     });
 

@@ -44,7 +44,7 @@ export default async function NewDriverPage({ searchParams }: { searchParams: Pr
         </div>
         <div className="grid gap-2">
           <label htmlFor="password">Midlertidig adgangskode</label>
-          <input id="password" name="password" type="password" minLength={8} required />
+          <input id="password" name="password" type="password" minLength={8} />
           <p className="text-xs text-slate-500">
             Skriv en midlertidig kode og send den til chauff&oslash;ren. Chauff&oslash;ren kan selv skifte den under Profil efter login.
             Bruges kun, hvis emailen ikke allerede findes som bruger.

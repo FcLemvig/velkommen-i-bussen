@@ -29,7 +29,7 @@ export const changePasswordSchema = z.object({
 });
 
 export const registerSchema = z.object({
-  accountType: z.enum(["CITIZEN", "ORGANIZATION"]).default("CITIZEN"),
+  registrationType: z.enum(["INDIVIDUAL", "FAMILY", "ORGANIZATION"]).default("INDIVIDUAL"),
   name: z.string().min(2, "Skriv dit navn."),
   email: z.string().email("Skriv en gyldig email."),
   phone: z.string().min(8, "Skriv et telefonnummer med mindst 8 cifre."),

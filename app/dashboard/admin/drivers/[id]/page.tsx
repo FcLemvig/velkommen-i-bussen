@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { updateDriverAction } from "@/app/dashboard/admin/drivers/actions";
+import { addCitizenAccessAction, updateDriverAction } from "@/app/dashboard/admin/drivers/actions";
 import { FormMessage } from "@/components/FormMessage";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -10,13 +10,13 @@ export default async function EditDriverPage({
   searchParams
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; success?: string }>;
 }) {
   await requireUser(["ADMIN"]);
   const [{ id }, query] = await Promise.all([params, searchParams]);
   const driver = await prisma.driverProfile.findUnique({
     where: { id },
-    include: { user: true }
+    include: { user: { include: { citizenProfile: true, membership: true } } }
   });
 
   if (!driver) {
@@ -32,7 +32,7 @@ export default async function EditDriverPage({
         <p className="mt-2 text-slate-600">Opdater kontaktoplysninger og om chaufføren er aktiv.</p>
       </div>
       <form action={action} className="grid gap-4 rounded-[32px] border-2 border-fjord/25 bg-white p-6 shadow-sm">
-        <FormMessage message={query.error} />
+        <FormMessage message={query.error || query.success} />
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="grid gap-2">
             <label htmlFor="name">Navn</label>
@@ -85,6 +85,38 @@ export default async function EditDriverPage({
           </Link>
         </div>
       </form>
+
+      {driver.user.citizenProfile ? (
+        <section className="rounded-[32px] border-2 border-fjord/25 bg-white p-6 shadow-sm">
+          <h2 className="text-xl font-bold text-ink">Borger og chauffør</h2>
+          <p className="mt-2 text-sm text-slate-600">Denne bruger har allerede adgang til både borger- og chaufførdelen med samme login.</p>
+        </section>
+      ) : (
+        <form action={addCitizenAccessAction.bind(null, driver.id)} className="grid gap-4 rounded-[32px] border-2 border-fjord/25 bg-white p-6 shadow-sm">
+          <div>
+            <h2 className="text-xl font-bold text-ink">Tilføj borgermedlemskab</h2>
+            <p className="mt-2 text-sm text-slate-600">Giver chaufføren borgeradgang med samme email og adgangskode. Medlemskabet starter med at afvente betaling.</p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-2">
+              <label htmlFor="citizenPhone">Telefon</label>
+              <input id="citizenPhone" name="citizenPhone" type="tel" defaultValue={driver.phone ?? ""} required />
+            </div>
+            <div className="grid gap-2">
+              <label htmlFor="membershipType">Medlemskab</label>
+              <select id="membershipType" name="membershipType" defaultValue="INDIVIDUAL">
+                <option value="INDIVIDUAL">Borger</option>
+                <option value="FAMILY">Familie</option>
+              </select>
+            </div>
+          </div>
+          <div className="grid gap-2">
+            <label htmlFor="citizenAddress">Adresse</label>
+            <input id="citizenAddress" name="citizenAddress" autoComplete="street-address" required />
+          </div>
+          <button type="submit" className="w-full bg-bus text-white hover:bg-bus/90 sm:w-fit">Tilføj borgermedlemskab</button>
+        </form>
+      )}
     </main>
   );
 }

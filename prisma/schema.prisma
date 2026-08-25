@@ -264,6 +264,7 @@ model EventSignup {
 model Membership {
   id        String           @id @default(cuid())
   userId    String           @unique
+  type      String           @default("INDIVIDUAL")
   status    String   @default("ACTIVE")
   startsAt  DateTime         @default(now())
   endsAt    DateTime?

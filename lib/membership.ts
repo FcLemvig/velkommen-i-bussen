@@ -5,6 +5,17 @@ export const membershipStatusLabels: Record<string, string> = {
   ENDED: "Afsluttet"
 };
 
+export const membershipTypeLabels: Record<string, string> = {
+  INDIVIDUAL: "Borger",
+  FAMILY: "Familie",
+  ORGANIZATION: "Forening"
+};
+
+export function membershipTypeLabel(membership?: { type: string } | null) {
+  if (!membership) return "Intet medlemskab";
+  return membershipTypeLabels[membership.type] ?? membership.type;
+}
+
 export function isMembershipActive(membership?: { status: string; endsAt: Date | null } | null) {
   if (!membership || membership.status !== "ACTIVE") {
     return false;

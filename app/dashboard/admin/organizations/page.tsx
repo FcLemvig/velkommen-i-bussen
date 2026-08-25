@@ -3,13 +3,15 @@ import { ArrowLeft } from "lucide-react";
 import { updateMembershipAction } from "@/app/dashboard/admin/citizens/actions";
 import { FormMessage } from "@/components/FormMessage";
 import { requireUser } from "@/lib/auth";
-import { membershipLabel } from "@/lib/membership";
+import { membershipLabel, membershipTypeLabel } from "@/lib/membership";
 import { prisma } from "@/lib/prisma";
 
 function MembershipForm({ userId, status }: { userId: string; status?: string }) {
   return (
     <form action={updateMembershipAction} className="grid gap-2">
       <input type="hidden" name="userId" value={userId} />
+      <input type="hidden" name="returnTo" value="organizations" />
+      <input type="hidden" name="membershipType" value="ORGANIZATION" />
       <select name="membershipStatus" defaultValue={status ?? "PENDING_PAYMENT"} className="min-w-44">
         <option value="PENDING_PAYMENT">Afventer betaling</option>
         <option value="ACTIVE">Aktiv</option>
@@ -88,7 +90,8 @@ export default async function OrganizationsPage({
                   <td className="px-4 py-3">{organization.phone}</td>
                   <td className="px-4 py-3">{organization.address}</td>
                   <td className="px-4 py-3">
-                    <div className="mb-2 font-bold text-ink">{membershipLabel(organization.user.membership)}</div>
+                    <div className="mb-1 font-bold text-ink">{membershipTypeLabel(organization.user.membership)}</div>
+                    <div className="mb-2 text-xs text-slate-500">{membershipLabel(organization.user.membership)}</div>
                     <MembershipForm userId={organization.user.id} status={organization.user.membership?.status} />
                   </td>
                   <td className="px-4 py-3">{organization._count.bookings}</td>

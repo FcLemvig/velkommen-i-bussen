@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { ArrowLeft, BadgeCheck, KeyRound, Mail, MapPin, Phone, UserRound } from "lucide-react";
+import { ArrowLeft, BadgeCheck, CreditCard, KeyRound, Mail, MapPin, Phone, UserRound } from "lucide-react";
 import { changePasswordAction } from "@/app/dashboard/profile/actions";
 import { FormMessage } from "@/components/FormMessage";
-import { requireUser } from "@/lib/auth";
+import { accessRolesForUser, requireUser } from "@/lib/auth";
 import { roleLabels } from "@/lib/labels";
-import { isRole } from "@/lib/domain";
+import { membershipLabel, membershipTypeLabel } from "@/lib/membership";
 
 function profilePhone(user: Awaited<ReturnType<typeof requireUser>>) {
   return user.citizenProfile?.phone ?? user.driverProfile?.phone ?? user.organizationProfile?.phone ?? "Ikke angivet";
@@ -21,7 +21,8 @@ export default async function ProfilePage({
 }) {
   const user = await requireUser();
   const params = await searchParams;
-  const role = isRole(user.role) ? user.role : "CITIZEN";
+  const accessRoles = accessRolesForUser(user);
+  const hasMembershipProfile = Boolean(user.citizenProfile || user.organizationProfile);
 
   return (
     <main className="mx-auto grid max-w-3xl gap-6 px-4 py-6 md:py-8">
@@ -45,10 +46,14 @@ export default async function ProfilePage({
           </div>
           <div>
             <h2 className="text-2xl font-extrabold text-ink">{user.name}</h2>
-            <p className="mt-1 inline-flex items-center gap-2 rounded-full bg-fjord/20 px-3 py-1 text-xs font-bold text-ink">
-              <BadgeCheck size={14} />
-              {roleLabels[role]}
-            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {accessRoles.map((role) => (
+                <span key={role} className="inline-flex items-center gap-2 rounded-full bg-fjord/20 px-3 py-1 text-xs font-bold text-ink">
+                  <BadgeCheck size={14} />
+                  {roleLabels[role]}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -80,6 +85,16 @@ export default async function ProfilePage({
               <div>
                 <dt className="text-xs font-bold uppercase text-slate-500">Kørekort/reference</dt>
                 <dd className="font-semibold text-ink">{user.driverProfile.licenseNumber}</dd>
+              </div>
+            </div>
+          ) : null}
+          {hasMembershipProfile ? (
+            <div className="flex gap-3 rounded-2xl bg-cream px-4 py-3">
+              <CreditCard className="mt-0.5 shrink-0 text-bus" size={18} />
+              <div>
+                <dt className="text-xs font-bold uppercase text-slate-500">Medlemskab</dt>
+                <dd className="font-semibold text-ink">{membershipTypeLabel(user.membership)}</dd>
+                <dd className="text-sm text-slate-600">Status: {membershipLabel(user.membership)}</dd>
               </div>
             </div>
           ) : null}
