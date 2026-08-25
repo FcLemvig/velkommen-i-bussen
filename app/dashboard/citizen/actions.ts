@@ -191,7 +191,8 @@ export async function deleteRideRequestAction(formData: FormData) {
     where: {
       id: rideRequestId,
       citizenProfileId: user.citizenProfile.id
-    }
+    },
+    include: { automaticShift: true }
   });
 
   if (!ride) {
@@ -202,16 +203,23 @@ export async function deleteRideRequestAction(formData: FormData) {
     redirect("/dashboard/citizen?error=Gennemf%C3%B8rte%20ture%20kan%20ikke%20slettes.");
   }
 
-  await prisma.rideRequest.delete({
-    where: { id: ride.id }
-  });
+  await prisma.$transaction([
+    ...(ride.automaticShift
+      ? [prisma.driverShift.delete({ where: { id: ride.automaticShift.id } })]
+      : []),
+    prisma.rideAssignment.deleteMany({ where: { rideRequestId: ride.id } }),
+    prisma.rideRequest.update({
+      where: { id: ride.id },
+      data: { status: "CANCELLED" }
+    })
+  ]);
 
   await createAuditLog({
     actorUserId: user.id,
-    action: "RIDE_DELETED",
+    action: "RIDE_CANCELLED",
     entityType: "RIDE_REQUEST",
     entityId: ride.id,
-    description: `${user.name} slettede sin tur den ${ride.rideDate.toLocaleDateString("da-DK")} kl. ${ride.rideTime} fra ${ride.pickupAddress} til ${ride.destinationAddress}. Den automatisk tilknyttede vagt blev også slettet.`
+    description: `${user.name} annullerede sin tur den ${ride.rideDate.toLocaleDateString("da-DK")} kl. ${ride.rideTime} fra ${ride.pickupAddress} til ${ride.destinationAddress}. Turen er bevaret i historikken, og den automatisk tilknyttede vagt blev fjernet.`
   });
 
   revalidatePath("/dashboard/citizen");
@@ -220,7 +228,7 @@ export async function deleteRideRequestAction(formData: FormData) {
   revalidatePath("/dashboard/admin/buses");
   revalidatePath("/dashboard/admin/activity");
   revalidatePath("/dashboard/driver");
-  redirect("/dashboard/citizen?success=Turen%20er%20slettet.");
+  redirect("/dashboard/citizen?success=Turen%20er%20annulleret%20og%20bevaret%20i%20historikken.");
 }
 
 export async function sendCitizenRideMessageAction(formData: FormData) {

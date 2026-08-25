@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { Bell, CalendarClock, CalendarPlus, MapPin, MessageSquare, Navigation, Trash2, UsersRound } from "lucide-react";
+import { Bell, CalendarClock, CalendarPlus, MapPin, MessageSquare, Navigation, UsersRound } from "lucide-react";
 import { createRideRequestAction, deleteRideRequestAction, sendCitizenRideMessageAction } from "@/app/dashboard/citizen/actions";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { FormMessage } from "@/components/FormMessage";
+import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { StatusBadge } from "@/components/StatusBadge";
 import { requireUser } from "@/lib/auth";
 import { isMembershipActive } from "@/lib/membership";
@@ -280,16 +281,13 @@ export default async function CitizenDashboardPage({
                 <p className="text-sm font-semibold text-slate-500">Chauffør ikke tildelt endnu</p>
               )}
 
-              {ride.status !== "COMPLETED" ? (
+              {ride.status !== "COMPLETED" && ride.status !== "CANCELLED" ? (
                 <form action={deleteRideRequestAction}>
                   <input type="hidden" name="rideRequestId" value={ride.id} />
-                  <button type="submit" className="gap-2 border border-red-200 bg-white text-red-700 hover:bg-red-50">
-                    <Trash2 size={16} />
-                    Slet
-                  </button>
+                  <ConfirmSubmitButton message="Er du sikker på, at du vil annullere turen? Den tilhørende vagt bliver også fjernet." />
                 </form>
               ) : (
-                <span className="text-sm text-slate-400">Låst</span>
+                <span className="text-sm text-slate-400">{ride.status === "CANCELLED" ? "Annulleret" : "Låst"}</span>
               )}
             </div>
 
