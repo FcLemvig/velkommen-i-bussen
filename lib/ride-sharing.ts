@@ -2,6 +2,10 @@ import { prisma } from "@/lib/prisma";
 
 export const BUS_PASSENGER_CAPACITY = 6;
 
+export function departureTownFromSharingTitle(title: string) {
+  return title.match(/^Samkørsel fra (.+) til .+$/)?.[1]?.trim() || null;
+}
+
 function townFromAddress(address: string, fallback: string) {
   const parts = address.split(",").map((part) => part.trim()).filter(Boolean);
   const postalPart = parts.at(-1) ?? "";
@@ -52,7 +56,7 @@ export async function ensureRideSharingEvent(rideRequestId: string) {
       eventDate: ride.rideDate,
       startTime: ride.rideTime,
       endTime: ride.automaticShift.endTime,
-      pickupInfo: `Fast opsamling i ${fromTown}. Skriv en note, hvis du ønsker opsamling på ruten.`,
+      pickupInfo: `Afgang fra ${fromTown} kl. ${ride.rideTime}. Skriv en note, hvis du ønsker opsamling på ruten.`,
       capacity: availableSeats,
       bus: ride.automaticShift.bus,
       driverProfileId: ride.assignment.driverProfileId,
@@ -65,7 +69,7 @@ export async function ensureRideSharingEvent(rideRequestId: string) {
       eventDate: ride.rideDate,
       startTime: ride.rideTime,
       endTime: ride.automaticShift.endTime,
-      pickupInfo: `Fast opsamling i ${fromTown}. Skriv en note, hvis du ønsker opsamling på ruten.`,
+      pickupInfo: `Afgang fra ${fromTown} kl. ${ride.rideTime}. Skriv en note, hvis du ønsker opsamling på ruten.`,
       capacity: availableSeats,
       bus: ride.automaticShift.bus,
       driverProfileId: ride.assignment.driverProfileId,

@@ -16,6 +16,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { busLabels, BusName } from "@/lib/shifts";
+import { departureTownFromSharingTitle } from "@/lib/ride-sharing";
 
 const driverApplicationUrl =
   "https://forms.office.com/pages/responsepage.aspx?id=pfm-AYL47UmW96RSpRSJxtoHN0wvugVPt77tdHpuZBVUQks4VzY5MFY5QzA3T0hFS0ZaWVdDN1lYNy4u&origin=lprLink&route=shorturl";
@@ -199,14 +200,18 @@ export default async function HomePage() {
             {events.map((event) => {
               const takenSeats = event.signups.reduce((sum, signup) => sum + signup.passengers, 0);
               const remainingSeats = Math.max(event.capacity - takenSeats, 0);
+              const departureTown = event.sourceRideRequestId ? departureTownFromSharingTitle(event.title) : null;
 
               return (
                 <article key={event.id} className="rounded-[30px] border-2 border-fjord/20 bg-white p-5 shadow-lg shadow-ink/8">
                   <p className="flex items-center gap-2 text-sm font-bold text-slate-500">
                     <CalendarDays size={16} />
-                    {event.eventDate.toLocaleDateString("da-DK")} kl. {event.startTime}
+                    {event.eventDate.toLocaleDateString("da-DK")}
                   </p>
                   <h3 className="mt-3 text-xl font-extrabold text-ink">{event.title}</h3>
+                  <p className="mt-2 text-sm font-extrabold text-brown">
+                    {departureTown ? `Afgang fra ${departureTown} kl. ${event.startTime}` : `Kl. ${event.startTime}-${event.endTime}`}
+                  </p>
                   <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-700">{event.description}</p>
                   <div className="mt-4 grid gap-2 text-sm text-slate-700">
                     <p className="flex items-center gap-2">

@@ -4,6 +4,7 @@ import { cancelEventSignupAction, signupForEventAction } from "@/app/dashboard/c
 import { FormMessage } from "@/components/FormMessage";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { departureTownFromSharingTitle } from "@/lib/ride-sharing";
 import { busLabels, BusName } from "@/lib/shifts";
 
 const eventStatusLabels: Record<string, string> = {
@@ -70,6 +71,7 @@ export default async function CitizenEventsPage({
           const remainingSeats = Math.max(event.capacity - takenSeats, 0);
           const mySignup = event.signups.find((signup) => signup.citizenProfileId === user.citizenProfile?.id);
           const canSignup = event.status === "OPEN" && remainingSeats > 0 && !mySignup;
+          const departureTown = event.sourceRideRequestId ? departureTownFromSharingTitle(event.title) : null;
 
           return (
             <details key={event.id} className="group overflow-hidden rounded-[28px] border-2 border-fjord/20 bg-white shadow-sm">
@@ -77,9 +79,12 @@ export default async function CitizenEventsPage({
                 <div className="min-w-0">
                   <p className="flex items-center gap-2 text-sm font-bold text-slate-500">
                     <CalendarDays size={16} />
-                    {event.eventDate.toLocaleDateString("da-DK")} kl. {event.startTime}-{event.endTime}
+                    {event.eventDate.toLocaleDateString("da-DK")}
                   </p>
                   <h2 className="mt-2 text-xl font-extrabold text-ink">{event.title}</h2>
+                  <p className="mt-1 text-sm font-bold text-brown">
+                    {departureTown ? `Afgang fra ${departureTown} kl. ${event.startTime}` : `Kl. ${event.startTime}-${event.endTime}`}
+                  </p>
                 </div>
                 <ChevronDown className="shrink-0 text-bus transition-transform group-open:rotate-180" size={24} />
               </summary>
@@ -113,7 +118,7 @@ export default async function CitizenEventsPage({
 
                 {event.pickupInfo ? (
                   <p className="mt-4 rounded-2xl bg-cream px-4 py-3 text-sm text-slate-700">
-                    <strong className="text-ink">Fast opsamlingssted:</strong> {event.pickupInfo}
+                    <strong className="text-ink">Afgang og opsamling:</strong> {event.pickupInfo}
                   </p>
                 ) : null}
 
