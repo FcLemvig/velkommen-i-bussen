@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
+import { createAuditLog } from "@/lib/audit";
 import { notifyAdminAboutNewRide, notifyDriverAboutCitizenMessage } from "@/lib/email";
 import { createNotification, notifyAdmins } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
@@ -123,6 +124,7 @@ export async function createRideRequestAction(formData: FormData) {
     const createdShift = automaticShiftBus
       ? await tx.driverShift.create({
           data: {
+            rideRequestId: createdRide.id,
             bus: automaticShiftBus,
             shiftDate: shiftStart.date,
             startTime: shiftStart.time,
@@ -133,6 +135,14 @@ export async function createRideRequestAction(formData: FormData) {
       : null;
 
     return { ride: createdRide, shift: createdShift };
+  });
+
+  await createAuditLog({
+    actorUserId: user.id,
+    action: "RIDE_CREATED",
+    entityType: "RIDE_REQUEST",
+    entityId: ride.id,
+    description: `${user.name} oprettede en tur den ${ride.rideDate.toLocaleDateString("da-DK")} kl. ${ride.rideTime} fra ${ride.pickupAddress} til ${ride.destinationAddress}.${shift ? " En tilhørende vagt blev oprettet automatisk." : " Der kunne ikke oprettes en automatisk vagt."}`
   });
 
   await notifyAdminAboutNewRide({
@@ -196,7 +206,20 @@ export async function deleteRideRequestAction(formData: FormData) {
     where: { id: ride.id }
   });
 
+  await createAuditLog({
+    actorUserId: user.id,
+    action: "RIDE_DELETED",
+    entityType: "RIDE_REQUEST",
+    entityId: ride.id,
+    description: `${user.name} slettede sin tur den ${ride.rideDate.toLocaleDateString("da-DK")} kl. ${ride.rideTime} fra ${ride.pickupAddress} til ${ride.destinationAddress}. Den automatisk tilknyttede vagt blev også slettet.`
+  });
+
   revalidatePath("/dashboard/citizen");
+  revalidatePath("/dashboard/admin");
+  revalidatePath("/dashboard/admin/shifts");
+  revalidatePath("/dashboard/admin/buses");
+  revalidatePath("/dashboard/admin/activity");
+  revalidatePath("/dashboard/driver");
   redirect("/dashboard/citizen?success=Turen%20er%20slettet.");
 }
 

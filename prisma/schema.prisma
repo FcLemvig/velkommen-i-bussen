@@ -24,6 +24,22 @@ model User {
   pushSubscriptions PushSubscription[]
   driverNotificationPreference DriverNotificationPreference?
   passwordResetTokens PasswordResetToken[]
+  auditLogs      AuditLog[]      @relation("AuditActor")
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String?
+  action      String
+  entityType  String
+  entityId    String?
+  description String
+  createdAt   DateTime @default(now())
+  actor       User?    @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([entityType, entityId])
 }
 
 model PasswordResetToken {
@@ -141,6 +157,7 @@ model RideRequest {
   updatedAt          DateTime         @updatedAt
   citizenProfile     CitizenProfile   @relation(fields: [citizenProfileId], references: [id], onDelete: Cascade)
   assignment         RideAssignment?
+  automaticShift     DriverShift?
 
   @@index([status, rideDate, rideTime])
   @@index([citizenProfileId, rideDate, rideTime])
@@ -160,6 +177,7 @@ model RideAssignment {
 model DriverShift {
   id              String         @id @default(cuid())
   driverProfileId String?
+  rideRequestId   String?        @unique
   bus             String         @default("EAST")
   shiftDate       DateTime
   startTime       String
@@ -168,6 +186,7 @@ model DriverShift {
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   driverProfile   DriverProfile? @relation(fields: [driverProfileId], references: [id], onDelete: SetNull)
+  rideRequest     RideRequest?    @relation(fields: [rideRequestId], references: [id], onDelete: Cascade)
 
   @@index([shiftDate, startTime])
   @@index([bus, shiftDate, startTime])

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
+import { createAuditLog } from "@/lib/audit";
 import { notifyActiveDrivers } from "@/lib/notifications";
 import { busLabels, BusName } from "@/lib/shifts";
 import { addHoursToTime, shiftsOverlap } from "@/lib/shifts";
@@ -34,7 +35,7 @@ function isBeforeToday(date: string) {
 }
 
 export async function createShiftAction(formData: FormData) {
-  await requireUser(["ADMIN"]);
+  const admin = await requireUser(["ADMIN"]);
 
   const raw = Object.fromEntries(formData);
   const parsed = driverShiftSchema.safeParse({
@@ -66,6 +67,14 @@ export async function createShiftAction(formData: FormData) {
     }
   });
 
+  await createAuditLog({
+    actorUserId: admin.id,
+    action: "SHIFT_CREATED",
+    entityType: "DRIVER_SHIFT",
+    entityId: shift.id,
+    description: `${admin.name} oprettede en ledig vagt på ${busLabels[(shift.bus || "EAST") as BusName]} den ${shift.shiftDate.toLocaleDateString("da-DK")} kl. ${shift.startTime}-${shift.endTime}.`
+  });
+
   await notifyActiveDrivers(
     "Ny ledig vagt",
     `${busLabels[(shift.bus || "EAST") as BusName]} den ${shift.shiftDate.toLocaleDateString("da-DK")} kl. ${shift.startTime}-${shift.endTime}.`,
@@ -75,26 +84,41 @@ export async function createShiftAction(formData: FormData) {
   revalidatePath("/dashboard/admin/shifts");
   revalidatePath("/dashboard/admin/buses");
   revalidatePath("/dashboard/driver");
+  revalidatePath("/dashboard/admin/activity");
   redirect("/dashboard/admin/shifts?success=Vagten%20er%20oprettet.");
 }
 
 export async function deleteShiftAction(formData: FormData) {
-  await requireUser(["ADMIN"]);
+  const admin = await requireUser(["ADMIN"]);
   const shiftId = String(formData.get("shiftId") ?? "");
 
   if (!shiftId) {
     redirect("/dashboard/admin/shifts?error=Vagten%20kunne%20ikke%20slettes.");
   }
 
-  await prisma.driverShift.delete({ where: { id: shiftId } });
+  const shift = await prisma.driverShift.delete({ where: { id: shiftId } });
+  if (shift.rideRequestId) {
+    await prisma.$transaction([
+      prisma.rideAssignment.deleteMany({ where: { rideRequestId: shift.rideRequestId } }),
+      prisma.rideRequest.update({ where: { id: shift.rideRequestId }, data: { status: "PENDING" } })
+    ]);
+  }
+  await createAuditLog({
+    actorUserId: admin.id,
+    action: "SHIFT_DELETED",
+    entityType: "DRIVER_SHIFT",
+    entityId: shift.id,
+    description: `${admin.name} slettede vagten på ${busLabels[(shift.bus || "EAST") as BusName]} den ${shift.shiftDate.toLocaleDateString("da-DK")} kl. ${shift.startTime}-${shift.endTime}.`
+  });
   revalidatePath("/dashboard/admin/shifts");
   revalidatePath("/dashboard/admin/buses");
   revalidatePath("/dashboard/driver");
+  revalidatePath("/dashboard/admin/activity");
   redirect("/dashboard/admin/shifts?success=Vagten%20er%20slettet.");
 }
 
 export async function updateShiftAction(shiftId: string, formData: FormData) {
-  await requireUser(["ADMIN"]);
+  const admin = await requireUser(["ADMIN"]);
 
   const raw = Object.fromEntries(formData);
   const parsed = driverShiftSchema.safeParse({
@@ -117,7 +141,7 @@ export async function updateShiftAction(shiftId: string, formData: FormData) {
     redirect(`/dashboard/admin/shifts/${shiftId}?error=Den%20bus%20er%20allerede%20booket%20i%20det%20tidsrum.`);
   }
 
-  await prisma.driverShift.update({
+  const shift = await prisma.driverShift.update({
     where: { id: shiftId },
     data: {
       shiftDate: new Date(`${parsed.data.date}T00:00:00`),
@@ -129,8 +153,38 @@ export async function updateShiftAction(shiftId: string, formData: FormData) {
     }
   });
 
+  if (shift.rideRequestId) {
+    if (driverProfileId) {
+      await prisma.$transaction([
+        prisma.rideAssignment.upsert({
+          where: { rideRequestId: shift.rideRequestId },
+          create: { rideRequestId: shift.rideRequestId, driverProfileId },
+          update: { driverProfileId }
+        }),
+        prisma.rideRequest.update({ where: { id: shift.rideRequestId }, data: { status: "ASSIGNED" } })
+      ]);
+    } else {
+      await prisma.$transaction([
+        prisma.rideAssignment.deleteMany({ where: { rideRequestId: shift.rideRequestId } }),
+        prisma.rideRequest.update({ where: { id: shift.rideRequestId }, data: { status: "PENDING" } })
+      ]);
+    }
+  }
+
+  const selectedDriver = driverProfileId
+    ? await prisma.driverProfile.findUnique({ where: { id: driverProfileId }, include: { user: true } })
+    : null;
+  await createAuditLog({
+    actorUserId: admin.id,
+    action: "SHIFT_UPDATED",
+    entityType: "DRIVER_SHIFT",
+    entityId: shift.id,
+    description: `${admin.name} ændrede vagten på ${busLabels[(shift.bus || "EAST") as BusName]} den ${shift.shiftDate.toLocaleDateString("da-DK")} kl. ${shift.startTime}-${shift.endTime}.${selectedDriver ? ` Chauffør: ${selectedDriver.user.name}.` : " Vagten er ledig."}`
+  });
+
   revalidatePath("/dashboard/admin/shifts");
   revalidatePath("/dashboard/admin/buses");
   revalidatePath("/dashboard/driver");
+  revalidatePath("/dashboard/admin/activity");
   redirect("/dashboard/admin/shifts?success=Vagten%20er%20opdateret.");
 }

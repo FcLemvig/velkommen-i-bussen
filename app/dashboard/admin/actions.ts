@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
+import { createAuditLog } from "@/lib/audit";
 import { isRideStatus, RideStatus } from "@/lib/domain";
 import {
   notifyCitizenAboutAssignment,
@@ -38,7 +39,7 @@ function toRideEmailData(ride: {
 }
 
 export async function updateRideStatusAction(formData: FormData) {
-  await requireUser(["ADMIN"]);
+  const admin = await requireUser(["ADMIN"]);
   const rideRequestId = String(formData.get("rideRequestId") ?? "");
   const status = String(formData.get("status") ?? "");
 
@@ -67,6 +68,14 @@ export async function updateRideStatusAction(formData: FormData) {
     }
   });
 
+  await createAuditLog({
+    actorUserId: admin.id,
+    action: "RIDE_STATUS_CHANGED",
+    entityType: "RIDE_REQUEST",
+    entityId: ride.id,
+    description: `${admin.name} ændrede status på ${ride.citizenProfile.user.name}s tur den ${ride.rideDate.toLocaleDateString("da-DK")} kl. ${ride.rideTime} til ${rideStatusLabels[status as RideStatus]}.`
+  });
+
   await notifyCitizenAboutStatus(
     {
       email: ride.citizenProfile.user.email,
@@ -89,7 +98,7 @@ export async function updateRideStatusAction(formData: FormData) {
 }
 
 export async function assignDriverAction(formData: FormData) {
-  await requireUser(["ADMIN"]);
+  const admin = await requireUser(["ADMIN"]);
   const rideRequestId = String(formData.get("rideRequestId") ?? "");
   const driverProfileId = String(formData.get("driverProfileId") ?? "");
 
@@ -172,6 +181,14 @@ export async function assignDriverAction(formData: FormData) {
         driverType: "ASSIGNED_RIDES"
       }
     ]);
+
+    await createAuditLog({
+      actorUserId: admin.id,
+      action: "RIDE_DRIVER_ASSIGNED",
+      entityType: "RIDE_REQUEST",
+      entityId: ride.id,
+      description: `${admin.name} tildelte ${ride.assignment.driverProfile.user.name} til ${ride.citizenProfile.user.name}s tur den ${ride.rideDate.toLocaleDateString("da-DK")} kl. ${ride.rideTime}. Matchende vagt blev opdateret samtidig.`
+    });
   }
 
   revalidatePath("/dashboard/admin");
@@ -179,5 +196,6 @@ export async function assignDriverAction(formData: FormData) {
   revalidatePath("/dashboard/admin/buses");
   revalidatePath("/dashboard/driver");
   revalidatePath("/dashboard/citizen");
+  revalidatePath("/dashboard/admin/activity");
   redirect("/dashboard/admin?success=Chauff%C3%B8ren%20er%20%C3%A6ndret%20p%C3%A5%20b%C3%A5de%20turen%20og%20vagten.");
 }

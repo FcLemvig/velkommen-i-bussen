@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
+import { createAuditLog } from "@/lib/audit";
 import {
   notifyCitizenAboutAssignment,
   notifyCitizenAboutDriverMessage,
@@ -225,6 +226,14 @@ export async function claimShiftAction(formData: FormData) {
     )
   ]);
 
+  await createAuditLog({
+    actorUserId: user.id,
+    action: "SHIFT_CLAIMED",
+    entityType: "DRIVER_SHIFT",
+    entityId: shift.id,
+    description: `${user.name} tog vagten den ${shift.shiftDate.toLocaleDateString("da-DK")} kl. ${shift.startTime}-${shift.endTime}. ${ridesInShift.length} tilhørende tur(e) blev tildelt automatisk.`
+  });
+
   const previousDrivers = new Map<string, { userId: string; name: string }>();
   for (const ride of ridesInShift) {
     const previousDriver = ride.assignment?.driverProfile;
@@ -284,6 +293,7 @@ export async function claimShiftAction(formData: FormData) {
   revalidatePath("/dashboard/driver");
   revalidatePath("/dashboard/admin");
   revalidatePath("/dashboard/citizen");
+  revalidatePath("/dashboard/admin/activity");
   redirect(`/dashboard/driver?success=${rideText}`);
 }
 
@@ -330,8 +340,17 @@ export async function releaseShiftAction(formData: FormData) {
     })
   ]);
 
+  await createAuditLog({
+    actorUserId: user.id,
+    action: "SHIFT_RELEASED",
+    entityType: "DRIVER_SHIFT",
+    entityId: shift.id,
+    description: `${user.name} frigav vagten den ${shift.shiftDate.toLocaleDateString("da-DK")} kl. ${shift.startTime}-${shift.endTime}. ${rideIds.length} tilhørende tur(e) blev frigivet samtidig.`
+  });
+
   revalidatePath("/dashboard/driver");
   revalidatePath("/dashboard/admin");
   revalidatePath("/dashboard/citizen");
+  revalidatePath("/dashboard/admin/activity");
   redirect(`/dashboard/driver?success=Vagten%20og%20${rideIds.length}%20tilh%C3%B8rende%20tur(e)%20er%20frigivet.`);
 }
