@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import {
   ArrowRight,
   Bell,
@@ -13,6 +14,7 @@ import {
   Users
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 import { busLabels, BusName } from "@/lib/shifts";
 
 const driverApplicationUrl =
@@ -52,6 +54,12 @@ const appHighlights = [
 ];
 
 export default async function HomePage() {
+  const user = await getCurrentUser();
+
+  if (user) {
+    redirect("/dashboard");
+  }
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const events = await prisma.event.findMany({
