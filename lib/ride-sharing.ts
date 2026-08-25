@@ -3,12 +3,19 @@ import { prisma } from "@/lib/prisma";
 export const BUS_PASSENGER_CAPACITY = 6;
 
 function townFromAddress(address: string, fallback: string) {
+  const parts = address.split(",").map((part) => part.trim()).filter(Boolean);
+  const postalPart = parts.at(-1) ?? "";
+  const localTown = parts.length >= 3 ? parts.at(-2)?.trim() : "";
+
+  if (/^\d{4}\s+/.test(postalPart) && localTown && !/^\d/.test(localTown)) {
+    return localTown;
+  }
+
   const postcodeTown = address.match(/\b\d{4}\s+([^,]+)$/);
   if (postcodeTown?.[1]?.trim()) {
     return postcodeTown[1].trim();
   }
 
-  const parts = address.split(",").map((part) => part.trim()).filter(Boolean);
   if (parts.length < 2) {
     return fallback;
   }
