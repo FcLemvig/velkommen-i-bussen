@@ -188,12 +188,14 @@ export async function claimShiftAction(formData: FormData) {
   const matchingRides = await prisma.rideRequest.findMany({
     where: {
       rideDate: shift.shiftDate,
-      assignment: null,
       status: { notIn: ["COMPLETED", "CANCELLED"] }
     },
     include: {
       citizenProfile: {
         include: { user: true }
+      },
+      assignment: {
+        include: { driverProfile: { include: { user: true } } }
       }
     }
   });
@@ -206,11 +208,13 @@ export async function claimShiftAction(formData: FormData) {
       data: { driverProfileId: user.driverProfile.id }
     }),
     ...ridesInShift.map((ride) =>
-      prisma.rideAssignment.create({
-        data: {
+      prisma.rideAssignment.upsert({
+        where: { rideRequestId: ride.id },
+        create: {
           rideRequestId: ride.id,
           driverProfileId: user.driverProfile!.id
-        }
+        },
+        update: { driverProfileId: user.driverProfile!.id }
       })
     ),
     ...ridesInShift.map((ride) =>
@@ -220,6 +224,27 @@ export async function claimShiftAction(formData: FormData) {
       })
     )
   ]);
+
+  const previousDrivers = new Map<string, { userId: string; name: string }>();
+  for (const ride of ridesInShift) {
+    const previousDriver = ride.assignment?.driverProfile;
+    if (previousDriver && previousDriver.id !== user.driverProfile.id) {
+      previousDrivers.set(previousDriver.user.id, {
+        userId: previousDriver.user.id,
+        name: previousDriver.user.name
+      });
+    }
+  }
+
+  await createNotifications(
+    Array.from(previousDrivers.values()).map((driver) => ({
+      userId: driver.userId,
+      title: "Tur overdraget til en anden chauffør",
+      body: `En tur i vagten ${shift.startTime}-${shift.endTime} er nu overdraget til ${user.name}.`,
+      href: "/dashboard/driver",
+      driverType: "RIDE_CHANGES" as const
+    }))
+  );
 
   for (const ride of ridesInShift) {
     const rideData = toRideEmailData(ride);
@@ -281,11 +306,32 @@ export async function releaseShiftAction(formData: FormData) {
     redirect("/dashboard/driver?error=Du%20kan%20kun%20frigive%20dine%20egne%20vagter.");
   }
 
-  await prisma.driverShift.update({
-    where: { id: shift.id },
-    data: { driverProfileId: null }
+  const assignedRides = await prisma.rideRequest.findMany({
+    where: {
+      rideDate: shift.shiftDate,
+      status: { notIn: ["COMPLETED", "CANCELLED"] },
+      assignment: { driverProfileId: user.driverProfile.id }
+    },
+    select: { id: true, rideTime: true }
   });
+  const rideIds = assignedRides
+    .filter((ride) => isRideWithinShift(ride.rideTime, shift.startTime, shift.endTime))
+    .map((ride) => ride.id);
+
+  await prisma.$transaction([
+    prisma.driverShift.update({
+      where: { id: shift.id },
+      data: { driverProfileId: null }
+    }),
+    prisma.rideAssignment.deleteMany({ where: { rideRequestId: { in: rideIds } } }),
+    prisma.rideRequest.updateMany({
+      where: { id: { in: rideIds } },
+      data: { status: "PENDING" }
+    })
+  ]);
 
   revalidatePath("/dashboard/driver");
-  redirect("/dashboard/driver?success=Vagten%20er%20frigivet.");
+  revalidatePath("/dashboard/admin");
+  revalidatePath("/dashboard/citizen");
+  redirect(`/dashboard/driver?success=Vagten%20og%20${rideIds.length}%20tilh%C3%B8rende%20tur(e)%20er%20frigivet.`);
 }

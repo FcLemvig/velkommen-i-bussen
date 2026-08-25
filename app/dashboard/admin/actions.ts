@@ -13,6 +13,7 @@ import { rideStatusLabels } from "@/lib/labels";
 import { isMembershipActive } from "@/lib/membership";
 import { createNotifications } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
+import { isRideWithinShift } from "@/lib/shifts";
 
 function toRideEmailData(ride: {
   citizenProfile: { user: { name: string } };
@@ -111,6 +112,21 @@ export async function assignDriverAction(formData: FormData) {
     update: { driverProfileId }
   });
 
+  const shifts = await prisma.driverShift.findMany({
+    where: { shiftDate: currentRide.rideDate },
+    select: { id: true, startTime: true, endTime: true }
+  });
+  const matchingShiftIds = shifts
+    .filter((shift) => isRideWithinShift(currentRide.rideTime, shift.startTime, shift.endTime))
+    .map((shift) => shift.id);
+
+  if (matchingShiftIds.length > 0) {
+    await prisma.driverShift.updateMany({
+      where: { id: { in: matchingShiftIds } },
+      data: { driverProfileId }
+    });
+  }
+
   const ride = await prisma.rideRequest.update({
     where: { id: rideRequestId },
     data: { status: "ASSIGNED" },
@@ -159,4 +175,9 @@ export async function assignDriverAction(formData: FormData) {
   }
 
   revalidatePath("/dashboard/admin");
+  revalidatePath("/dashboard/admin/shifts");
+  revalidatePath("/dashboard/admin/buses");
+  revalidatePath("/dashboard/driver");
+  revalidatePath("/dashboard/citizen");
+  redirect("/dashboard/admin?success=Chauff%C3%B8ren%20er%20%C3%A6ndret%20p%C3%A5%20b%C3%A5de%20turen%20og%20vagten.");
 }

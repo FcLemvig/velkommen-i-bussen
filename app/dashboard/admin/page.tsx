@@ -30,7 +30,7 @@ function shiftSummary(
 export default async function AdminDashboardPage({
   searchParams
 }: {
-  searchParams: Promise<{ status?: RideStatus; error?: string }>;
+  searchParams: Promise<{ status?: RideStatus; error?: string; success?: string }>;
 }) {
   await requireUser(["ADMIN"]);
   const params = await searchParams;
@@ -124,6 +124,11 @@ export default async function AdminDashboardPage({
       </section>
 
       <FormMessage message={params.error} />
+      {params.success ? (
+        <p className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-900">
+          {params.success}
+        </p>
+      ) : null}
 
       <form className="grid gap-3 rounded-[28px] border-2 border-fjord/25 bg-white p-4 shadow-sm sm:grid-cols-[1fr_auto_auto] sm:items-end">
         <div className="grid gap-2">
