@@ -1,4 +1,4 @@
-import { Bus, CalendarClock, CheckCircle2, MapPin, MessageSquare, Upload, UserRound } from "lucide-react";
+import { Bus, CalendarClock, CheckCircle2, ChevronDown, MapPin, MessageSquare, Upload, UserRound } from "lucide-react";
 import {
   claimShiftAction,
   completeRideAction,
@@ -49,7 +49,12 @@ export default async function DriverDashboardPage({
         prisma.driverShift.findMany({
           where: { driverProfileId: null, shiftDate: { gte: today } },
           orderBy: [{ shiftDate: "asc" }, { startTime: "asc" }],
-          take: 40
+          take: 40,
+          include: {
+            rideRequest: {
+              include: { citizenProfile: { include: { user: true } } }
+            }
+          }
         }),
         prisma.event.findMany({
           where: {
@@ -69,6 +74,18 @@ export default async function DriverDashboardPage({
         })
       ])
     : [[], [], [], []];
+
+  const openRideRequests = user.driverProfile
+    ? await prisma.rideRequest.findMany({
+        where: {
+          rideDate: { gte: today },
+          status: { notIn: ["COMPLETED", "CANCELLED"] }
+        },
+        orderBy: [{ rideDate: "asc" }, { rideTime: "asc" }],
+        take: 100,
+        include: { citizenProfile: { include: { user: true } } }
+      })
+    : [];
 
   const nextRide = assignments.find(({ rideRequest }) => rideRequest.status !== "COMPLETED")?.rideRequest;
 
@@ -173,25 +190,74 @@ export default async function DriverDashboardPage({
         <div className="rounded-[32px] border-2 border-fjord/25 bg-white p-5 shadow-sm">
           <h2 className="text-2xl font-extrabold text-ink">Ledige vagter</h2>
           <div className="mt-4 grid gap-3">
-            {openShifts.map((shift) => (
-              <article key={shift.id} className="rounded-2xl border border-bus/20 bg-bus/5 p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <div className="font-extrabold text-ink">{shift.shiftDate.toLocaleDateString("da-DK")}</div>
-                    <div className="mt-1 text-sm text-slate-600">
-                      {busLabels[(shift.bus || "EAST") as BusName]} · {shift.startTime} - {shift.endTime}
+            {openShifts.map((shift) => {
+              const ride =
+                shift.rideRequest ??
+                openRideRequests.find(
+                  (candidate) =>
+                    candidate.rideDate.toDateString() === shift.shiftDate.toDateString() &&
+                    candidate.rideTime >= shift.startTime &&
+                    candidate.rideTime < shift.endTime
+                );
+
+              return (
+                <details key={shift.id} className="group rounded-2xl border border-bus/25 bg-bus/5 open:bg-white open:shadow-sm">
+                  <summary className="flex cursor-pointer list-none items-start justify-between gap-3 p-4 [&::-webkit-details-marker]:hidden">
+                    <div className="min-w-0">
+                      <div className="font-extrabold text-ink">{shift.shiftDate.toLocaleDateString("da-DK")}</div>
+                      <div className="mt-1 text-sm font-semibold text-slate-700">
+                        {shift.startTime} - {shift.endTime} · {busLabels[(shift.bus || "EAST") as BusName]}
+                      </div>
+                      <p className="mt-2 text-sm font-bold leading-5 text-brown">
+                        {ride?.purpose || shift.notes || "Ledig vagt"}
+                      </p>
                     </div>
-                    {shift.notes ? <div className="mt-1 text-sm text-slate-500">{shift.notes}</div> : null}
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-fjord/30 bg-white text-ink">
+                      <ChevronDown className="transition-transform group-open:rotate-180" size={20} />
+                    </span>
+                  </summary>
+
+                  <div className="grid gap-4 border-t border-fjord/20 px-4 pb-4 pt-4 text-sm text-slate-700">
+                    {ride ? (
+                      <>
+                        <div>
+                          <p className="text-xs font-bold uppercase text-slate-500">Formål</p>
+                          <p className="mt-1 font-bold text-ink">{ride.purpose}</p>
+                        </div>
+                        <p className="flex gap-2">
+                          <MapPin className="mt-0.5 shrink-0 text-bus" size={17} />
+                          <span>
+                            <strong className="text-ink">{ride.pickupAddress}</strong>
+                            <span className="block">til {ride.destinationAddress}</span>
+                          </span>
+                        </p>
+                        <p className="flex items-center gap-2">
+                          <UserRound className="text-bus" size={17} />
+                          {ride.citizenProfile.user.name} · {ride.passengers} passager(er)
+                        </p>
+                        {ride.notes ? <p className="rounded-2xl bg-cream px-4 py-3">Note: {ride.notes}</p> : null}
+                        {ride.includesMinors ? (
+                          <p className="rounded-2xl bg-bus/15 px-4 py-3 text-brown">
+                            Børn/unge på turen. Forældresamtykke er {ride.parentalConsent ? "bekræftet" : "ikke bekræftet"}.
+                            {ride.guardianName ? <span className="block">Forælder/værge: {ride.guardianName}</span> : null}
+                            {ride.guardianPhone ? <span className="block">Telefon: {ride.guardianPhone}</span> : null}
+                          </p>
+                        ) : null}
+                      </>
+                    ) : (
+                      <p>{shift.notes || "Der er endnu ikke knyttet en konkret turanmodning til vagten."}</p>
+                    )}
+
+                    <form action={claimShiftAction}>
+                      <input type="hidden" name="shiftId" value={shift.id} />
+                      <button type="submit" className="h-12 w-full bg-bus text-white hover:bg-bus/90">
+                        Tag vagten
+                      </button>
+                    </form>
                   </div>
-                  <form action={claimShiftAction}>
-                    <input type="hidden" name="shiftId" value={shift.id} />
-                    <button type="submit" className="bg-bus text-white hover:bg-bus/90">
-                      Tag vagt
-                    </button>
-                  </form>
-                </div>
-              </article>
-            ))}
+                </details>
+              );
+            })}
             {openShifts.length === 0 ? <p className="text-sm text-slate-500">Der er ingen ledige vagter lige nu.</p> : null}
           </div>
         </div>
