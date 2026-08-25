@@ -7,6 +7,7 @@ import { createNotification, createNotifications, notifyAdmins } from "@/lib/not
 import { isMembershipActive } from "@/lib/membership";
 import { prisma } from "@/lib/prisma";
 import { shiftsOverlap } from "@/lib/shifts";
+import { getSuperSaaSBookings } from "@/lib/supersaas-calendar";
 import { organizationBookingSchema } from "@/lib/validation";
 
 async function busIsBooked(data: {
@@ -16,7 +17,9 @@ async function busIsBooked(data: {
   endTime: string;
 }) {
   const bookingDate = new Date(`${data.date}T00:00:00`);
-  const [shifts, bookings] = await Promise.all([
+  const nextDate = new Date(bookingDate);
+  nextDate.setDate(nextDate.getDate() + 1);
+  const [shifts, bookings, events, supersaasBookings] = await Promise.all([
     prisma.driverShift.findMany({
       where: {
         bus: data.bus,
@@ -29,12 +32,19 @@ async function busIsBooked(data: {
         bookingDate,
         status: { not: "CANCELLED" }
       }
-    })
+    }),
+    prisma.event.findMany({
+      where: {
+        bus: data.bus,
+        eventDate: bookingDate,
+        status: { not: "CANCELLED" }
+      }
+    }),
+    getSuperSaaSBookings(bookingDate, nextDate)
   ]);
 
-  return (
-    shifts.some((shift) => shiftsOverlap(data.startTime, data.endTime, shift.startTime, shift.endTime)) ||
-    bookings.some((booking) => shiftsOverlap(data.startTime, data.endTime, booking.startTime, booking.endTime))
+  return [...shifts, ...bookings, ...events, ...supersaasBookings.filter((booking) => booking.bus === data.bus)].some((item) =>
+    shiftsOverlap(data.startTime, data.endTime, item.startTime, item.endTime)
   );
 }
 
@@ -45,7 +55,7 @@ async function driverIsBooked(data: {
   endTime: string;
 }) {
   const bookingDate = new Date(`${data.date}T00:00:00`);
-  const [shifts, bookings] = await Promise.all([
+  const [shifts, bookings, events] = await Promise.all([
     prisma.driverShift.findMany({
       where: {
         driverProfileId: data.driverProfileId,
@@ -58,12 +68,18 @@ async function driverIsBooked(data: {
         bookingDate,
         status: { not: "CANCELLED" }
       }
+    }),
+    prisma.event.findMany({
+      where: {
+        driverProfileId: data.driverProfileId,
+        eventDate: bookingDate,
+        status: { not: "CANCELLED" }
+      }
     })
   ]);
 
-  return (
-    shifts.some((shift) => shiftsOverlap(data.startTime, data.endTime, shift.startTime, shift.endTime)) ||
-    bookings.some((booking) => shiftsOverlap(data.startTime, data.endTime, booking.startTime, booking.endTime))
+  return [...shifts, ...bookings, ...events].some((item) =>
+    shiftsOverlap(data.startTime, data.endTime, item.startTime, item.endTime)
   );
 }
 

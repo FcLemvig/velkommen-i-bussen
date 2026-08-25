@@ -14,7 +14,6 @@ import { rideStatusLabels } from "@/lib/labels";
 import { isMembershipActive } from "@/lib/membership";
 import { createNotifications } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
-import { isRideWithinShift } from "@/lib/shifts";
 
 function toRideEmailData(ride: {
   citizenProfile: { user: { name: string } };
@@ -108,37 +107,47 @@ export async function assignDriverAction(formData: FormData) {
 
   const currentRide = await prisma.rideRequest.findUnique({
     where: { id: rideRequestId },
-    include: { citizenProfile: { include: { user: { include: { membership: true } } } } }
+    include: {
+      citizenProfile: { include: { user: { include: { membership: true } } } },
+      automaticShift: true
+    }
   });
 
   if (!currentRide || !isMembershipActive(currentRide.citizenProfile.user.membership)) {
     redirect("/dashboard/admin?error=Medlemskabet%20skal%20v%C3%A6re%20aktivt%2C%20f%C3%B8r%20turen%20kan%20tildeles.");
   }
 
-  await prisma.rideAssignment.upsert({
-    where: { rideRequestId },
-    create: { rideRequestId, driverProfileId },
-    update: { driverProfileId }
+  const driver = await prisma.driverProfile.findFirst({
+    where: { id: driverProfileId, isActive: true },
+    select: { id: true }
   });
 
-  const shifts = await prisma.driverShift.findMany({
-    where: { shiftDate: currentRide.rideDate },
-    select: { id: true, startTime: true, endTime: true }
-  });
-  const matchingShiftIds = shifts
-    .filter((shift) => isRideWithinShift(currentRide.rideTime, shift.startTime, shift.endTime))
-    .map((shift) => shift.id);
-
-  if (matchingShiftIds.length > 0) {
-    await prisma.driverShift.updateMany({
-      where: { id: { in: matchingShiftIds } },
-      data: { driverProfileId }
-    });
+  if (!driver) {
+    redirect("/dashboard/admin?error=Den%20valgte%20chauff%C3%B8r%20er%20ikke%20aktiv.");
   }
 
-  const ride = await prisma.rideRequest.update({
+  await prisma.$transaction([
+    prisma.rideAssignment.upsert({
+      where: { rideRequestId },
+      create: { rideRequestId, driverProfileId },
+      update: { driverProfileId }
+    }),
+    ...(currentRide.automaticShift
+      ? [
+          prisma.driverShift.update({
+            where: { id: currentRide.automaticShift.id },
+            data: { driverProfileId }
+          })
+        ]
+      : []),
+    prisma.rideRequest.update({
+      where: { id: rideRequestId },
+      data: { status: "ASSIGNED" }
+    })
+  ]);
+
+  const ride = await prisma.rideRequest.findUniqueOrThrow({
     where: { id: rideRequestId },
-    data: { status: "ASSIGNED" },
     include: {
       citizenProfile: {
         include: { user: true }
@@ -187,7 +196,7 @@ export async function assignDriverAction(formData: FormData) {
       action: "RIDE_DRIVER_ASSIGNED",
       entityType: "RIDE_REQUEST",
       entityId: ride.id,
-      description: `${admin.name} tildelte ${ride.assignment.driverProfile.user.name} til ${ride.citizenProfile.user.name}s tur den ${ride.rideDate.toLocaleDateString("da-DK")} kl. ${ride.rideTime}. Matchende vagt blev opdateret samtidig.`
+      description: `${admin.name} tildelte ${ride.assignment.driverProfile.user.name} til ${ride.citizenProfile.user.name}s tur den ${ride.rideDate.toLocaleDateString("da-DK")} kl. ${ride.rideTime}.${currentRide.automaticShift ? " Den tilknyttede vagt blev opdateret samtidig." : " Turen har ingen tilknyttet automatisk vagt."}`
     });
   }
 
@@ -197,5 +206,5 @@ export async function assignDriverAction(formData: FormData) {
   revalidatePath("/dashboard/driver");
   revalidatePath("/dashboard/citizen");
   revalidatePath("/dashboard/admin/activity");
-  redirect("/dashboard/admin?success=Chauff%C3%B8ren%20er%20%C3%A6ndret%20p%C3%A5%20b%C3%A5de%20turen%20og%20vagten.");
+  redirect(`/dashboard/admin?success=${currentRide.automaticShift ? "Chauff%C3%B8ren%20er%20%C3%A6ndret%20p%C3%A5%20turen%20og%20den%20tilknyttede%20vagt." : "Chauff%C3%B8ren%20er%20%C3%A6ndret%20p%C3%A5%20turen."}`);
 }

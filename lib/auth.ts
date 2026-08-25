@@ -72,7 +72,12 @@ export const getCurrentUser = cache(async () => {
           citizenProfile: true,
           driverProfile: true,
           organizationProfile: true,
-          membership: true
+          membership: true,
+          _count: {
+            select: {
+              notifications: { where: { readAt: null } }
+            }
+          }
         }
       }
     }

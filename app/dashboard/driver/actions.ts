@@ -12,7 +12,6 @@ import {
 } from "@/lib/email";
 import { createNotification, createNotifications } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
-import { isRideWithinShift } from "@/lib/shifts";
 import { saveDriverImage } from "@/lib/uploads";
 
 function toRideEmailData(ride: {
@@ -186,22 +185,22 @@ export async function claimShiftAction(formData: FormData) {
     redirect("/dashboard/driver?error=Vagten%20er%20allerede%20taget.");
   }
 
-  const matchingRides = await prisma.rideRequest.findMany({
-    where: {
-      rideDate: shift.shiftDate,
-      status: { notIn: ["COMPLETED", "CANCELLED"] }
-    },
-    include: {
-      citizenProfile: {
-        include: { user: true }
-      },
-      assignment: {
-        include: { driverProfile: { include: { user: true } } }
-      }
-    }
-  });
-
-  const ridesInShift = matchingRides.filter((ride) => isRideWithinShift(ride.rideTime, shift.startTime, shift.endTime));
+  const ridesInShift = shift.rideRequestId
+    ? await prisma.rideRequest.findMany({
+        where: {
+          id: shift.rideRequestId,
+          status: { notIn: ["COMPLETED", "CANCELLED"] }
+        },
+        include: {
+          citizenProfile: {
+            include: { user: true }
+          },
+          assignment: {
+            include: { driverProfile: { include: { user: true } } }
+          }
+        }
+      })
+    : [];
 
   await prisma.$transaction([
     prisma.driverShift.update({
@@ -316,17 +315,17 @@ export async function releaseShiftAction(formData: FormData) {
     redirect("/dashboard/driver?error=Du%20kan%20kun%20frigive%20dine%20egne%20vagter.");
   }
 
-  const assignedRides = await prisma.rideRequest.findMany({
-    where: {
-      rideDate: shift.shiftDate,
-      status: { notIn: ["COMPLETED", "CANCELLED"] },
-      assignment: { driverProfileId: user.driverProfile.id }
-    },
-    select: { id: true, rideTime: true }
-  });
-  const rideIds = assignedRides
-    .filter((ride) => isRideWithinShift(ride.rideTime, shift.startTime, shift.endTime))
-    .map((ride) => ride.id);
+  const linkedRide = shift.rideRequestId
+    ? await prisma.rideRequest.findFirst({
+        where: {
+          id: shift.rideRequestId,
+          status: { notIn: ["COMPLETED", "CANCELLED"] },
+          assignment: { driverProfileId: user.driverProfile.id }
+        },
+        select: { id: true }
+      })
+    : null;
+  const rideIds = linkedRide ? [linkedRide.id] : [];
 
   await prisma.$transaction([
     prisma.driverShift.update({

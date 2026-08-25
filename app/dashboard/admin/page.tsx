@@ -35,10 +35,20 @@ export default async function AdminDashboardPage({
   await requireUser(["ADMIN"]);
   const params = await searchParams;
   const selectedStatus = params.status && isRideStatus(params.status) ? params.status : undefined;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const rideFilter = selectedStatus
+    ? { status: selectedStatus }
+    : {
+        OR: [
+          { rideDate: { gte: today } },
+          { status: { notIn: ["COMPLETED", "CANCELLED"] } }
+        ]
+      };
 
   const [rides, drivers] = await Promise.all([
     prisma.rideRequest.findMany({
-      where: selectedStatus ? { status: selectedStatus } : {},
+      where: rideFilter,
       orderBy: [{ rideDate: "asc" }, { rideTime: "asc" }],
       take: 100,
       include: {
