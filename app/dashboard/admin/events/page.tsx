@@ -21,6 +21,7 @@ export default async function AdminEventsPage({
   await requireUser(["ADMIN"]);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const minimumDate = today.toISOString().slice(0, 10);
 
   const [drivers, events] = await Promise.all([
     prisma.driverProfile.findMany({
@@ -102,7 +103,7 @@ export default async function AdminEventsPage({
             </div>
             <div className="grid gap-2">
               <label htmlFor="date">Dato</label>
-              <input id="date" name="date" type="date" required />
+              <input id="date" name="date" type="date" min={minimumDate} required />
             </div>
             <div className="grid gap-2">
               <label htmlFor="startTime">Start</label>

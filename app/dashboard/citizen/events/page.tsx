@@ -128,7 +128,7 @@ export default async function CitizenEventsPage({
                   <input type="hidden" name="eventId" value={event.id} />
                   <div className="grid gap-4 sm:grid-cols-[1fr_160px]">
                     <div className="grid gap-2">
-                      <label htmlFor={`pickup-${event.id}`}>Afhentningsadresse</label>
+                      <label htmlFor={`pickup-${event.id}`}>Dit opsamlingssted</label>
                       <input
                         id={`pickup-${event.id}`}
                         name="pickupAddress"
@@ -146,7 +146,7 @@ export default async function CitizenEventsPage({
                     <textarea id={`notes-${event.id}`} name="notes" rows={3} />
                   </div>
                   <button type="submit" className="h-12 w-full bg-bus text-white hover:bg-bus/90 sm:w-fit">
-                    Tilmeld
+                    Hop på ved opsamling
                   </button>
                 </form>
               ) : (

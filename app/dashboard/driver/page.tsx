@@ -266,7 +266,7 @@ export default async function DriverDashboardPage({
       <section id="mine-ture" className="grid gap-4">
         <div>
           <h2 className="text-2xl font-extrabold text-ink">Mine tildelte ture</h2>
-          <p className="text-sm text-slate-600">{assignments.length} tur(e)</p>
+          <p className="text-sm text-slate-600">{assignments.length + myEvents.length} tur(e)</p>
         </div>
         {assignments.map(({ rideRequest }) => (
           <article key={rideRequest.id} className="rounded-[28px] border-2 border-fjord/25 bg-white p-5 shadow-sm">
@@ -343,30 +343,22 @@ export default async function DriverDashboardPage({
             )}
           </article>
         ))}
-        {assignments.length === 0 ? (
-          <div className="rounded-[28px] border-2 border-dashed border-fjord/25 bg-white p-8 text-center text-slate-500">
-            <Bus className="mx-auto text-bus" size={34} />
-            <h3 className="mt-3 text-xl font-extrabold text-ink">Ingen ture lige nu</h3>
-            <p className="mt-2 text-sm text-slate-600">Når admin tildeler dig en tur, vises den her.</p>
-          </div>
-        ) : null}
-      </section>
-
-      <section className="grid gap-4">
-        <div>
-          <h2 className="text-2xl font-extrabold text-ink">Mine begivenheder</h2>
-          <p className="text-sm text-slate-600">{myEvents.length} begivenhed(er)</p>
-        </div>
         {myEvents.map((event) => {
           const passengers = event.signups.reduce((sum, signup) => sum + signup.passengers, 0);
 
           return (
-            <article key={event.id} className="rounded-[28px] border-2 border-fjord/25 bg-white p-5 shadow-sm">
-              <p className="flex items-center gap-2 text-sm font-bold text-slate-500">
-                <CalendarClock size={16} />
-                {event.eventDate.toLocaleDateString("da-DK")} kl. {event.startTime}-{event.endTime}
-              </p>
-              <h3 className="mt-2 text-lg font-extrabold text-ink">{event.title}</h3>
+            <article key={event.id} className="rounded-[28px] border-2 border-bus/35 bg-white p-5 shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="flex items-center gap-2 text-sm font-bold text-slate-500">
+                    <CalendarClock size={16} />
+                    {event.eventDate.toLocaleDateString("da-DK")} kl. {event.startTime}-{event.endTime}
+                  </p>
+                  <h3 className="mt-2 text-lg font-extrabold text-ink">{event.title}</h3>
+                </div>
+                <span className="rounded-full bg-bus/15 px-3 py-1.5 text-xs font-extrabold text-brown">Fælles tur</span>
+              </div>
+
               <div className="mt-4 grid gap-3 text-sm text-slate-700 sm:grid-cols-2">
                 <p className="flex items-center gap-2">
                   <MapPin className="text-bus" size={17} />
@@ -377,24 +369,36 @@ export default async function DriverDashboardPage({
                   {busLabels[(event.bus || "EAST") as BusName]} · {passengers} passager(er)
                 </p>
               </div>
-              {event.pickupInfo ? <p className="mt-4 rounded-2xl bg-cream px-4 py-3 text-sm text-slate-700">{event.pickupInfo}</p> : null}
-              <div className="mt-4 grid gap-2">
-                {event.signups.map((signup) => (
-                  <div key={signup.id} className="rounded-2xl bg-cream/70 px-4 py-3 text-sm text-slate-700">
-                    <strong className="text-ink">{signup.citizenProfile.user.name}</strong> · {signup.passengers} passager(er)
-                    {signup.pickupAddress ? <span className="block">{signup.pickupAddress}</span> : null}
-                  </div>
-                ))}
-                {event.signups.length === 0 ? <p className="text-sm text-slate-500">Ingen tilmeldte endnu.</p> : null}
+
+              {event.pickupInfo ? (
+                <p className="mt-4 rounded-2xl bg-cream px-4 py-3 text-sm text-slate-700">
+                  <strong className="text-ink">Opsamling:</strong> {event.pickupInfo}
+                </p>
+              ) : null}
+
+              <div className="mt-5 border-t border-slate-100 pt-4">
+                <h4 className="font-extrabold text-ink">Tilmeldte passagerer</h4>
+                <div className="mt-3 grid gap-2">
+                  {event.signups.map((signup) => (
+                    <div key={signup.id} className="rounded-2xl bg-cream/70 px-4 py-3 text-sm text-slate-700">
+                      <strong className="text-ink">{signup.citizenProfile.user.name}</strong>
+                      <span className="block">{signup.passengers} passager(er)</span>
+                      {signup.citizenProfile.phone ? <span className="block">Tlf. {signup.citizenProfile.phone}</span> : null}
+                      {signup.pickupAddress ? <span className="block">Opsamling: {signup.pickupAddress}</span> : null}
+                      {signup.notes ? <span className="mt-1 block">Note: {signup.notes}</span> : null}
+                    </div>
+                  ))}
+                  {event.signups.length === 0 ? <p className="text-sm text-slate-500">Ingen tilmeldte endnu.</p> : null}
+                </div>
               </div>
             </article>
           );
         })}
-        {myEvents.length === 0 ? (
+        {assignments.length === 0 && myEvents.length === 0 ? (
           <div className="rounded-[28px] border-2 border-dashed border-fjord/25 bg-white p-8 text-center text-slate-500">
-            <CalendarClock className="mx-auto text-bus" size={34} />
-            <h3 className="mt-3 text-xl font-extrabold text-ink">Ingen begivenheder lige nu</h3>
-            <p className="mt-2 text-sm text-slate-600">Når admin sætter dig på en begivenhed, vises den her.</p>
+            <Bus className="mx-auto text-bus" size={34} />
+            <h3 className="mt-3 text-xl font-extrabold text-ink">Ingen ture lige nu</h3>
+            <p className="mt-2 text-sm text-slate-600">Når admin tildeler dig en tur eller fællestur, vises den her.</p>
           </div>
         ) : null}
       </section>

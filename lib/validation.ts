@@ -120,15 +120,15 @@ export const organizationBookingSchema = z.object({
   message: "Sluttidspunkt skal være efter starttidspunkt."
 });
 export const eventSchema = z.object({
-  title: z.string().min(2, "Skriv navnet paa begivenheden."),
+  title: z.string().min(2, "Skriv navnet på begivenheden."),
   description: z.string().min(5, "Skriv en kort beskrivelse."),
   location: z.string().min(2, "Skriv stedet."),
-  date: z.string().min(1, "Vaelg en dato."),
-  startTime: z.string().regex(/^\d{2}:\d{2}$/, "Vaelg starttidspunkt."),
-  endTime: z.string().regex(/^\d{2}:\d{2}$/, "Vaelg sluttidspunkt."),
-  pickupInfo: z.string().max(500, "Opsamlingsinfo maa hoejst vaere 500 tegn.").optional(),
-  capacity: z.coerce.number().int().min(1, "Der skal vaere mindst 1 plads.").max(60, "Skriv hoejst 60 pladser."),
-  bus: z.enum(busOptions, { required_error: "Vaelg en bus." }),
+  date: z.string().min(1, "Vælg en dato."),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/, "Vælg starttidspunkt."),
+  endTime: z.string().regex(/^\d{2}:\d{2}$/, "Vælg sluttidspunkt."),
+  pickupInfo: z.string().max(500, "Opsamlingsinfo må højst være 500 tegn.").optional(),
+  capacity: z.coerce.number().int().min(1, "Der skal være mindst 1 plads.").max(60, "Skriv højst 60 pladser."),
+  bus: z.enum(busOptions, { required_error: "Vælg en bus." }),
   driverProfileId: z.preprocess(
     (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
     z.string().optional()
@@ -136,12 +136,12 @@ export const eventSchema = z.object({
   status: z.enum(["OPEN", "CLOSED", "CANCELLED"]).default("OPEN")
 }).refine((data) => data.endTime > data.startTime, {
   path: ["endTime"],
-  message: "Sluttidspunkt skal vaere efter starttidspunkt."
+  message: "Sluttidspunkt skal være efter starttidspunkt."
 });
 
 export const eventSignupSchema = z.object({
   eventId: z.string().min(1, "Begivenheden mangler."),
-  pickupAddress: z.string().max(200, "Afhentningsadresse maa hoejst vaere 200 tegn.").optional(),
-  passengers: z.coerce.number().int().min(1, "Der skal vaere mindst 1 passager.").max(8, "Kontakt os ved flere end 8 passagerer."),
-  notes: z.string().max(500, "Noter maa hoejst vaere 500 tegn.").optional()
+  pickupAddress: z.string().max(200, "Afhentningsadresse må højst være 200 tegn.").optional(),
+  passengers: z.coerce.number().int().min(1, "Der skal være mindst 1 passager.").max(8, "Kontakt os ved flere end 8 passagerer."),
+  notes: z.string().max(500, "Noter må højst være 500 tegn.").optional()
 });

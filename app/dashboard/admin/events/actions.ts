@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { createAuditLog } from "@/lib/audit";
 import { requireUser } from "@/lib/auth";
+import { createNotification } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { shiftsOverlap } from "@/lib/shifts";
 import { getSuperSaaSBookings } from "@/lib/supersaas-calendar";
@@ -88,11 +90,11 @@ async function eventHasConflict(data: {
     ...driverEvents.map((event) => ({ startTime: event.startTime, endTime: event.endTime }))
   ].some((item) => shiftsOverlap(data.startTime, data.endTime, item.startTime, item.endTime));
 
-  return driverBusy ? "Chauffoeren er allerede optaget i det tidsrum." : null;
+  return driverBusy ? "Chaufføren er allerede optaget i det tidsrum." : null;
 }
 
 export async function createEventAction(formData: FormData) {
-  await requireUser(["ADMIN"]);
+  const admin = await requireUser(["ADMIN"]);
   const parsed = eventSchema.safeParse(Object.fromEntries(formData));
 
   if (!parsed.success) {
@@ -100,6 +102,20 @@ export async function createEventAction(formData: FormData) {
   }
 
   const eventDate = new Date(`${parsed.data.date}T00:00:00`);
+  if (Number.isNaN(eventDate.getTime())) {
+    redirect("/dashboard/admin/events?error=Datoen%20er%20ikke%20gyldig.");
+  }
+
+  if (parsed.data.driverProfileId) {
+    const driverExists = await prisma.driverProfile.findFirst({
+      where: { id: parsed.data.driverProfileId, isActive: true },
+      select: { id: true }
+    });
+
+    if (!driverExists) {
+      redirect("/dashboard/admin/events?error=Den%20valgte%20chauff%C3%B8r%20kunne%20ikke%20findes.");
+    }
+  }
   const conflict = await eventHasConflict({
     date: eventDate,
     bus: parsed.data.bus,
@@ -112,26 +128,55 @@ export async function createEventAction(formData: FormData) {
     redirect(`/dashboard/admin/events?error=${encodeURIComponent(conflict)}`);
   }
 
-  await prisma.event.create({
-    data: {
-      title: parsed.data.title,
-      description: parsed.data.description,
-      location: parsed.data.location,
-      eventDate,
-      startTime: parsed.data.startTime,
-      endTime: parsed.data.endTime,
-      pickupInfo: parsed.data.pickupInfo,
-      capacity: parsed.data.capacity,
-      bus: parsed.data.bus,
-      driverProfileId: parsed.data.driverProfileId,
-      status: parsed.data.status
-    }
+  let event;
+  try {
+    event = await prisma.event.create({
+      data: {
+        title: parsed.data.title,
+        description: parsed.data.description,
+        location: parsed.data.location,
+        eventDate,
+        startTime: parsed.data.startTime,
+        endTime: parsed.data.endTime,
+        pickupInfo: parsed.data.pickupInfo?.trim() || null,
+        capacity: parsed.data.capacity,
+        bus: parsed.data.bus,
+        driverProfileId: parsed.data.driverProfileId,
+        status: parsed.data.status
+      },
+      include: {
+        driverProfile: { include: { user: true } }
+      }
+    });
+  } catch (error) {
+    console.error("[event create error]", error);
+    redirect("/dashboard/admin/events?error=Begivenheden%20kunne%20ikke%20gemmes.%20Pr%C3%B8v%20igen.");
+  }
+
+  await createAuditLog({
+    actorUserId: admin.id,
+    action: "EVENT_CREATED",
+    entityType: "Event",
+    entityId: event.id,
+    description: `${admin.name} oprettede begivenheden ${event.title}.`
   });
+
+  if (event.driverProfile) {
+    await createNotification({
+      userId: event.driverProfile.userId,
+      title: "Ny tildelt fællestur",
+      body: `${event.title} den ${event.eventDate.toLocaleDateString("da-DK")} kl. ${event.startTime}.`,
+      href: "/dashboard/driver#mine-ture",
+      driverType: "ASSIGNED_RIDES"
+    });
+  }
 
   revalidatePath("/dashboard/admin/events");
   revalidatePath("/dashboard/admin/buses");
   revalidatePath("/dashboard/citizen/events");
+  revalidatePath("/dashboard/driver");
   revalidatePath("/dashboard/organization/buses");
+  revalidatePath("/");
   redirect("/dashboard/admin/events?success=Begivenheden%20er%20oprettet.");
 }
 

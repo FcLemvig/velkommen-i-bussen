@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { createAuditLog } from "@/lib/audit";
 import { requireUser } from "@/lib/auth";
+import { createNotification } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { eventSignupSchema } from "@/lib/validation";
 
@@ -24,7 +26,7 @@ export async function signupForEventAction(formData: FormData) {
   });
 
   if (!event || event.status !== "OPEN") {
-    redirect("/dashboard/citizen/events?error=Begivenheden%20er%20ikke%20aaben%20for%20tilmelding.");
+    redirect("/dashboard/citizen/events?error=Begivenheden%20er%20ikke%20%C3%A5ben%20for%20tilmelding.");
   }
 
   const alreadySignedUp = event.signups.some((signup) => signup.citizenProfileId === user.citizenProfile?.id);
@@ -37,7 +39,7 @@ export async function signupForEventAction(formData: FormData) {
     redirect("/dashboard/citizen/events?error=Der%20er%20ikke%20plads%20til%20det%20antal%20passagerer.");
   }
 
-  await prisma.eventSignup.create({
+  const signup = await prisma.eventSignup.create({
     data: {
       eventId: event.id,
       citizenProfileId: user.citizenProfile.id,
@@ -47,9 +49,35 @@ export async function signupForEventAction(formData: FormData) {
     }
   });
 
+  await createAuditLog({
+    actorUserId: user.id,
+    action: "EVENT_SIGNUP_CREATED",
+    entityType: "EventSignup",
+    entityId: signup.id,
+    description: `${user.name} tilmeldte ${parsed.data.passengers} passager(er) til ${event.title}.`
+  });
+
+  if (event.driverProfileId) {
+    const driver = await prisma.driverProfile.findUnique({
+      where: { id: event.driverProfileId },
+      select: { userId: true }
+    });
+    if (driver) {
+      await createNotification({
+        userId: driver.userId,
+        title: "Ny passager på din fællestur",
+        body: `${user.name} har tilmeldt ${parsed.data.passengers} passager(er) til ${event.title}.`,
+        href: "/dashboard/driver#mine-ture",
+        driverType: "RIDE_CHANGES"
+      });
+    }
+  }
+
   revalidatePath("/dashboard/citizen/events");
   revalidatePath("/dashboard/admin/events");
-  redirect("/dashboard/citizen/events?success=Du%20er%20tilmeldt.");
+  revalidatePath("/dashboard/driver");
+  revalidatePath("/");
+  redirect("/dashboard/citizen/events?success=Du%20er%20tilmeldt%20ved%20opsamling.");
 }
 
 export async function cancelEventSignupAction(formData: FormData) {
@@ -60,14 +88,41 @@ export async function cancelEventSignupAction(formData: FormData) {
     redirect("/dashboard/citizen/events?error=Tilmeldingen%20kunne%20ikke%20fjernes.");
   }
 
-  await prisma.eventSignup.delete({
+  const signup = await prisma.eventSignup.delete({
     where: {
       id: signupId,
       citizenProfileId: user.citizenProfile.id
-    }
+    },
+    include: { event: true }
   });
+
+  await createAuditLog({
+    actorUserId: user.id,
+    action: "EVENT_SIGNUP_CANCELLED",
+    entityType: "EventSignup",
+    entityId: signup.id,
+    description: `${user.name} frameldte sig ${signup.event.title}.`
+  });
+
+  if (signup.event.driverProfileId) {
+    const driver = await prisma.driverProfile.findUnique({
+      where: { id: signup.event.driverProfileId },
+      select: { userId: true }
+    });
+    if (driver) {
+      await createNotification({
+        userId: driver.userId,
+        title: "Framelding fra din fællestur",
+        body: `${user.name} har frameldt sig ${signup.event.title}.`,
+        href: "/dashboard/driver#mine-ture",
+        driverType: "RIDE_CHANGES"
+      });
+    }
+  }
 
   revalidatePath("/dashboard/citizen/events");
   revalidatePath("/dashboard/admin/events");
+  revalidatePath("/dashboard/driver");
+  revalidatePath("/");
   redirect("/dashboard/citizen/events?success=Tilmeldingen%20er%20fjernet.");
 }
