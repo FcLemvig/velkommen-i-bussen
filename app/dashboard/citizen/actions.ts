@@ -208,6 +208,7 @@ export async function deleteRideRequestAction(formData: FormData) {
       ? [prisma.driverShift.delete({ where: { id: ride.automaticShift.id } })]
       : []),
     prisma.rideAssignment.deleteMany({ where: { rideRequestId: ride.id } }),
+    prisma.event.updateMany({ where: { sourceRideRequestId: ride.id }, data: { status: "CANCELLED" } }),
     prisma.rideRequest.update({
       where: { id: ride.id },
       data: { status: "CANCELLED" }
@@ -228,6 +229,9 @@ export async function deleteRideRequestAction(formData: FormData) {
   revalidatePath("/dashboard/admin/buses");
   revalidatePath("/dashboard/admin/activity");
   revalidatePath("/dashboard/driver");
+  revalidatePath("/dashboard/admin/events");
+  revalidatePath("/dashboard/citizen/events");
+  revalidatePath("/");
   redirect("/dashboard/citizen?success=Turen%20er%20annulleret%20og%20bevaret%20i%20historikken.");
 }
 

@@ -14,6 +14,7 @@ import { rideStatusLabels } from "@/lib/labels";
 import { isMembershipActive } from "@/lib/membership";
 import { createNotifications } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
+import { ensureRideSharingEvent, updateRideSharingEventStatus } from "@/lib/ride-sharing";
 
 function toRideEmailData(ride: {
   citizenProfile: { user: { name: string } };
@@ -67,6 +68,12 @@ export async function updateRideStatusAction(formData: FormData) {
     }
   });
 
+  if (["ASSIGNED", "IN_PROGRESS"].includes(status)) {
+    await ensureRideSharingEvent(ride.id);
+  } else {
+    await updateRideSharingEventStatus(ride.id, status === "COMPLETED" ? "CLOSED" : "CANCELLED");
+  }
+
   await createAuditLog({
     actorUserId: admin.id,
     action: "RIDE_STATUS_CHANGED",
@@ -94,6 +101,9 @@ export async function updateRideStatusAction(formData: FormData) {
   ]);
 
   revalidatePath("/dashboard/admin");
+  revalidatePath("/dashboard/admin/events");
+  revalidatePath("/dashboard/citizen/events");
+  revalidatePath("/");
 }
 
 export async function assignDriverAction(formData: FormData) {
@@ -162,6 +172,8 @@ export async function assignDriverAction(formData: FormData) {
     }
   });
 
+  await ensureRideSharingEvent(ride.id);
+
   if (ride.assignment?.driverProfile.user) {
     const rideData = toRideEmailData(ride);
     const citizen = {
@@ -206,5 +218,8 @@ export async function assignDriverAction(formData: FormData) {
   revalidatePath("/dashboard/driver");
   revalidatePath("/dashboard/citizen");
   revalidatePath("/dashboard/admin/activity");
+  revalidatePath("/dashboard/admin/events");
+  revalidatePath("/dashboard/citizen/events");
+  revalidatePath("/");
   redirect(`/dashboard/admin?success=${currentRide.automaticShift ? "Chauff%C3%B8ren%20er%20%C3%A6ndret%20p%C3%A5%20turen%20og%20den%20tilknyttede%20vagt." : "Chauff%C3%B8ren%20er%20%C3%A6ndret%20p%C3%A5%20turen."}`);
 }

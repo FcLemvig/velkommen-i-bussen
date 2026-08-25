@@ -42,7 +42,7 @@ export const rideRequestSchema = z.object({
   destinationAddress: z.string().min(3, "Skriv destinationsadressen."),
   date: z.string().min(1, "Vælg en dato."),
   time: z.string().regex(/^\d{2}:\d{2}$/, "Vælg et tidspunkt."),
-  passengers: z.coerce.number().int().min(1, "Der skal være mindst 1 passager.").max(8, "Kontakt os ved flere end 8 passagerer."),
+  passengers: z.coerce.number().int().min(1, "Der skal være mindst 1 passager.").max(6, "Der er højst plads til 6 passagerer i bussen."),
   purpose: z.string().min(2, "Skriv formålet med turen."),
   includesMinors: z.coerce.boolean().default(false),
   parentalConsent: z.coerce.boolean().default(false),
@@ -142,6 +142,6 @@ export const eventSchema = z.object({
 export const eventSignupSchema = z.object({
   eventId: z.string().min(1, "Begivenheden mangler."),
   pickupAddress: z.string().max(200, "Afhentningsadresse må højst være 200 tegn.").optional(),
-  passengers: z.coerce.number().int().min(1, "Der skal være mindst 1 passager.").max(8, "Kontakt os ved flere end 8 passagerer."),
+  passengers: z.coerce.number().int().min(1, "Der skal være mindst 1 passager.").max(6, "Der er højst plads til 6 passagerer i bussen."),
   notes: z.string().max(500, "Noter må højst være 500 tegn.").optional()
 });

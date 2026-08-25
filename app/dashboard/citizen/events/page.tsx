@@ -135,7 +135,7 @@ export default async function CitizenEventsPage({
                   <input type="hidden" name="eventId" value={event.id} />
                   <div className="grid max-w-44 gap-2">
                     <label htmlFor={`passengers-${event.id}`}>Antal passagerer</label>
-                    <input id={`passengers-${event.id}`} name="passengers" type="number" min="1" max="8" defaultValue="1" />
+                    <input id={`passengers-${event.id}`} name="passengers" type="number" min="1" max="6" defaultValue="1" />
                   </div>
                   <div className="grid gap-2">
                     <label htmlFor={`notes-${event.id}`}>Note til chaufføren</label>

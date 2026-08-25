@@ -181,7 +181,7 @@ export default async function CitizenDashboardPage({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
               <label htmlFor="passengers">Antal passagerer</label>
-              <input id="passengers" name="passengers" type="number" min="1" max="8" defaultValue="1" required />
+              <input id="passengers" name="passengers" type="number" min="1" max="6" defaultValue="1" required />
             </div>
             <div className="grid gap-2">
               <label htmlFor="purpose">Formål</label>

@@ -8,6 +8,7 @@ import { notifyActiveDrivers } from "@/lib/notifications";
 import { busLabels, BusName } from "@/lib/shifts";
 import { addHoursToTime, shiftsOverlap } from "@/lib/shifts";
 import { prisma } from "@/lib/prisma";
+import { ensureRideSharingEvent, updateRideSharingEventStatus } from "@/lib/ride-sharing";
 import { getSuperSaaSBookings } from "@/lib/supersaas-calendar";
 import { driverShiftSchema } from "@/lib/validation";
 
@@ -123,6 +124,7 @@ export async function deleteShiftAction(formData: FormData) {
       prisma.rideAssignment.deleteMany({ where: { rideRequestId: shift.rideRequestId } }),
       prisma.rideRequest.update({ where: { id: shift.rideRequestId }, data: { status: "PENDING" } })
     ]);
+    await updateRideSharingEventStatus(shift.rideRequestId, "CANCELLED");
   }
   await createAuditLog({
     actorUserId: admin.id,
@@ -135,6 +137,9 @@ export async function deleteShiftAction(formData: FormData) {
   revalidatePath("/dashboard/admin/buses");
   revalidatePath("/dashboard/driver");
   revalidatePath("/dashboard/admin/activity");
+  revalidatePath("/dashboard/admin/events");
+  revalidatePath("/dashboard/citizen/events");
+  revalidatePath("/");
   redirect("/dashboard/admin/shifts?success=Vagten%20er%20slettet.");
 }
 
@@ -184,11 +189,13 @@ export async function updateShiftAction(shiftId: string, formData: FormData) {
         }),
         prisma.rideRequest.update({ where: { id: shift.rideRequestId }, data: { status: "ASSIGNED" } })
       ]);
+      await ensureRideSharingEvent(shift.rideRequestId);
     } else {
       await prisma.$transaction([
         prisma.rideAssignment.deleteMany({ where: { rideRequestId: shift.rideRequestId } }),
         prisma.rideRequest.update({ where: { id: shift.rideRequestId }, data: { status: "PENDING" } })
       ]);
+      await updateRideSharingEventStatus(shift.rideRequestId, "CANCELLED");
     }
   }
 
@@ -207,5 +214,8 @@ export async function updateShiftAction(shiftId: string, formData: FormData) {
   revalidatePath("/dashboard/admin/buses");
   revalidatePath("/dashboard/driver");
   revalidatePath("/dashboard/admin/activity");
+  revalidatePath("/dashboard/admin/events");
+  revalidatePath("/dashboard/citizen/events");
+  revalidatePath("/");
   redirect("/dashboard/admin/shifts?success=Vagten%20er%20opdateret.");
 }

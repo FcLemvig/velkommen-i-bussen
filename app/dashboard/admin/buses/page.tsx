@@ -70,6 +70,7 @@ export default async function BusCalendarPage({
           gte: weekStart,
           lt: weekEnd
         },
+        sourceRideRequestId: null,
         status: { not: "CANCELLED" }
       },
       orderBy: [{ eventDate: "asc" }, { startTime: "asc" }],

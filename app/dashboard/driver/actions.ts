@@ -12,6 +12,7 @@ import {
 } from "@/lib/email";
 import { createNotification, createNotifications } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
+import { ensureRideSharingEvent, updateRideSharingEventStatus } from "@/lib/ride-sharing";
 import { saveDriverImage } from "@/lib/uploads";
 
 function toRideEmailData(ride: {
@@ -65,6 +66,8 @@ export async function completeRideAction(formData: FormData) {
     }
   });
 
+  await updateRideSharingEventStatus(ride.id, "CLOSED");
+
   await notifyCitizenAboutStatus(
     {
       email: ride.citizenProfile.user.email,
@@ -82,6 +85,9 @@ export async function completeRideAction(formData: FormData) {
   });
 
   revalidatePath("/dashboard/driver");
+  revalidatePath("/dashboard/admin/events");
+  revalidatePath("/dashboard/citizen/events");
+  revalidatePath("/");
 }
 
 export async function sendRideMessageAction(formData: FormData) {
@@ -225,6 +231,8 @@ export async function claimShiftAction(formData: FormData) {
     )
   ]);
 
+  await Promise.all(ridesInShift.map((ride) => ensureRideSharingEvent(ride.id)));
+
   await createAuditLog({
     actorUserId: user.id,
     action: "SHIFT_CLAIMED",
@@ -293,6 +301,9 @@ export async function claimShiftAction(formData: FormData) {
   revalidatePath("/dashboard/admin");
   revalidatePath("/dashboard/citizen");
   revalidatePath("/dashboard/admin/activity");
+  revalidatePath("/dashboard/admin/events");
+  revalidatePath("/dashboard/citizen/events");
+  revalidatePath("/");
   redirect(`/dashboard/driver?success=${rideText}`);
 }
 
@@ -339,6 +350,8 @@ export async function releaseShiftAction(formData: FormData) {
     })
   ]);
 
+  await Promise.all(rideIds.map((rideId) => updateRideSharingEventStatus(rideId, "CANCELLED")));
+
   await createAuditLog({
     actorUserId: user.id,
     action: "SHIFT_RELEASED",
@@ -351,5 +364,8 @@ export async function releaseShiftAction(formData: FormData) {
   revalidatePath("/dashboard/admin");
   revalidatePath("/dashboard/citizen");
   revalidatePath("/dashboard/admin/activity");
+  revalidatePath("/dashboard/admin/events");
+  revalidatePath("/dashboard/citizen/events");
+  revalidatePath("/");
   redirect(`/dashboard/driver?success=Vagten%20og%20${rideIds.length}%20tilh%C3%B8rende%20tur(e)%20er%20frigivet.`);
 }
