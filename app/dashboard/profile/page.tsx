@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, BadgeCheck, CreditCard, KeyRound, Mail, MapPin, Phone, UserRound } from "lucide-react";
+import { ArrowLeft, BadgeCheck, CreditCard, ExternalLink, KeyRound, Mail, MapPin, Phone, UserRound } from "lucide-react";
 import { changePasswordAction } from "@/app/dashboard/profile/actions";
 import { FormMessage } from "@/components/FormMessage";
 import { accessRolesForUser, requireUser } from "@/lib/auth";
@@ -100,6 +100,31 @@ export default async function ProfilePage({
           ) : null}
         </dl>
       </section>
+
+      {hasMembershipProfile ? (
+        <section className="rounded-[32px] border-2 border-fjord/25 bg-white p-6 shadow-sm">
+          <div className="flex items-start gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-bus/15 text-brown">
+              <CreditCard size={22} />
+            </span>
+            <div>
+              <h2 className="text-xl font-extrabold text-ink">Betaling og afmelding</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                Tilmelding, betaling og afmelding håndteres hos Unioo. Når du har foretaget en ændring, opdaterer kontoret din medlemsstatus i appen manuelt.
+              </p>
+            </div>
+          </div>
+          <a
+            href="https://frivilligcenterlemvig.unioo.info/subscriptions"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="button mt-5 w-full gap-2 bg-bus text-white hover:bg-bus/90 sm:w-fit"
+          >
+            Tilmeld, betal eller afmeld
+            <ExternalLink size={16} />
+          </a>
+        </section>
+      ) : null}
 
       <section className="rounded-[32px] border-2 border-fjord/25 bg-white p-6 shadow-sm">
         <div className="flex items-start gap-3">
