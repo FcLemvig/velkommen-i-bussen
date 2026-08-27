@@ -90,7 +90,11 @@ export default async function AdminDashboardPage({
         <p className="mt-3 max-w-2xl text-sm leading-6 text-white/85 md:text-base">
           Tildel chauffører, følg status og se hvor der mangler vagter.
         </p>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
+          <Link href="/dashboard/admin/rides/new" className="button gap-2 bg-bus text-white hover:bg-bus/90">
+            <Plus size={18} />
+            Opret tur
+          </Link>
           <Link href="/dashboard/admin/buses" className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20">
             <BusFront size={18} />
             Buskalender
@@ -111,7 +115,7 @@ export default async function AdminDashboardPage({
             <Building2 size={18} />
             Foreninger
           </Link>
-          <Link href="/dashboard/admin/drivers" className="button gap-2 bg-bus text-white hover:bg-bus/90">
+          <Link href="/dashboard/admin/drivers" className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20">
             <Plus size={18} />
             Chauffører
           </Link>
