@@ -2,7 +2,7 @@
 
 import { Trash2 } from "lucide-react";
 
-export function ConfirmSubmitButton({ message }: { message: string }) {
+export function ConfirmSubmitButton({ message, label = "Annuller tur" }: { message: string; label?: string }) {
   return (
     <button
       type="submit"
@@ -14,7 +14,7 @@ export function ConfirmSubmitButton({ message }: { message: string }) {
       }}
     >
       <Trash2 size={16} />
-      Annuller tur
+      {label}
     </button>
   );
 }

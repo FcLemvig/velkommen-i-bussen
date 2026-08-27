@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { ArrowLeft, Bus, CalendarDays, MapPin, Trash2, UserRound, UsersRound } from "lucide-react";
-import { createEventAction, deleteEventSignupAction, updateEventStatusAction } from "@/app/dashboard/admin/events/actions";
+import { ArrowLeft, Bus, CalendarDays, MapPin, Pencil, Trash2, UserRound, UsersRound } from "lucide-react";
+import { createEventAction, deleteEventAction, deleteEventSignupAction, updateEventStatusAction } from "@/app/dashboard/admin/events/actions";
+import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { FormMessage } from "@/components/FormMessage";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -238,6 +239,20 @@ export default async function AdminEventsPage({
               <p className="mt-4 w-fit rounded-full bg-fjord/25 px-3 py-1.5 text-xs font-bold text-ink">
                 {eventStatusLabels[event.status] ?? event.status}
               </p>
+
+              <div className="mt-5 flex flex-wrap gap-3 border-t border-slate-100 pt-4">
+                <Link href={`/dashboard/admin/events/${event.id}`} className="button gap-2 bg-bus text-white hover:bg-bus/90">
+                  <Pencil size={16} />
+                  Rediger
+                </Link>
+                <form action={deleteEventAction}>
+                  <input type="hidden" name="eventId" value={event.id} />
+                  <ConfirmSubmitButton
+                    label="Slet begivenhed"
+                    message={`Er du sikker på, at du vil slette ${event.title}? Alle tilmeldinger bliver også fjernet.`}
+                  />
+                </form>
+              </div>
             </article>
           );
         })}
