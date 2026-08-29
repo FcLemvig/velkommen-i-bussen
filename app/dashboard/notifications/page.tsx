@@ -57,12 +57,15 @@ export default async function NotificationsPage({
         </div>
       </section>
 
-      <FormMessage message={params.error || params.success} />
+      <FormMessage message={params.error} />
+      <FormMessage message={params.success} type="success" />
 
-      <PushPermissionButton publicKey={vapidPublicKey} />
+      <div className="order-3">
+        <PushPermissionButton publicKey={vapidPublicKey} />
+      </div>
 
       {user.driverProfile ? (
-        <form action={updateDriverNotificationPreferencesAction} className="grid gap-4 rounded-[24px] border border-fjord/20 bg-white p-4 shadow-sm">
+        <form action={updateDriverNotificationPreferencesAction} className="order-4 grid gap-4 rounded-[24px] border border-fjord/20 bg-white p-4 shadow-sm">
           <div className="flex items-center gap-3">
             <span className="grid h-11 w-11 place-items-center rounded-2xl bg-fjord/20 text-ink">
               <SlidersHorizontal size={22} />
@@ -103,7 +106,7 @@ export default async function NotificationsPage({
         </form>
       ) : null}
 
-      <section className="flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-fjord/20 bg-white p-4 shadow-sm">
+      <section className="order-1 flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-fjord/20 bg-white p-4 shadow-sm">
         <div className="flex items-center gap-3">
           <span className="grid h-11 w-11 place-items-center rounded-2xl bg-bus/15 text-brown">
             <Bell size={22} />
@@ -125,7 +128,7 @@ export default async function NotificationsPage({
         ) : null}
       </section>
 
-      <section className="grid gap-3">
+      <section className="order-2 grid gap-3">
         {notifications.map((notification) => (
           <article
             key={notification.id}

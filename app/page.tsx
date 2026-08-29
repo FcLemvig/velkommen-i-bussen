@@ -135,8 +135,8 @@ export default async function HomePage() {
               <div className="flex items-center gap-3">
                 <img src="/velkommen-i-bussen-logo.png" alt="" className="h-12 w-12 rounded-full" />
                 <div>
-                  <p className="font-extrabold text-ink">Min oversigt</p>
-                  <p className="text-xs text-slate-600">Klar til test</p>
+                  <p className="font-extrabold text-ink">Eksempel på din oversigt</p>
+                  <p className="text-xs text-slate-600">Sådan kan din side se ud</p>
                 </div>
               </div>
               <span className="grid h-10 w-10 place-items-center rounded-full bg-fjord/15 text-ink">
@@ -146,7 +146,7 @@ export default async function HomePage() {
 
             <div className="mt-4 rounded-3xl bg-ink p-4 text-white">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-bold text-white/80">Næste tur</p>
+                <p className="text-sm font-bold text-white/80">Eksempel på næste tur</p>
                 <span className="rounded-full bg-bus px-3 py-1 text-xs font-extrabold text-white">Afventer</span>
               </div>
               <p className="mt-4 text-2xl font-extrabold">Frivilligcenter Lemvig</p>

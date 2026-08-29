@@ -23,7 +23,53 @@ export default async function DriversPage() {
         </Link>
       </div>
 
-      <div className="overflow-x-auto rounded-[32px] border-2 border-fjord/25 bg-white shadow-sm">
+      <section className="grid gap-4 md:hidden">
+        {drivers.map((driver) => (
+          <article key={driver.id} className="rounded-[24px] border-2 border-fjord/25 bg-white p-5 shadow-sm">
+            <div className="flex items-center gap-3">
+              {driver.imageUrl ? (
+                <img src={driver.imageUrl} alt={driver.user.name} className="h-14 w-14 rounded-full object-cover" />
+              ) : (
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-bus text-lg font-bold text-ink">
+                  {driver.user.name.slice(0, 1)}
+                </div>
+              )}
+              <div className="min-w-0">
+                <h2 className="font-extrabold text-ink">{driver.user.name}</h2>
+                <a href={`mailto:${driver.user.email}`} className="block truncate text-sm text-slate-600">{driver.user.email}</a>
+              </div>
+            </div>
+            <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <dt className="text-xs font-bold uppercase text-slate-500">Telefon</dt>
+                <dd className="mt-1 text-ink">{driver.phone || "Ikke angivet"}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-bold uppercase text-slate-500">Status</dt>
+                <dd className="mt-1 font-bold text-ink">{driver.isActive ? "Aktiv" : "Inaktiv"}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-bold uppercase text-slate-500">Ture</dt>
+                <dd className="mt-1 text-ink">{driver.assignments.length}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-bold uppercase text-slate-500">Kørekort</dt>
+                <dd className="mt-1 text-ink">{driver.licenseNumber || "Ikke angivet"}</dd>
+              </div>
+            </dl>
+            <Link href={`/dashboard/admin/drivers/${driver.id}`} className="button mt-4 w-full bg-bus text-ink hover:bg-bus/90">
+              Rediger chauffør
+            </Link>
+          </article>
+        ))}
+        {drivers.length === 0 ? (
+          <div className="rounded-[24px] border-2 border-dashed border-fjord/25 bg-white p-7 text-center text-slate-500">
+            Der er ingen chauffører endnu.
+          </div>
+        ) : null}
+      </section>
+
+      <div className="hidden overflow-x-auto rounded-[32px] border-2 border-fjord/25 bg-white shadow-sm md:block">
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
             <tr>

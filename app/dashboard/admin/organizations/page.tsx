@@ -65,7 +65,64 @@ export default async function OrganizationsPage({
         </p>
       ) : null}
 
-      <section className="overflow-x-auto rounded-[32px] border-2 border-fjord/25 bg-white shadow-sm">
+      <section className="grid gap-4 md:hidden">
+        {organizations.map((organization) => {
+          const latestBooking = organization.bookings[0];
+
+          return (
+            <article key={organization.id} className="rounded-[24px] border-2 border-fjord/25 bg-white p-5 shadow-sm">
+              <div>
+                <h2 className="text-lg font-extrabold text-ink">{organization.user.name}</h2>
+                <a href={`mailto:${organization.user.email}`} className="mt-1 block break-all text-sm text-slate-600">
+                  {organization.user.email}
+                </a>
+              </div>
+
+              <dl className="mt-4 grid gap-3 text-sm">
+                <div>
+                  <dt className="text-xs font-bold uppercase text-slate-500">Telefon</dt>
+                  <dd className="mt-1 font-semibold text-ink">{organization.phone}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-bold uppercase text-slate-500">Adresse</dt>
+                  <dd className="mt-1 text-slate-700">{organization.address}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-bold uppercase text-slate-500">Bookinger</dt>
+                  <dd className="mt-1 text-slate-700">{organization._count.bookings}</dd>
+                </div>
+              </dl>
+
+              {latestBooking ? (
+                <div className="mt-4 rounded-2xl bg-cream p-4 text-sm">
+                  <p className="font-bold text-ink">Seneste booking</p>
+                  <p className="mt-1 text-slate-700">
+                    {latestBooking.bookingDate.toLocaleDateString("da-DK")} kl. {latestBooking.startTime}-{latestBooking.endTime}
+                  </p>
+                  <p className="mt-1 text-slate-600">{latestBooking.purpose}</p>
+                  <span className="mt-2 inline-flex rounded-full bg-fjord/25 px-3 py-1.5 text-xs font-bold text-ink">
+                    {latestBooking.status === "CANCELLED" ? "Annulleret" : "Bekræftet"}
+                  </span>
+                </div>
+              ) : null}
+
+              <div className="mt-4 border-t border-slate-100 pt-4">
+                <p className="mb-2 text-sm font-extrabold text-ink">
+                  {membershipTypeLabel(organization.user.membership)} · {membershipLabel(organization.user.membership)}
+                </p>
+                <MembershipForm userId={organization.user.id} status={organization.user.membership?.status} />
+              </div>
+            </article>
+          );
+        })}
+        {organizations.length === 0 ? (
+          <div className="rounded-[24px] border-2 border-dashed border-fjord/25 bg-white p-7 text-center text-slate-500">
+            Der er ingen foreningsprofiler endnu.
+          </div>
+        ) : null}
+      </section>
+
+      <section className="hidden overflow-x-auto rounded-[32px] border-2 border-fjord/25 bg-white shadow-sm md:block">
         <table className="w-full min-w-[960px] text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
             <tr>

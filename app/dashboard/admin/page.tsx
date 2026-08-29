@@ -90,7 +90,7 @@ export default async function AdminDashboardPage({
         <p className="mt-3 max-w-2xl text-sm leading-6 text-white/85 md:text-base">
           Tildel chauffører, følg status og se hvor der mangler vagter.
         </p>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
+        <div className="mt-5 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4 xl:grid-cols-8">
           <Link href="/dashboard/admin/rides/new" className="button gap-2 bg-bus text-white hover:bg-bus/90">
             <Plus size={18} />
             Opret tur

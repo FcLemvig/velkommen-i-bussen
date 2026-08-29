@@ -37,7 +37,8 @@ export default async function ProfilePage({
         </Link>
       </div>
 
-      <FormMessage message={params.error || params.success} />
+      <FormMessage message={params.error} />
+      <FormMessage message={params.success} type="success" />
 
       <section className="rounded-[32px] border-2 border-fjord/25 bg-white p-6 shadow-sm">
         <div className="flex items-center gap-4">

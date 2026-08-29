@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Bus, CalendarDays, MapPin, Pencil, Trash2, UserRound, UsersRound } from "lucide-react";
+import { ArrowLeft, Bus, CalendarDays, ChevronDown, MapPin, Pencil, Trash2, UserRound, UsersRound } from "lucide-react";
 import { createEventAction, deleteEventAction, deleteEventSignupAction, updateEventStatusAction } from "@/app/dashboard/admin/events/actions";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { FormMessage } from "@/components/FormMessage";
@@ -71,12 +71,17 @@ export default async function AdminEventsPage({
         </p>
       ) : null}
 
-      <section className="rounded-[32px] border-2 border-fjord/25 bg-white p-5 shadow-sm md:p-6">
-        <div className="mb-5">
-          <h2 className="text-2xl font-extrabold text-ink">Ny begivenhed</h2>
-          <p className="mt-1 text-sm text-slate-600">Vælg bus, tidspunkt, antal pladser og evt. chauffør.</p>
-        </div>
-        <form action={createEventAction} className="grid gap-4">
+      <details open={Boolean(params.error)} className="group rounded-[28px] border-2 border-fjord/25 bg-white shadow-sm open:shadow-md">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-5 [&::-webkit-details-marker]:hidden md:p-6">
+          <div>
+            <h2 className="text-xl font-extrabold text-ink">Opret ny begivenhed</h2>
+            <p className="mt-1 text-sm text-slate-600">Åbn formularen og vælg bus, tidspunkt, pladser og chauffør.</p>
+          </div>
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-fjord/30 bg-cream text-ink">
+            <ChevronDown className="transition-transform group-open:rotate-180" size={20} />
+          </span>
+        </summary>
+        <form action={createEventAction} className="grid gap-4 border-t border-fjord/20 p-5 md:p-6">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
               <label htmlFor="title">Navn</label>
@@ -148,7 +153,7 @@ export default async function AdminEventsPage({
             Opret begivenhed
           </button>
         </form>
-      </section>
+      </details>
 
       <section className="grid gap-4">
         <div>
