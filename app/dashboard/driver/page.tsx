@@ -75,18 +75,6 @@ export default async function DriverDashboardPage({
       ])
     : [[], [], [], []];
 
-  const openRideRequests = user.driverProfile
-    ? await prisma.rideRequest.findMany({
-        where: {
-          rideDate: { gte: today },
-          status: { notIn: ["COMPLETED", "CANCELLED"] }
-        },
-        orderBy: [{ rideDate: "asc" }, { rideTime: "asc" }],
-        take: 100,
-        include: { citizenProfile: { include: { user: true } } }
-      })
-    : [];
-
   const nextRide = assignments.find(({ rideRequest }) => rideRequest.status !== "COMPLETED")?.rideRequest;
 
   return (
@@ -191,14 +179,7 @@ export default async function DriverDashboardPage({
           <h2 className="text-2xl font-extrabold text-ink">Ledige vagter</h2>
           <div className="mt-4 grid gap-3">
             {openShifts.map((shift) => {
-              const ride =
-                shift.rideRequest ??
-                openRideRequests.find(
-                  (candidate) =>
-                    candidate.rideDate.toDateString() === shift.shiftDate.toDateString() &&
-                    candidate.rideTime >= shift.startTime &&
-                    candidate.rideTime < shift.endTime
-                );
+              const ride = shift.rideRequest;
 
               return (
                 <details key={shift.id} className="group rounded-2xl border border-bus/25 bg-bus/5 open:bg-white open:shadow-sm">
