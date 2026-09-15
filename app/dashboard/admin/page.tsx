@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Building2, BusFront, CalendarClock, CalendarPlus, History, MapPin, Plus, SlidersHorizontal, Users } from "lucide-react";
-import { assignDriverAction, updateRideStatusAction } from "@/app/dashboard/admin/actions";
+import { assignDriverAction, updateRideBusAction, updateRideStatusAction } from "@/app/dashboard/admin/actions";
 import { FormMessage } from "@/components/FormMessage";
 import { StatusBadge } from "@/components/StatusBadge";
 import { requireUser } from "@/lib/auth";
@@ -53,7 +53,8 @@ export default async function AdminDashboardPage({
       take: 100,
       include: {
         citizenProfile: { include: { user: { include: { membership: true } } } },
-        assignment: { include: { driverProfile: { include: { user: true } } } }
+        assignment: { include: { driverProfile: { include: { user: true } } } },
+        automaticShift: true
       }
     }),
     prisma.driverProfile.findMany({
@@ -238,6 +239,18 @@ export default async function AdminDashboardPage({
               </div>
 
               <div className="mt-5 grid gap-3 border-t border-slate-100 pt-4">
+                <form action={updateRideBusAction} className="grid gap-2">
+                  <input type="hidden" name="rideRequestId" value={ride.id} />
+                  <label htmlFor={`bus-${ride.id}`}>Bus</label>
+                  <select id={`bus-${ride.id}`} name="bus" defaultValue={ride.automaticShift?.bus ?? ""} required>
+                    <option value="">Vælg bus</option>
+                    <option value="EAST">Bus Øst</option>
+                    <option value="WEST">Bus Vest</option>
+                  </select>
+                  <button type="submit" className="border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
+                    Gem bus
+                  </button>
+                </form>
                 <form action={assignDriverAction} className="grid gap-2">
                   <input type="hidden" name="rideRequestId" value={ride.id} />
                   <label htmlFor={`driver-${ride.id}`}>Chauffør</label>
@@ -286,7 +299,7 @@ export default async function AdminDashboardPage({
               <th className="px-4 py-3">Borger</th>
               <th className="px-4 py-3">Tur</th>
               <th className="px-4 py-3">Formål</th>
-              <th className="px-4 py-3">Chauffør</th>
+              <th className="px-4 py-3">Bus og chauffør</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Handling</th>
             </tr>
@@ -341,6 +354,17 @@ export default async function AdminDashboardPage({
                   </td>
                   <td className="px-4 py-3">{ride.purpose}</td>
                   <td className="px-4 py-3">
+                    <form action={updateRideBusAction} className="mb-3 grid gap-2">
+                      <input type="hidden" name="rideRequestId" value={ride.id} />
+                      <select name="bus" aria-label="Bus" defaultValue={ride.automaticShift?.bus ?? ""} required>
+                        <option value="">Vælg bus</option>
+                        <option value="EAST">Bus Øst</option>
+                        <option value="WEST">Bus Vest</option>
+                      </select>
+                      <button type="submit" className="border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
+                        Gem bus
+                      </button>
+                    </form>
                     <form action={assignDriverAction} className="grid gap-2">
                       <input type="hidden" name="rideRequestId" value={ride.id} />
                       <select name="driverProfileId" defaultValue={ride.assignment?.driverProfileId ?? ""}>

@@ -30,6 +30,8 @@ async function busIsAvailable(data: {
   date: Date;
   startTime: string;
   endTime: string;
+  excludeShiftId?: string;
+  excludeRideRequestId?: string;
 }) {
   const { start, end } = dayRange(data.date);
   const [shifts, bookings, events, supersaasBookings] = await Promise.all([
@@ -57,13 +59,73 @@ async function busIsAvailable(data: {
   ]);
 
   return ![
-    ...shifts.map((shift) => ({ startTime: shift.startTime, endTime: shift.endTime })),
+    ...shifts
+      .filter((shift) => shift.id !== data.excludeShiftId)
+      .map((shift) => ({ startTime: shift.startTime, endTime: shift.endTime })),
     ...bookings.map((booking) => ({ startTime: booking.startTime, endTime: booking.endTime })),
-    ...events.map((event) => ({ startTime: event.startTime, endTime: event.endTime })),
+    ...events
+      .filter((event) => event.sourceRideRequestId !== data.excludeRideRequestId)
+      .map((event) => ({ startTime: event.startTime, endTime: event.endTime })),
     ...supersaasBookings
       .filter((booking) => booking.bus === data.bus)
       .map((booking) => ({ startTime: booking.startTime, endTime: booking.endTime }))
   ].some((item) => shiftsOverlap(data.startTime, data.endTime, item.startTime, item.endTime));
+}
+
+export async function setRideBus(rideRequestId: string, bus: BusName) {
+  const ride = await prisma.rideRequest.findUnique({
+    where: { id: rideRequestId },
+    include: { automaticShift: true, assignment: true }
+  });
+
+  if (!ride) {
+    return { error: "Turen kunne ikke findes." } as const;
+  }
+
+  const shiftStart = addMinutesToDateAndTime(ride.rideDate, ride.rideTime, -30);
+  const shiftEnd = addMinutesToDateAndTime(shiftStart.date, shiftStart.time, 120);
+
+  if (shiftStart.date.toDateString() !== shiftEnd.date.toDateString()) {
+    return { error: "Turen går over midnat og skal planlægges manuelt." } as const;
+  }
+
+  const available = await busIsAvailable({
+    bus,
+    date: shiftStart.date,
+    startTime: shiftStart.time,
+    endTime: shiftEnd.time,
+    excludeShiftId: ride.automaticShift?.id,
+    excludeRideRequestId: ride.id
+  });
+
+  if (!available) {
+    return { error: `${bus === "EAST" ? "Bus Øst" : "Bus Vest"} er optaget i det valgte tidsrum.` } as const;
+  }
+
+  const shift = ride.automaticShift
+    ? await prisma.driverShift.update({
+        where: { id: ride.automaticShift.id },
+        data: {
+          bus,
+          shiftDate: shiftStart.date,
+          startTime: shiftStart.time,
+          endTime: shiftEnd.time,
+          driverProfileId: ride.assignment?.driverProfileId ?? null
+        }
+      })
+    : await prisma.driverShift.create({
+        data: {
+          rideRequestId: ride.id,
+          bus,
+          shiftDate: shiftStart.date,
+          startTime: shiftStart.time,
+          endTime: shiftEnd.time,
+          driverProfileId: ride.assignment?.driverProfileId,
+          notes: `Bus valgt af administrationen til tur fra ${ride.pickupAddress} til ${ride.destinationAddress}.`
+        }
+      });
+
+  return { ride, shift } as const;
 }
 
 async function findAvailableBus(data: {
