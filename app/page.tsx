@@ -69,7 +69,7 @@ export default async function HomePage() {
       status: "OPEN"
     },
     orderBy: [{ eventDate: "asc" }, { startTime: "asc" }],
-    take: 3,
+    take: 6,
     include: { signups: true }
   });
 
@@ -189,8 +189,8 @@ export default async function HomePage() {
               Se aktuelle arrangementer uden login. Du skal oprette en profil eller logge ind for at tilmelde dig.
             </p>
           </div>
-          <Link href="/register?type=citizen" className="button gap-2 bg-bus text-white hover:bg-bus/90">
-            Opret profil
+          <Link href="/faellesture" className="button gap-2 bg-bus text-white hover:bg-bus/90">
+            Se alle fællesture
             <ArrowRight size={18} />
           </Link>
         </div>
@@ -223,9 +223,12 @@ export default async function HomePage() {
                       {busLabels[(event.bus || "EAST") as BusName]} · {remainingSeats} ledige plads(er)
                     </p>
                   </div>
-                  <Link href="/login" className="mt-5 inline-flex w-full items-center justify-between rounded-2xl bg-ink px-4 py-3 text-sm font-bold text-white transition hover:bg-brown">
-                    Log ind og tilmeld
+                  <Link href="/register?type=citizen" className="mt-5 inline-flex w-full items-center justify-between rounded-2xl bg-ink px-4 py-3 text-sm font-bold text-white transition hover:bg-brown">
+                    Opret medlemsprofil
                     <ArrowRight size={17} />
+                  </Link>
+                  <Link href="/login" className="mt-2 block text-center text-sm font-bold text-ink hover:text-bus">
+                    Har du allerede en profil? Log ind
                   </Link>
                 </article>
               );

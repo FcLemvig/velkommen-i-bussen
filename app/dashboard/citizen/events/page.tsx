@@ -4,6 +4,7 @@ import { cancelEventSignupAction, signupForEventAction } from "@/app/dashboard/c
 import { FormMessage } from "@/components/FormMessage";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isMembershipActive } from "@/lib/membership";
 import { departureTownFromSharingTitle } from "@/lib/ride-sharing";
 import { busLabels, BusName } from "@/lib/shifts";
 
@@ -20,6 +21,7 @@ export default async function CitizenEventsPage({
 }) {
   const params = await searchParams;
   const user = await requireUser(["CITIZEN"]);
+  const membershipActive = isMembershipActive(user.membership);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -70,7 +72,7 @@ export default async function CitizenEventsPage({
           const takenSeats = event.signups.reduce((sum, signup) => sum + signup.passengers, 0);
           const remainingSeats = Math.max(event.capacity - takenSeats, 0);
           const mySignup = event.signups.find((signup) => signup.citizenProfileId === user.citizenProfile?.id);
-          const canSignup = event.status === "OPEN" && remainingSeats > 0 && !mySignup;
+          const canSignup = membershipActive && event.status === "OPEN" && remainingSeats > 0 && !mySignup;
           const departureTown = event.sourceRideRequestId ? departureTownFromSharingTitle(event.title) : null;
 
           return (
@@ -134,6 +136,11 @@ export default async function CitizenEventsPage({
                       Frameld
                     </button>
                   </form>
+                </div>
+              ) : !membershipActive && event.status === "OPEN" && remainingSeats > 0 ? (
+                <div className="mt-5 grid gap-3 rounded-2xl border border-bus/25 bg-bus/10 p-4 sm:grid-cols-[1fr_auto] sm:items-center">
+                  <p className="text-sm font-semibold text-ink">Du skal have et aktivt medlemskab for at reservere sæder.</p>
+                  <Link href="/dashboard/profile" className="button bg-bus text-white hover:bg-bus/90">Se medlemskab</Link>
                 </div>
               ) : canSignup ? (
                 <form action={signupForEventAction} className="mt-5 grid gap-3 border-t border-slate-100 pt-4">
