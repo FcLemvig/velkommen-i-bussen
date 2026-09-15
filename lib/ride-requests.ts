@@ -128,6 +128,115 @@ export async function setRideBus(rideRequestId: string, bus: BusName) {
   return { ride, shift } as const;
 }
 
+export async function updateRideDetails(
+  rideRequestId: string,
+  data: RideRequestInput,
+  requestedBus?: BusName
+) {
+  const existingRide = await prisma.rideRequest.findUnique({
+    where: { id: rideRequestId },
+    include: {
+      automaticShift: true,
+      assignment: true,
+      sharedEvent: { include: { signups: true } }
+    }
+  });
+
+  if (!existingRide) {
+    return { error: "Turen kunne ikke findes." } as const;
+  }
+
+  const rideDate = new Date(`${data.date}T00:00:00`);
+  if (Number.isNaN(rideDate.getTime())) {
+    return { error: "Datoen er ikke gyldig." } as const;
+  }
+
+  const takenSharedSeats = existingRide.sharedEvent?.signups.reduce(
+    (sum, signup) => sum + signup.passengers,
+    0
+  ) ?? 0;
+  const availableSharedSeats = Math.max(6 - data.passengers, 0);
+
+  if (data.isSharedRide && takenSharedSeats > availableSharedSeats) {
+    return {
+      error: `Der er allerede reserveret ${takenSharedSeats} ekstra plads(er). Antallet af passagerer på selve turen kan derfor ikke sættes så højt.`
+    } as const;
+  }
+
+  const bus = requestedBus ?? (existingRide.automaticShift?.bus as BusName | undefined);
+  const shiftStart = addMinutesToDateAndTime(rideDate, data.time, -30);
+  const shiftEnd = addMinutesToDateAndTime(shiftStart.date, shiftStart.time, 120);
+
+  if (bus) {
+    if (shiftStart.date.toDateString() !== shiftEnd.date.toDateString()) {
+      return { error: "Turen går over midnat og skal planlægges manuelt." } as const;
+    }
+
+    const available = await busIsAvailable({
+      bus,
+      date: shiftStart.date,
+      startTime: shiftStart.time,
+      endTime: shiftEnd.time,
+      excludeShiftId: existingRide.automaticShift?.id,
+      excludeRideRequestId: existingRide.id
+    });
+
+    if (!available) {
+      return { error: `${bus === "EAST" ? "Bus Øst" : "Bus Vest"} er optaget i det nye tidsrum.` } as const;
+    }
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
+    const ride = await tx.rideRequest.update({
+      where: { id: existingRide.id },
+      data: {
+        pickupAddress: data.pickupAddress,
+        destinationAddress: data.destinationAddress,
+        rideDate,
+        rideTime: data.time,
+        passengers: data.passengers,
+        purpose: data.purpose,
+        isSharedRide: data.isSharedRide,
+        includesMinors: data.includesMinors,
+        parentalConsent: data.includesMinors ? data.parentalConsent : false,
+        guardianName: data.includesMinors ? data.guardianName?.trim() || null : null,
+        guardianPhone: data.includesMinors ? data.guardianPhone?.trim() || null : null,
+        notes: data.notes?.trim() || null
+      }
+    });
+
+    let shift = existingRide.automaticShift;
+    if (bus && existingRide.automaticShift) {
+      shift = await tx.driverShift.update({
+        where: { id: existingRide.automaticShift.id },
+        data: {
+          bus,
+          shiftDate: shiftStart.date,
+          startTime: shiftStart.time,
+          endTime: shiftEnd.time,
+          driverProfileId: existingRide.assignment?.driverProfileId ?? null
+        }
+      });
+    } else if (bus) {
+      shift = await tx.driverShift.create({
+        data: {
+          rideRequestId: existingRide.id,
+          bus,
+          shiftDate: shiftStart.date,
+          startTime: shiftStart.time,
+          endTime: shiftEnd.time,
+          driverProfileId: existingRide.assignment?.driverProfileId,
+          notes: `Oprettet ved redigering af tur fra ${data.pickupAddress} til ${data.destinationAddress}.`
+        }
+      });
+    }
+
+    return { ride, shift };
+  });
+
+  return { ...result, existingRide } as const;
+}
+
 async function findAvailableBus(data: {
   pickupAddress: string;
   date: Date;

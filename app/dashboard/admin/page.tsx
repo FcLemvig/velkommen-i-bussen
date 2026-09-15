@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building2, BusFront, CalendarClock, CalendarPlus, History, MapPin, Plus, SlidersHorizontal, Users } from "lucide-react";
+import { Building2, BusFront, CalendarClock, CalendarPlus, History, MapPin, Pencil, Plus, SlidersHorizontal, Users } from "lucide-react";
 import { assignDriverAction, updateRideBusAction, updateRideStatusAction } from "@/app/dashboard/admin/actions";
 import { FormMessage } from "@/components/FormMessage";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -239,6 +239,10 @@ export default async function AdminDashboardPage({
               </div>
 
               <div className="mt-5 grid gap-3 border-t border-slate-100 pt-4">
+                <Link href={`/dashboard/admin/rides/${ride.id}`} className="button gap-2 bg-bus text-white hover:bg-bus/90">
+                  <Pencil size={16} />
+                  Rediger tur
+                </Link>
                 <form action={updateRideBusAction} className="grid gap-2">
                   <input type="hidden" name="rideRequestId" value={ride.id} />
                   <label htmlFor={`bus-${ride.id}`}>Bus</label>
@@ -384,6 +388,10 @@ export default async function AdminDashboardPage({
                     <StatusBadge status={ride.status} />
                   </td>
                   <td className="px-4 py-3">
+                    <Link href={`/dashboard/admin/rides/${ride.id}`} className="button mb-3 w-full gap-2 bg-bus text-white hover:bg-bus/90">
+                      <Pencil size={16} />
+                      Rediger tur
+                    </Link>
                     <form action={updateRideStatusAction} className="grid gap-2">
                       <input type="hidden" name="rideRequestId" value={ride.id} />
                       <select name="status" defaultValue={ride.status}>
