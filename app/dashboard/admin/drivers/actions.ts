@@ -1,9 +1,12 @@
 "use server";
 
 import { Prisma } from "@prisma/client";
+import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { hashPassword, requireUser } from "@/lib/auth";
+import { sendDriverWelcomeEmail } from "@/lib/email";
+import { createPasswordResetToken, DRIVER_INVITE_MAX_AGE_MS } from "@/lib/password-reset";
 import { prisma } from "@/lib/prisma";
 import { saveDriverImage } from "@/lib/uploads";
 import { driverSchema } from "@/lib/validation";
@@ -37,9 +40,7 @@ export async function createDriverAction(formData: FormData) {
     redirect("/dashboard/admin/drivers/new?error=Brugeren%20er%20allerede%20oprettet%20som%20chauff%C3%B8r.");
   }
 
-  if (!existingUser && !parsed.data.password) {
-    redirect("/dashboard/admin/drivers/new?error=Skriv%20en%20midlertidig%20adgangskode%20p%C3%A5%20mindst%208%20tegn.");
-  }
+  let setupToken: string | undefined;
 
   try {
     if (existingUser) {
@@ -54,22 +55,36 @@ export async function createDriverAction(formData: FormData) {
         }
       });
     } else {
-      await prisma.user.create({
-        data: {
-          name: parsed.data.name,
-          email,
-          passwordHash: await hashPassword(parsed.data.password!),
-          role: "DRIVER",
-          driverProfile: {
-            create: {
-              phone: parsed.data.phone,
-              licenseNumber: parsed.data.licenseNumber,
-              imageUrl,
-              notes: parsed.data.notes,
-              isActive: parsed.data.isActive
+      const invite = createPasswordResetToken();
+      setupToken = invite.token;
+      const passwordHash = await hashPassword(randomBytes(32).toString("hex"));
+
+      await prisma.$transaction(async (tx) => {
+        const user = await tx.user.create({
+          data: {
+            name: parsed.data.name,
+            email,
+            passwordHash,
+            role: "DRIVER",
+            driverProfile: {
+              create: {
+                phone: parsed.data.phone,
+                licenseNumber: parsed.data.licenseNumber,
+                imageUrl,
+                notes: parsed.data.notes,
+                isActive: parsed.data.isActive
+              }
             }
-          },
-        }
+          }
+        });
+
+        await tx.passwordResetToken.create({
+          data: {
+            userId: user.id,
+            tokenHash: invite.tokenHash,
+            expiresAt: new Date(Date.now() + DRIVER_INVITE_MAX_AGE_MS)
+          }
+        });
       });
     }
   } catch (error) {
@@ -80,8 +95,16 @@ export async function createDriverAction(formData: FormData) {
     redirect("/dashboard/admin/drivers/new?error=Chauff%C3%B8ren%20kunne%20ikke%20oprettes.");
   }
 
+  const emailSent = await sendDriverWelcomeEmail(
+    { email, name: parsed.data.name },
+    setupToken
+  );
+
   revalidatePath("/dashboard/admin/drivers");
-  redirect("/dashboard/admin/drivers");
+  const message = emailSent
+    ? "Chaufføren er oprettet, og velkomstmailen er sendt."
+    : "Chaufføren er oprettet, men velkomstmailen kunne ikke sendes. Kontroller emailopsætningen.";
+  redirect(`/dashboard/admin/drivers?${emailSent ? "success" : "error"}=${encodeURIComponent(message)}`);
 }
 
 export async function addCitizenAccessAction(driverProfileId: string, formData: FormData) {

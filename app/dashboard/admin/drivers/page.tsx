@@ -1,10 +1,16 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
+import { FormMessage } from "@/components/FormMessage";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-export default async function DriversPage() {
+export default async function DriversPage({
+  searchParams
+}: {
+  searchParams: Promise<{ success?: string; error?: string }>;
+}) {
   await requireUser(["ADMIN"]);
+  const params = await searchParams;
   const drivers = await prisma.driverProfile.findMany({
     orderBy: { user: { name: "asc" } },
     include: { user: true, assignments: true }
@@ -22,6 +28,9 @@ export default async function DriversPage() {
           Ny chauffør
         </Link>
       </div>
+
+      <FormMessage message={params.success} type="success" />
+      <FormMessage message={params.error} />
 
       <section className="grid gap-4 md:hidden">
         {drivers.map((driver) => (

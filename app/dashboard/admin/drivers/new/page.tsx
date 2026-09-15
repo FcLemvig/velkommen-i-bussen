@@ -42,13 +42,8 @@ export default async function NewDriverPage({ searchParams }: { searchParams: Pr
           <input id="image" name="image" type="file" accept="image/png,image/jpeg,image/webp" />
           <p className="text-xs text-slate-500">JPG, PNG eller WebP. Maks. 2 MB.</p>
         </div>
-        <div className="grid gap-2">
-          <label htmlFor="password">Midlertidig adgangskode</label>
-          <input id="password" name="password" type="password" minLength={8} />
-          <p className="text-xs text-slate-500">
-            Skriv en midlertidig kode og send den til chauff&oslash;ren. Chauff&oslash;ren kan selv skifte den under Profil efter login.
-            Bruges kun, hvis emailen ikke allerede findes som bruger.
-          </p>
+        <div className="rounded-2xl border border-fjord/25 bg-fjord/10 px-4 py-3 text-sm text-slate-700">
+          Når chaufføren oprettes, sender appen automatisk en velkomstmail. En ny bruger får et sikkert link til selv at vælge adgangskode samt en kort guide til installation og notifikationer.
         </div>
         <div className="grid gap-2">
           <label htmlFor="notes">Noter</label>
