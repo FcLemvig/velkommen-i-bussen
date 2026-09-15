@@ -9,6 +9,7 @@ export type RideRequestInput = {
   time: string;
   passengers: number;
   purpose: string;
+  isSharedRide: boolean;
   includesMinors: boolean;
   parentalConsent: boolean;
   guardianName?: string;
@@ -111,6 +112,7 @@ export async function createRideWithAutomaticShift(data: {
         rideTime: data.ride.time,
         passengers: data.ride.passengers,
         purpose: data.ride.purpose,
+        isSharedRide: data.ride.isSharedRide,
         includesMinors: data.ride.includesMinors,
         parentalConsent: data.ride.parentalConsent,
         guardianName: data.ride.includesMinors ? data.ride.guardianName : undefined,

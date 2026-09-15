@@ -8,6 +8,7 @@ import { notifyAdminAboutNewRide, notifyDriverAboutCitizenMessage } from "@/lib/
 import { createNotification, notifyAdmins } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { createRideWithAutomaticShift } from "@/lib/ride-requests";
+import { ensureRideSharingEvent } from "@/lib/ride-sharing";
 import { busLabels, BusName } from "@/lib/shifts";
 import { rideRequestSchema } from "@/lib/validation";
 
@@ -28,6 +29,10 @@ export async function createRideRequestAction(formData: FormData) {
     citizenName: user.name,
     ride: parsed.data
   });
+
+  if (ride.isSharedRide && shift) {
+    await ensureRideSharingEvent(ride.id);
+  }
 
   await createAuditLog({
     actorUserId: user.id,
@@ -68,7 +73,17 @@ export async function createRideRequestAction(formData: FormData) {
   revalidatePath("/dashboard/admin/shifts");
   revalidatePath("/dashboard/admin/buses");
   revalidatePath("/dashboard/driver");
-  redirect("/dashboard/citizen?success=Din%20tur%20er%20oprettet.");
+  revalidatePath("/dashboard/citizen/events");
+  revalidatePath("/");
+
+  const success = ride.isSharedRide
+    ? shift
+      ? "Din tur, den tilhørende vagt og fællesturen er oprettet."
+      : "Din tur er oprettet, men der var ingen ledig bus. Fællesturen åbnes derfor ikke endnu."
+    : shift
+      ? "Din tur og den tilhørende vagt er oprettet."
+      : "Din tur er oprettet, men der var ingen ledig bus til en automatisk vagt.";
+  redirect(`/dashboard/citizen?success=${encodeURIComponent(success)}`);
 }
 
 export async function deleteRideRequestAction(formData: FormData) {

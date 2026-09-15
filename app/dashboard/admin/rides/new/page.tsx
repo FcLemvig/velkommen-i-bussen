@@ -79,6 +79,16 @@ export default async function NewAdminRidePage({
             </div>
           </div>
 
+          <label className="flex items-start gap-3 rounded-2xl border-2 border-bus/25 bg-bus/10 p-4">
+            <input className="mt-1 h-5 w-5" type="checkbox" name="isSharedRide" />
+            <span>
+              <span className="block font-extrabold text-ink">Opret som fællestur</span>
+              <span className="mt-1 block text-sm font-normal text-slate-600">
+                De resterende pladser kan reserveres af andre. Kun fra-by, til-by og afgangstid bliver vist offentligt.
+              </span>
+            </span>
+          </label>
+
           <div className="grid gap-3 rounded-2xl border-2 border-fjord/30 bg-cream p-4">
             <label className="flex items-start gap-3">
               <input className="mt-1 h-4 w-4" type="checkbox" name="includesMinors" />

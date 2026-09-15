@@ -147,6 +147,7 @@ model RideRequest {
   rideTime           String
   passengers         Int
   purpose            String
+  isSharedRide       Boolean          @default(false)
   includesMinors     Boolean          @default(false)
   parentalConsent    Boolean          @default(false)
   guardianName       String?
