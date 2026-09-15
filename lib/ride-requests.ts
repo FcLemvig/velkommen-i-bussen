@@ -18,11 +18,14 @@ export type RideRequestInput = {
 };
 
 function dayRange(date: Date) {
-  const start = new Date(date);
-  start.setHours(0, 0, 0, 0);
+  const start = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
   const end = new Date(start);
-  end.setDate(end.getDate() + 1);
+  end.setUTCDate(end.getUTCDate() + 1);
   return { start, end };
+}
+
+function sameUtcDate(left: Date, right: Date) {
+  return left.toISOString().slice(0, 10) === right.toISOString().slice(0, 10);
 }
 
 async function busIsAvailable(data: {
@@ -85,7 +88,7 @@ export async function setRideBus(rideRequestId: string, bus: BusName) {
   const shiftStart = addMinutesToDateAndTime(ride.rideDate, ride.rideTime, -30);
   const shiftEnd = addMinutesToDateAndTime(shiftStart.date, shiftStart.time, 120);
 
-  if (shiftStart.date.toDateString() !== shiftEnd.date.toDateString()) {
+  if (!sameUtcDate(shiftStart.date, shiftEnd.date)) {
     return { error: "Turen går over midnat og skal planlægges manuelt." } as const;
   }
 
@@ -146,7 +149,7 @@ export async function updateRideDetails(
     return { error: "Turen kunne ikke findes." } as const;
   }
 
-  const rideDate = new Date(`${data.date}T00:00:00`);
+  const rideDate = new Date(`${data.date}T00:00:00Z`);
   if (Number.isNaN(rideDate.getTime())) {
     return { error: "Datoen er ikke gyldig." } as const;
   }
@@ -168,7 +171,7 @@ export async function updateRideDetails(
   const shiftEnd = addMinutesToDateAndTime(shiftStart.date, shiftStart.time, 120);
 
   if (bus) {
-    if (shiftStart.date.toDateString() !== shiftEnd.date.toDateString()) {
+    if (!sameUtcDate(shiftStart.date, shiftEnd.date)) {
       return { error: "Turen går over midnat og skal planlægges manuelt." } as const;
     }
 
@@ -260,11 +263,11 @@ export async function createRideWithAutomaticShift(data: {
   citizenName: string;
   ride: RideRequestInput;
 }) {
-  const rideDate = new Date(`${data.ride.date}T00:00:00`);
+  const rideDate = new Date(`${data.ride.date}T00:00:00Z`);
   const shiftStart = addMinutesToDateAndTime(rideDate, data.ride.time, -30);
   const shiftEnd = addMinutesToDateAndTime(shiftStart.date, shiftStart.time, 120);
   const automaticShiftBus =
-    shiftStart.date.toDateString() === shiftEnd.date.toDateString()
+    sameUtcDate(shiftStart.date, shiftEnd.date)
       ? await findAvailableBus({
           pickupAddress: data.ride.pickupAddress,
           date: shiftStart.date,
