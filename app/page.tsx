@@ -165,7 +165,15 @@ export default async function HomePage() {
             </div>
           </div>
 
-          <div className="mx-auto w-full max-w-sm rounded-[34px] border border-white/35 bg-white/95 p-4 shadow-2xl shadow-ink/35 backdrop-blur">
+          <div className="mx-auto w-full max-w-[330px]">
+            <div className="relative rounded-[48px] bg-slate-950 p-[9px] shadow-2xl shadow-black/50 ring-1 ring-white/30">
+              <div className="pointer-events-none absolute left-1/2 top-[14px] z-20 h-6 w-24 -translate-x-1/2 rounded-full bg-slate-950" />
+              <div className="overflow-hidden rounded-[39px] bg-white pt-9">
+                <div className="flex items-center justify-between px-5 pb-2 text-[10px] font-bold text-ink">
+                  <span>09:41</span>
+                  <span>● ● ●</span>
+                </div>
+                <div className="px-4 pb-5">
             <div className="flex items-center justify-between border-b border-fjord/20 pb-4">
               <div className="flex items-center gap-3">
                 <img src="/velkommen-i-bussen-logo.png" alt="" className="h-12 w-12 rounded-full" />
@@ -211,6 +219,16 @@ export default async function HomePage() {
                 </div>
               ))}
             </div>
+                </div>
+                <div className="grid grid-cols-3 border-t border-fjord/20 bg-white px-4 py-3 text-[10px] font-bold text-slate-500">
+                  <span className="grid justify-items-center gap-1 text-bus"><Route size={18} />Mine ture</span>
+                  <span className="grid justify-items-center gap-1"><CalendarDays size={18} />Fællesture</span>
+                  <span className="grid justify-items-center gap-1"><Users size={18} />Profil</span>
+                </div>
+                <div className="mx-auto mb-2 mt-1 h-1 w-24 rounded-full bg-slate-950" />
+              </div>
+            </div>
+            <p className="mt-3 text-center text-xs font-bold text-white/75">Velkommen i Bussen som webapp på mobilen</p>
           </div>
         </div>
       </section>
