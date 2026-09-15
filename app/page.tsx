@@ -98,6 +98,41 @@ export default async function HomePage() {
               For borgere, frivillige chauffører og lokale foreninger i Sydlemvig.
             </p>
 
+            <section className="mt-6 max-w-xl overflow-hidden rounded-[28px] border-2 border-white bg-white text-ink shadow-2xl shadow-ink/35">
+              <div className="border-b border-fjord/20 px-4 py-4 sm:px-5">
+                <p className="text-xs font-extrabold uppercase text-bus">Fællesture</p>
+                <h2 className="mt-1 text-xl font-extrabold text-ink sm:text-2xl">Hop med, når bussen allerede kører</h2>
+                <p className="mt-1 text-sm leading-5 text-slate-600">Se ture med ledige sæder. Alle kan se turene, og medlemmer kan reservere en plads.</p>
+              </div>
+              {events.length > 0 ? (
+                <div className="divide-y divide-fjord/15">
+                  {events.slice(0, 2).map((event) => {
+                    const takenSeats = event.signups.reduce((sum, signup) => sum + signup.passengers, 0);
+                    const remainingSeats = Math.max(event.capacity - takenSeats, 0);
+
+                    return (
+                      <Link key={event.id} href="/faellesture" className="flex items-center justify-between gap-3 px-4 py-3 transition hover:bg-cream sm:px-5">
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-500">{event.eventDate.toLocaleDateString("da-DK")} kl. {event.startTime}</p>
+                          <p className="mt-1 truncate text-sm font-extrabold text-ink">{event.title}</p>
+                        </div>
+                        <span className="shrink-0 rounded-full bg-fjord/25 px-3 py-1.5 text-xs font-bold text-ink">{remainingSeats} ledige</span>
+                      </Link>
+                    );
+                  })}
+                  <Link href="/faellesture" className="flex items-center justify-between bg-bus px-4 py-3 text-sm font-extrabold text-white transition hover:bg-bus/90 sm:px-5">
+                    Se alle fællesture
+                    <ArrowRight size={18} />
+                  </Link>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-3 px-4 py-4 sm:px-5">
+                  <p className="text-sm font-semibold text-slate-600">Der er ingen åbne fællesture lige nu.</p>
+                  <Link href="/faellesture" className="font-bold text-bus hover:text-brown">Se oversigten</Link>
+                </div>
+              )}
+            </section>
+
             <div className="mt-7 grid max-w-xl gap-3 rounded-[30px] bg-ink/55 p-3 shadow-2xl shadow-ink/35 ring-1 ring-white/20 backdrop-blur sm:grid-cols-3">
               {primaryActions.map(({ title, text, href, action, icon: Icon, external }) => (
                 <div key={title} className="rounded-3xl border-2 border-white bg-white p-4 text-ink shadow-2xl shadow-ink/35">
