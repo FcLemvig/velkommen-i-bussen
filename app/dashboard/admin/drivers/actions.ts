@@ -107,6 +107,22 @@ export async function createDriverAction(formData: FormData) {
   redirect(`/dashboard/admin/drivers?${emailSent ? "success" : "error"}=${encodeURIComponent(message)}`);
 }
 
+export async function sendDriverWelcomeTestAction(formData: FormData) {
+  const admin = await requireUser(["ADMIN"]);
+  const email = String(formData.get("testEmail") ?? "").trim().toLowerCase();
+
+  if (!/^\S+@\S+\.\S+$/.test(email)) {
+    redirect("/dashboard/admin/drivers?error=Skriv%20en%20gyldig%20emailadresse.");
+  }
+
+  const emailSent = await sendDriverWelcomeEmail({ email, name: admin.name });
+  const message = emailSent
+    ? `Testmailen er sendt til ${email}.`
+    : "Testmailen kunne ikke sendes. Kontroller emailopsætningen.";
+
+  redirect(`/dashboard/admin/drivers?${emailSent ? "success" : "error"}=${encodeURIComponent(message)}`);
+}
+
 export async function addCitizenAccessAction(driverProfileId: string, formData: FormData) {
   await requireUser(["ADMIN"]);
   const phone = String(formData.get("citizenPhone") ?? "").trim();

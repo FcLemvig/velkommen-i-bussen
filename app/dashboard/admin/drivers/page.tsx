@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Mail, Plus } from "lucide-react";
+import { sendDriverWelcomeTestAction } from "@/app/dashboard/admin/drivers/actions";
 import { FormMessage } from "@/components/FormMessage";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -31,6 +32,17 @@ export default async function DriversPage({
 
       <FormMessage message={params.success} type="success" />
       <FormMessage message={params.error} />
+
+      <form action={sendDriverWelcomeTestAction} className="flex flex-wrap items-end gap-3 rounded-[24px] border border-fjord/20 bg-white p-4 shadow-sm">
+        <div className="grid min-w-0 flex-1 gap-2 sm:min-w-72">
+          <label htmlFor="testEmail">Test velkomstmail</label>
+          <input id="testEmail" name="testEmail" type="email" placeholder="navn@example.dk" required />
+        </div>
+        <button type="submit" className="w-full gap-2 bg-bus text-white hover:bg-bus/90 sm:w-fit">
+          <Mail size={16} />
+          Send testmail
+        </button>
+      </form>
 
       <section className="grid gap-4 md:hidden">
         {drivers.map((driver) => (
