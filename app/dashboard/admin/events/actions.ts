@@ -11,11 +11,14 @@ import { getSuperSaaSBookings } from "@/lib/supersaas-calendar";
 import { eventSchema } from "@/lib/validation";
 
 function dayRange(date: Date) {
-  const start = new Date(date);
-  start.setHours(0, 0, 0, 0);
+  const start = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
   const end = new Date(start);
-  end.setDate(end.getDate() + 1);
+  end.setUTCDate(end.getUTCDate() + 1);
   return { start, end };
+}
+
+function sameDate(left: Date, right: Date) {
+  return left.toISOString().slice(0, 10) === right.toISOString().slice(0, 10);
 }
 
 async function eventHasConflict(data: {
@@ -25,6 +28,8 @@ async function eventHasConflict(data: {
   endTime: string;
   driverProfileId?: string;
   excludeEventId?: string;
+  excludeRideRequestId?: string;
+  skipBusConflicts?: boolean;
 }) {
   const { start, end } = dayRange(data.date);
   const [bookings, shifts, events, supersaasBookings] = await Promise.all([
@@ -52,9 +57,11 @@ async function eventHasConflict(data: {
     getSuperSaaSBookings(start, end)
   ]);
 
-  const busBusy = [
+  const busBusy = !data.skipBusConflicts && [
     ...bookings.map((booking) => ({ startTime: booking.startTime, endTime: booking.endTime })),
-    ...shifts.map((shift) => ({ startTime: shift.startTime, endTime: shift.endTime })),
+    ...shifts
+      .filter((shift) => shift.rideRequestId !== data.excludeRideRequestId)
+      .map((shift) => ({ startTime: shift.startTime, endTime: shift.endTime })),
     ...events.map((event) => ({ startTime: event.startTime, endTime: event.endTime })),
     ...supersaasBookings.filter((booking) => booking.bus === data.bus).map((booking) => ({ startTime: booking.startTime, endTime: booking.endTime }))
   ].some((item) => shiftsOverlap(data.startTime, data.endTime, item.startTime, item.endTime));
@@ -89,7 +96,9 @@ async function eventHasConflict(data: {
 
   const driverBusy = [
     ...driverBookings.map((booking) => ({ startTime: booking.startTime, endTime: booking.endTime })),
-    ...driverShifts.map((shift) => ({ startTime: shift.startTime, endTime: shift.endTime })),
+    ...driverShifts
+      .filter((shift) => shift.rideRequestId !== data.excludeRideRequestId)
+      .map((shift) => ({ startTime: shift.startTime, endTime: shift.endTime })),
     ...driverEvents.map((event) => ({ startTime: event.startTime, endTime: event.endTime }))
   ].some((item) => shiftsOverlap(data.startTime, data.endTime, item.startTime, item.endTime));
 
@@ -104,7 +113,7 @@ export async function createEventAction(formData: FormData) {
     redirect(`/dashboard/admin/events?error=${encodeURIComponent(parsed.error.issues[0].message)}`);
   }
 
-  const eventDate = new Date(`${parsed.data.date}T00:00:00`);
+  const eventDate = new Date(`${parsed.data.date}T00:00:00Z`);
   if (Number.isNaN(eventDate.getTime())) {
     redirect("/dashboard/admin/events?error=Datoen%20er%20ikke%20gyldig.");
   }
@@ -224,7 +233,7 @@ export async function updateEventAction(eventId: string, formData: FormData) {
     redirect("/dashboard/admin/events?error=Begivenheden%20kunne%20ikke%20findes.");
   }
 
-  const eventDate = new Date(`${parsed.data.date}T00:00:00`);
+  const eventDate = new Date(`${parsed.data.date}T00:00:00Z`);
   if (Number.isNaN(eventDate.getTime())) {
     redirect(`/dashboard/admin/events/${eventId}?error=Datoen%20er%20ikke%20gyldig.`);
   }
@@ -246,13 +255,20 @@ export async function updateEventAction(eventId: string, formData: FormData) {
   }
 
   if (parsed.data.status !== "CANCELLED") {
+    const scheduleUnchanged =
+      sameDate(existingEvent.eventDate, eventDate) &&
+      existingEvent.bus === parsed.data.bus &&
+      existingEvent.startTime === parsed.data.startTime &&
+      existingEvent.endTime === parsed.data.endTime;
     const conflict = await eventHasConflict({
       date: eventDate,
       bus: parsed.data.bus,
       startTime: parsed.data.startTime,
       endTime: parsed.data.endTime,
       driverProfileId: parsed.data.driverProfileId,
-      excludeEventId: eventId
+      excludeEventId: eventId,
+      excludeRideRequestId: existingEvent.sourceRideRequestId ?? undefined,
+      skipBusConflicts: scheduleUnchanged
     });
 
     if (conflict) {
