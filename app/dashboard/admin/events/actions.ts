@@ -59,7 +59,9 @@ async function eventHasConflict(data: {
 
   const busBusy = !data.skipBusConflicts && [
     ...bookings.map((booking) => ({ startTime: booking.startTime, endTime: booking.endTime })),
-    ...shifts.filter((shift) => shift.rideRequestId !== data.excludeRideRequestId).map((shift) => ({ startTime: shift.startTime, endTime: shift.endTime })),
+    ...shifts
+      .filter((shift) => shift.rideRequestId !== data.excludeRideRequestId)
+      .map((shift) => ({ startTime: shift.startTime, endTime: shift.endTime })),
     ...events.map((event) => ({ startTime: event.startTime, endTime: event.endTime })),
     ...supersaasBookings.filter((booking) => booking.bus === data.bus).map((booking) => ({ startTime: booking.startTime, endTime: booking.endTime }))
   ].some((item) => shiftsOverlap(data.startTime, data.endTime, item.startTime, item.endTime));
@@ -94,7 +96,9 @@ async function eventHasConflict(data: {
 
   const driverBusy = [
     ...driverBookings.map((booking) => ({ startTime: booking.startTime, endTime: booking.endTime })),
-    ...driverShifts.filter((shift) => shift.rideRequestId !== data.excludeRideRequestId).map((shift) => ({ startTime: shift.startTime, endTime: shift.endTime })),
+    ...driverShifts
+      .filter((shift) => shift.rideRequestId !== data.excludeRideRequestId)
+      .map((shift) => ({ startTime: shift.startTime, endTime: shift.endTime })),
     ...driverEvents.map((event) => ({ startTime: event.startTime, endTime: event.endTime }))
   ].some((item) => shiftsOverlap(data.startTime, data.endTime, item.startTime, item.endTime));
 
@@ -251,7 +255,11 @@ export async function updateEventAction(eventId: string, formData: FormData) {
   }
 
   if (parsed.data.status !== "CANCELLED") {
-    const scheduleUnchanged = sameDate(existingEvent.eventDate, eventDate) && existingEvent.bus === parsed.data.bus && existingEvent.startTime === parsed.data.startTime && existingEvent.endTime === parsed.data.endTime;
+    const scheduleUnchanged =
+      sameDate(existingEvent.eventDate, eventDate) &&
+      existingEvent.bus === parsed.data.bus &&
+      existingEvent.startTime === parsed.data.startTime &&
+      existingEvent.endTime === parsed.data.endTime;
     const conflict = await eventHasConflict({
       date: eventDate,
       bus: parsed.data.bus,

@@ -69,7 +69,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 </>
               ) : (
                 <>
-                  <Link href="/faellesture" className="hidden font-semibold text-ink hover:text-bus sm:inline">Fællesture</Link>
+                  <Link href="/faellesture" className="hidden font-semibold text-ink hover:text-bus sm:inline">
+                    Fællesture
+                  </Link>
                   <Link href="/login" className="font-semibold text-ink hover:text-bus">
                     Log ind
                   </Link>
