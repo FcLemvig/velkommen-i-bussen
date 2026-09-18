@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft, CalendarDays, ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import { requireUser } from "@/lib/auth";
+import { organizationName } from "@/lib/organizations";
 import { prisma } from "@/lib/prisma";
 import { busLabels, busOptions, BusName } from "@/lib/shifts";
 import { getSuperSaaSBookings } from "@/lib/supersaas-calendar";
@@ -156,7 +157,7 @@ export default async function BusCalendarPage({
                             <Clock size={14} />
                             {booking.startTime} - {booking.endTime}
                           </div>
-                          <p className="mt-1 text-xs text-slate-700">{booking.organizationProfile.user.name}</p>
+                          <p className="mt-1 text-xs text-slate-700">{organizationName(booking.organizationProfile)}</p>
                           <p className="mt-1 text-xs text-slate-600">Chauffør: {booking.driverProfile.user.name}</p>
                           <p className="mt-1 text-xs text-slate-500">{booking.purpose}</p>
                         </div>
@@ -248,7 +249,7 @@ export default async function BusCalendarPage({
                           <div className="font-bold">
                             {booking.startTime} - {booking.endTime}
                           </div>
-                          <div className="mt-1 text-xs text-slate-700">{booking.organizationProfile.user.name}</div>
+                          <div className="mt-1 text-xs text-slate-700">{organizationName(booking.organizationProfile)}</div>
                           <div className="mt-1 text-xs text-slate-600">Chauffør: {booking.driverProfile.user.name}</div>
                           <div className="mt-1 text-xs text-slate-500">{booking.purpose}</div>
                         </div>

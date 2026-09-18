@@ -14,7 +14,9 @@ import { rideStatusLabels } from "@/lib/labels";
 import { isMembershipActive } from "@/lib/membership";
 import { createNotifications } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
+import { setRideBus } from "@/lib/ride-requests";
 import { ensureRideSharingEvent, updateRideSharingEventStatus } from "@/lib/ride-sharing";
+import { busLabels, busOptions, BusName } from "@/lib/shifts";
 
 function toRideEmailData(ride: {
   citizenProfile: { user: { name: string } };
@@ -222,4 +224,38 @@ export async function assignDriverAction(formData: FormData) {
   revalidatePath("/dashboard/citizen/events");
   revalidatePath("/");
   redirect(`/dashboard/admin?success=${currentRide.automaticShift ? "Chauff%C3%B8ren%20er%20%C3%A6ndret%20p%C3%A5%20turen%20og%20den%20tilknyttede%20vagt." : "Chauff%C3%B8ren%20er%20%C3%A6ndret%20p%C3%A5%20turen."}`);
+}
+
+export async function updateRideBusAction(formData: FormData) {
+  const admin = await requireUser(["ADMIN"]);
+  const rideRequestId = String(formData.get("rideRequestId") ?? "");
+  const bus = String(formData.get("bus") ?? "") as BusName;
+
+  if (!rideRequestId || !busOptions.includes(bus)) {
+    redirect("/dashboard/admin?error=V%C3%A6lg%20en%20bus.");
+  }
+
+  const result = await setRideBus(rideRequestId, bus);
+
+  if ("error" in result) {
+    redirect(`/dashboard/admin?error=${encodeURIComponent(result.error ?? "Bussen kunne ikke ændres.")}`);
+  }
+
+  await ensureRideSharingEvent(rideRequestId);
+  await createAuditLog({
+    actorUserId: admin.id,
+    action: "RIDE_BUS_CHANGED",
+    entityType: "RIDE_REQUEST",
+    entityId: rideRequestId,
+    description: `${admin.name} valgte ${busLabels[bus]} til turen den ${result.ride.rideDate.toLocaleDateString("da-DK")} kl. ${result.ride.rideTime}.`
+  });
+
+  revalidatePath("/dashboard/admin");
+  revalidatePath("/dashboard/admin/shifts");
+  revalidatePath("/dashboard/admin/buses");
+  revalidatePath("/dashboard/admin/events");
+  revalidatePath("/dashboard/citizen/events");
+  revalidatePath("/dashboard/driver");
+  revalidatePath("/");
+  redirect(`/dashboard/admin?success=${encodeURIComponent(`${busLabels[bus]} er valgt til turen.`)}`);
 }

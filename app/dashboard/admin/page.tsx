@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { Building2, BusFront, CalendarClock, CalendarPlus, History, MapPin, Plus, SlidersHorizontal, Users } from "lucide-react";
-import { assignDriverAction, updateRideStatusAction } from "@/app/dashboard/admin/actions";
+import { Building2, BusFront, CalendarClock, CalendarPlus, History, KeyRound, MapPin, Pencil, Plus, SlidersHorizontal, Users } from "lucide-react";
+import { assignDriverAction, updateRideBusAction, updateRideStatusAction } from "@/app/dashboard/admin/actions";
 import { FormMessage } from "@/components/FormMessage";
 import { StatusBadge } from "@/components/StatusBadge";
 import { requireUser } from "@/lib/auth";
@@ -53,7 +53,8 @@ export default async function AdminDashboardPage({
       take: 100,
       include: {
         citizenProfile: { include: { user: { include: { membership: true } } } },
-        assignment: { include: { driverProfile: { include: { user: true } } } }
+        assignment: { include: { driverProfile: { include: { user: true } } } },
+        automaticShift: true
       }
     }),
     prisma.driverProfile.findMany({
@@ -90,7 +91,11 @@ export default async function AdminDashboardPage({
         <p className="mt-3 max-w-2xl text-sm leading-6 text-white/85 md:text-base">
           Tildel chauffører, følg status og se hvor der mangler vagter.
         </p>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
+        <div className="mt-5 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4 xl:grid-cols-9">
+          <Link href="/dashboard/admin/rides/new" className="button gap-2 bg-bus text-white hover:bg-bus/90">
+            <Plus size={18} />
+            Opret tur
+          </Link>
           <Link href="/dashboard/admin/buses" className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20">
             <BusFront size={18} />
             Buskalender
@@ -111,13 +116,17 @@ export default async function AdminDashboardPage({
             <Building2 size={18} />
             Foreninger
           </Link>
-          <Link href="/dashboard/admin/drivers" className="button gap-2 bg-bus text-white hover:bg-bus/90">
+          <Link href="/dashboard/admin/drivers" className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20">
             <Plus size={18} />
             Chauffører
           </Link>
           <Link href="/dashboard/admin/activity" className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20">
             <History size={18} />
             Aktivitetslog
+          </Link>
+          <Link href="/dashboard/admin/users" className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20">
+            <KeyRound size={18} />
+            Adgange
           </Link>
         </div>
       </section>
@@ -234,6 +243,22 @@ export default async function AdminDashboardPage({
               </div>
 
               <div className="mt-5 grid gap-3 border-t border-slate-100 pt-4">
+                <Link href={`/dashboard/admin/rides/${ride.id}`} className="button gap-2 bg-bus text-white hover:bg-bus/90">
+                  <Pencil size={16} />
+                  Rediger tur
+                </Link>
+                <form action={updateRideBusAction} className="grid gap-2">
+                  <input type="hidden" name="rideRequestId" value={ride.id} />
+                  <label htmlFor={`bus-${ride.id}`}>Bus</label>
+                  <select id={`bus-${ride.id}`} name="bus" defaultValue={ride.automaticShift?.bus ?? ""} required>
+                    <option value="">Vælg bus</option>
+                    <option value="EAST">Bus Øst</option>
+                    <option value="WEST">Bus Vest</option>
+                  </select>
+                  <button type="submit" className="border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
+                    Gem bus
+                  </button>
+                </form>
                 <form action={assignDriverAction} className="grid gap-2">
                   <input type="hidden" name="rideRequestId" value={ride.id} />
                   <label htmlFor={`driver-${ride.id}`}>Chauffør</label>
@@ -282,7 +307,7 @@ export default async function AdminDashboardPage({
               <th className="px-4 py-3">Borger</th>
               <th className="px-4 py-3">Tur</th>
               <th className="px-4 py-3">Formål</th>
-              <th className="px-4 py-3">Chauffør</th>
+              <th className="px-4 py-3">Bus og chauffør</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Handling</th>
             </tr>
@@ -337,6 +362,17 @@ export default async function AdminDashboardPage({
                   </td>
                   <td className="px-4 py-3">{ride.purpose}</td>
                   <td className="px-4 py-3">
+                    <form action={updateRideBusAction} className="mb-3 grid gap-2">
+                      <input type="hidden" name="rideRequestId" value={ride.id} />
+                      <select name="bus" aria-label="Bus" defaultValue={ride.automaticShift?.bus ?? ""} required>
+                        <option value="">Vælg bus</option>
+                        <option value="EAST">Bus Øst</option>
+                        <option value="WEST">Bus Vest</option>
+                      </select>
+                      <button type="submit" className="border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
+                        Gem bus
+                      </button>
+                    </form>
                     <form action={assignDriverAction} className="grid gap-2">
                       <input type="hidden" name="rideRequestId" value={ride.id} />
                       <select name="driverProfileId" defaultValue={ride.assignment?.driverProfileId ?? ""}>
@@ -356,6 +392,10 @@ export default async function AdminDashboardPage({
                     <StatusBadge status={ride.status} />
                   </td>
                   <td className="px-4 py-3">
+                    <Link href={`/dashboard/admin/rides/${ride.id}`} className="button mb-3 w-full gap-2 bg-bus text-white hover:bg-bus/90">
+                      <Pencil size={16} />
+                      Rediger tur
+                    </Link>
                     <form action={updateRideStatusAction} className="grid gap-2">
                       <input type="hidden" name="rideRequestId" value={ride.id} />
                       <select name="status" defaultValue={ride.status}>

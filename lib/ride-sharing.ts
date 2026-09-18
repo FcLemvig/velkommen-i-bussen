@@ -38,7 +38,7 @@ export async function ensureRideSharingEvent(rideRequestId: string) {
     }
   });
 
-  if (!ride?.automaticShift || !ride.assignment || ["CANCELLED", "COMPLETED"].includes(ride.status)) {
+  if (!ride?.isSharedRide || !ride.automaticShift || ["CANCELLED", "COMPLETED"].includes(ride.status)) {
     return null;
   }
 
@@ -59,7 +59,7 @@ export async function ensureRideSharingEvent(rideRequestId: string) {
       pickupInfo: `Afgang fra ${fromTown} kl. ${ride.rideTime}. Skriv en note, hvis du ønsker opsamling på ruten.`,
       capacity: availableSeats,
       bus: ride.automaticShift.bus,
-      driverProfileId: ride.assignment.driverProfileId,
+      driverProfileId: ride.assignment?.driverProfileId,
       status: availableSeats > 0 ? "OPEN" : "CLOSED"
     },
     update: {
@@ -72,7 +72,7 @@ export async function ensureRideSharingEvent(rideRequestId: string) {
       pickupInfo: `Afgang fra ${fromTown} kl. ${ride.rideTime}. Skriv en note, hvis du ønsker opsamling på ruten.`,
       capacity: availableSeats,
       bus: ride.automaticShift.bus,
-      driverProfileId: ride.assignment.driverProfileId,
+      driverProfileId: ride.assignment?.driverProfileId ?? null,
       status: availableSeats > 0 ? "OPEN" : "CLOSED"
     }
   });

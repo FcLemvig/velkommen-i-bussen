@@ -51,7 +51,7 @@ async function sendEmail(to: EmailRecipient, subject: string, text: string) {
 
   if (!apiKey) {
     console.info(`[email skipped] ${subject} -> ${to.email}`);
-    return;
+    return false;
   }
 
   const response = await fetch("https://api.resend.com/emails", {
@@ -71,17 +71,35 @@ async function sendEmail(to: EmailRecipient, subject: string, text: string) {
   if (!response.ok) {
     const body = await response.text();
     console.error(`[email failed] ${response.status} ${body}`);
+    return false;
   }
+
+  return true;
 }
 
 async function safelySendEmail(to: EmailRecipient | null | undefined, subject: string, text: string) {
-  if (!to?.email) return;
+  if (!to?.email) return false;
 
   try {
-    await sendEmail(to, subject, text);
+    return await sendEmail(to, subject, text);
   } catch (error) {
     console.error("[email error]", error);
+    return false;
   }
+}
+
+export async function sendDriverWelcomeEmail(to: EmailRecipient, setupToken?: string) {
+  const loginUrl = `${appUrl}/login`;
+  const notificationsUrl = `${appUrl}/dashboard/notifications`;
+  const accessSection = setupToken
+    ? `Vælg først din egen adgangskode her:\n${appUrl}/reset-password?token=${encodeURIComponent(setupToken)}\n\nLinket virker i 7 dage og kan kun bruges én gang.`
+    : `Du har allerede en profil i appen. Brug din nuværende email og adgangskode til at logge ind:\n${loginUrl}`;
+
+  return safelySendEmail(
+    to,
+    "Velkommen som frivillig chauffør",
+    `Hej ${to.name || "chauffør"}\n\nDu er nu oprettet som frivillig chauffør i Velkommen i Bussen.\n\n${accessSection}\n\nSådan kommer du i gang:\n1. Log ind på ${loginUrl}\n2. Åbn Chauffør fra Min side.\n3. Under Ledige vagter kan du læse om en kørsel og tage den.\n4. Dine vagter og tildelte ture vises på chaufførsiden. Her kan du også skrive med borgeren og markere turen som gennemført.\n\nGem appen på mobilen:\nAndroid: Åbn siden i Chrome, tryk på menuen med tre prikker, og vælg Installer app eller Føj til startskærm.\niPhone: Åbn siden i Safari, tryk på Del, vælg Føj til hjemmeskærm, og tryk Tilføj.\n\nNotifikationer:\nÅbn ${notificationsUrl} efter login, tryk Slå push til, og tillad notifikationer. Du kan vælge beskeder om nye vagter, tildelte ture samt ændringer og aflysninger.\n\nHar du brug for hjælp, kan du kontakte Velkommen i Bussen.\n\nVenlig hilsen\nVelkommen i Bussen`
+  );
 }
 
 export async function notifyAdminAboutNewRide(ride: RideEmailData) {

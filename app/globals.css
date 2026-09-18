@@ -44,6 +44,20 @@ button,
   @apply inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-bold transition;
 }
 
+.bg-bus.text-white {
+  color: var(--color-dark);
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible {
+  outline: 3px solid var(--color-secondary);
+  outline-offset: 3px;
+}
+
 table {
   color: var(--color-dark);
 }

@@ -4,6 +4,7 @@ import { cancelOrganizationBookingAction, createOrganizationBookingAction } from
 import { FormMessage } from "@/components/FormMessage";
 import { requireUser } from "@/lib/auth";
 import { isMembershipActive } from "@/lib/membership";
+import { organizationName } from "@/lib/organizations";
 import { prisma } from "@/lib/prisma";
 import { busLabels, busOptions, BusName } from "@/lib/shifts";
 
@@ -33,12 +34,13 @@ export default async function OrganizationDashboardPage({
 
   const nextBooking = bookings.find((booking) => booking.status !== "CANCELLED");
   const hasActiveMembership = isMembershipActive(user.membership);
+  const displayName = user.organizationProfile ? organizationName({ ...user.organizationProfile, user }) : user.name;
 
   return (
     <main className="mx-auto grid max-w-5xl gap-6 px-4 py-5 md:py-8">
       <section className="rounded-[32px] bg-ink px-5 py-6 text-white shadow-xl shadow-ink/10 md:px-8">
         <p className="text-sm font-bold uppercase text-white/75">Forening/institution</p>
-        <h1 className="mt-2 text-3xl font-extrabold text-white md:text-4xl">Hej {user.name}</h1>
+        <h1 className="mt-2 text-3xl font-extrabold text-white md:text-4xl">Hej {displayName}</h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-white/85 md:text-base">
           Her kan I booke en frivilligbus, vælge chauffør og se jeres egne bookinger.
         </p>

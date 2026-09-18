@@ -20,13 +20,12 @@ export function addHoursToTime(time: string, hours: number) {
 
 export function addMinutesToDateAndTime(date: Date, time: string, minutes: number) {
   const [hour, minute] = time.split(":").map(Number);
-  const next = new Date(date);
-  next.setHours(hour, minute, 0, 0);
-  next.setMinutes(next.getMinutes() + minutes);
+  const next = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), hour, minute));
+  next.setUTCMinutes(next.getUTCMinutes() + minutes);
 
   return {
-    date: new Date(next.getFullYear(), next.getMonth(), next.getDate()),
-    time: `${String(next.getHours()).padStart(2, "0")}:${String(next.getMinutes()).padStart(2, "0")}`
+    date: new Date(Date.UTC(next.getUTCFullYear(), next.getUTCMonth(), next.getUTCDate())),
+    time: `${String(next.getUTCHours()).padStart(2, "0")}:${String(next.getUTCMinutes()).padStart(2, "0")}`
   };
 }
 

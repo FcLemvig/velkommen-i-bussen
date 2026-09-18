@@ -69,7 +69,7 @@ export default async function HomePage() {
       status: "OPEN"
     },
     orderBy: [{ eventDate: "asc" }, { startTime: "asc" }],
-    take: 3,
+    take: 6,
     include: { signups: true }
   });
 
@@ -97,6 +97,22 @@ export default async function HomePage() {
             <p className="mt-5 max-w-xl text-base font-semibold leading-7 text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.5)] sm:text-lg">
               For borgere, frivillige chauffører og lokale foreninger i Sydlemvig.
             </p>
+
+            <section className="mt-6 max-w-xl overflow-hidden rounded-[28px] border-2 border-white bg-white text-ink shadow-2xl shadow-ink/35">
+              <div className="border-b border-fjord/20 px-4 py-4 sm:px-5">
+                <p className="text-xs font-extrabold uppercase text-bus">Fællesture</p>
+                <h2 className="mt-1 text-xl font-extrabold text-ink sm:text-2xl">Hop med, når bussen allerede kører</h2>
+                <p className="mt-1 text-sm leading-5 text-slate-600">Se ture med ledige sæder. Alle kan se turene, og medlemmer kan reservere en plads.</p>
+              </div>
+              {events.length > 0 ? <div className="divide-y divide-fjord/15">
+                {events.slice(0, 2).map((event) => {
+                  const takenSeats = event.signups.reduce((sum, signup) => sum + signup.passengers, 0);
+                  const remainingSeats = Math.max(event.capacity - takenSeats, 0);
+                  return <Link key={event.id} href="/faellesture" className="flex items-center justify-between gap-3 px-4 py-3 transition hover:bg-cream sm:px-5"><div className="min-w-0"><p className="text-xs font-bold text-slate-500">{event.eventDate.toLocaleDateString("da-DK")} kl. {event.startTime}</p><p className="mt-1 truncate text-sm font-extrabold text-ink">{event.title}</p></div><span className="shrink-0 rounded-full bg-fjord/25 px-3 py-1.5 text-xs font-bold text-ink">{remainingSeats} ledige</span></Link>;
+                })}
+                <Link href="/faellesture" className="flex items-center justify-between bg-bus px-4 py-3 text-sm font-extrabold text-white transition hover:bg-bus/90 sm:px-5">Se alle fællesture<ArrowRight size={18} /></Link>
+              </div> : <div className="flex items-center justify-between gap-3 px-4 py-4 sm:px-5"><p className="text-sm font-semibold text-slate-600">Der er ingen åbne fællesture lige nu.</p><Link href="/faellesture" className="font-bold text-bus hover:text-brown">Se oversigten</Link></div>}
+            </section>
 
             <div className="mt-7 grid max-w-xl gap-3 rounded-[30px] bg-ink/55 p-3 shadow-2xl shadow-ink/35 ring-1 ring-white/20 backdrop-blur sm:grid-cols-3">
               {primaryActions.map(({ title, text, href, action, icon: Icon, external }) => (
@@ -135,8 +151,8 @@ export default async function HomePage() {
               <div className="flex items-center gap-3">
                 <img src="/velkommen-i-bussen-logo.png" alt="" className="h-12 w-12 rounded-full" />
                 <div>
-                  <p className="font-extrabold text-ink">Min oversigt</p>
-                  <p className="text-xs text-slate-600">Klar til test</p>
+                  <p className="font-extrabold text-ink">Eksempel på din oversigt</p>
+                  <p className="text-xs text-slate-600">Sådan kan din side se ud</p>
                 </div>
               </div>
               <span className="grid h-10 w-10 place-items-center rounded-full bg-fjord/15 text-ink">
@@ -146,7 +162,7 @@ export default async function HomePage() {
 
             <div className="mt-4 rounded-3xl bg-ink p-4 text-white">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-bold text-white/80">Næste tur</p>
+                <p className="text-sm font-bold text-white/80">Eksempel på næste tur</p>
                 <span className="rounded-full bg-bus px-3 py-1 text-xs font-extrabold text-white">Afventer</span>
               </div>
               <p className="mt-4 text-2xl font-extrabold">Frivilligcenter Lemvig</p>
@@ -189,8 +205,8 @@ export default async function HomePage() {
               Se aktuelle arrangementer uden login. Du skal oprette en profil eller logge ind for at tilmelde dig.
             </p>
           </div>
-          <Link href="/register?type=citizen" className="button gap-2 bg-bus text-white hover:bg-bus/90">
-            Opret profil
+          <Link href="/faellesture" className="button gap-2 bg-bus text-white hover:bg-bus/90">
+            Se alle fællesture
             <ArrowRight size={18} />
           </Link>
         </div>
@@ -223,10 +239,11 @@ export default async function HomePage() {
                       {busLabels[(event.bus || "EAST") as BusName]} · {remainingSeats} ledige plads(er)
                     </p>
                   </div>
-                  <Link href="/login" className="mt-5 inline-flex w-full items-center justify-between rounded-2xl bg-ink px-4 py-3 text-sm font-bold text-white transition hover:bg-brown">
-                    Log ind og tilmeld
+                  <Link href="/register?type=citizen" className="mt-5 inline-flex w-full items-center justify-between rounded-2xl bg-ink px-4 py-3 text-sm font-bold text-white transition hover:bg-brown">
+                    Opret medlemsprofil
                     <ArrowRight size={17} />
                   </Link>
+                  <Link href="/login" className="mt-2 block text-center text-sm font-bold text-ink hover:text-bus">Har du allerede en profil? Log ind</Link>
                 </article>
               );
             })}

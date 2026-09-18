@@ -23,7 +23,7 @@ async function main() {
       email: "admin@vib.dk",
       passwordHash,
       role: "ADMIN",
-      membership: { create: { status: "ACTIVE" } }
+      membership: { create: { status: "ACTIVE", type: "INDIVIDUAL" } }
     }
   });
 
@@ -34,7 +34,7 @@ async function main() {
       passwordHash,
       role: "CITIZEN",
       citizenProfile: { create: { phone: "22112211", address: "Nørregade 12, Lemvig" } },
-      membership: { create: { status: "ACTIVE" } }
+      membership: { create: { status: "ACTIVE", type: "INDIVIDUAL" } }
     },
     include: { citizenProfile: true }
   });
@@ -46,7 +46,7 @@ async function main() {
       passwordHash,
       role: "CITIZEN",
       citizenProfile: { create: { phone: "22334455", address: "Søndergade 8, Lemvig" } },
-      membership: { create: { status: "ACTIVE" } }
+      membership: { create: { status: "ACTIVE", type: "FAMILY" } }
     },
     include: { citizenProfile: true }
   });
@@ -65,7 +65,6 @@ async function main() {
           isActive: true
         }
       },
-      membership: { create: { status: "ACTIVE" } }
     },
     include: { driverProfile: true }
   });
@@ -84,7 +83,6 @@ async function main() {
           isActive: true
         }
       },
-      membership: { create: { status: "ACTIVE" } }
     },
     include: { driverProfile: true }
   });
@@ -97,11 +95,12 @@ async function main() {
       role: "ORGANIZATION",
       organizationProfile: {
         create: {
+          name: "Lemvig Idrætsforening",
           phone: "20406080",
           address: "Foreningsvej 1, Lemvig"
         }
       },
-      membership: { create: { status: "ACTIVE" } }
+      membership: { create: { status: "ACTIVE", type: "ORGANIZATION" } }
     },
     include: { organizationProfile: true }
   });

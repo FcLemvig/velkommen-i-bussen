@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { createNotification, createNotifications, notifyAdmins } from "@/lib/notifications";
 import { isMembershipActive } from "@/lib/membership";
+import { organizationName } from "@/lib/organizations";
 import { prisma } from "@/lib/prisma";
 import { shiftsOverlap } from "@/lib/shifts";
 import { getSuperSaaSBookings } from "@/lib/supersaas-calendar";
@@ -134,6 +135,7 @@ export async function createOrganizationBookingAction(formData: FormData) {
   });
 
   const bookingText = `${booking.bookingDate.toLocaleDateString("da-DK")} kl. ${booking.startTime}-${booking.endTime}`;
+  const displayName = organizationName({ ...user.organizationProfile, user });
 
   await createNotifications([
     {
@@ -145,7 +147,7 @@ export async function createOrganizationBookingAction(formData: FormData) {
     {
       userId: driver.user.id,
       title: "Du er valgt som chauffør",
-      body: `${user.name} har booket bus med dig som chauffør ${bookingText}.`,
+      body: `${displayName} har booket bus med dig som chauffør ${bookingText}.`,
       href: "/dashboard/driver",
       driverType: "ASSIGNED_RIDES"
     }
@@ -153,7 +155,7 @@ export async function createOrganizationBookingAction(formData: FormData) {
 
   await notifyAdmins(
     "Ny busbooking",
-    `${user.name} har booket bus ${bookingText}.`,
+    `${displayName} har booket bus ${bookingText}.`,
     "/dashboard/admin/buses"
   );
 

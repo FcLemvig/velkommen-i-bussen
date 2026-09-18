@@ -132,6 +132,7 @@ model DriverProfile {
 model OrganizationProfile {
   id       String       @id @default(cuid())
   userId   String       @unique
+  name     String?
   phone    String
   address  String
   user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -147,6 +148,7 @@ model RideRequest {
   rideTime           String
   passengers         Int
   purpose            String
+  isSharedRide       Boolean          @default(false)
   includesMinors     Boolean          @default(false)
   parentalConsent    Boolean          @default(false)
   guardianName       String?
@@ -264,6 +266,7 @@ model EventSignup {
 model Membership {
   id        String           @id @default(cuid())
   userId    String           @unique
+  type      String           @default("INDIVIDUAL")
   status    String   @default("ACTIVE")
   startsAt  DateTime         @default(now())
   endsAt    DateTime?

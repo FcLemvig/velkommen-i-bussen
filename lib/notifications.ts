@@ -23,12 +23,12 @@ async function driverAllowsNotification(userId: string, type?: DriverNotificatio
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
-      role: true,
+      driverProfile: { select: { id: true } },
       driverNotificationPreference: true
     }
   });
 
-  if (user?.role !== "DRIVER") return true;
+  if (!user?.driverProfile) return true;
 
   const preferences = user.driverNotificationPreference;
   if (!preferences) return true;
@@ -111,7 +111,6 @@ export async function notifyActiveDrivers(
 ) {
   const drivers = await prisma.user.findMany({
     where: {
-      role: "DRIVER",
       driverProfile: {
         isActive: true
       }

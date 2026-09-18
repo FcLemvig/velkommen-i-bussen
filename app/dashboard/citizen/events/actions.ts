@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createAuditLog } from "@/lib/audit";
 import { requireUser } from "@/lib/auth";
 import { createNotification } from "@/lib/notifications";
+import { isMembershipActive } from "@/lib/membership";
 import { prisma } from "@/lib/prisma";
 import { eventSignupSchema } from "@/lib/validation";
 
@@ -14,6 +15,10 @@ export async function signupForEventAction(formData: FormData) {
 
   if (!user.citizenProfile) {
     redirect("/dashboard/citizen/events?error=Profilen%20kunne%20ikke%20findes.");
+  }
+
+  if (!isMembershipActive(user.membership)) {
+    redirect("/dashboard/citizen/events?error=Du%20skal%20have%20et%20aktivt%20medlemskab%2C%20f%C3%B8r%20du%20kan%20reservere%20pladser.");
   }
 
   if (!parsed.success) {

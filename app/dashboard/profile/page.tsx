@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { ArrowLeft, BadgeCheck, KeyRound, Mail, MapPin, Phone, UserRound } from "lucide-react";
+import { ArrowLeft, BadgeCheck, CreditCard, ExternalLink, KeyRound, Mail, MapPin, Phone, UserRound } from "lucide-react";
 import { changePasswordAction } from "@/app/dashboard/profile/actions";
 import { FormMessage } from "@/components/FormMessage";
-import { requireUser } from "@/lib/auth";
+import { accessRolesForUser, requireUser } from "@/lib/auth";
 import { roleLabels } from "@/lib/labels";
-import { isRole } from "@/lib/domain";
+import { membershipLabel, membershipTypeLabel } from "@/lib/membership";
 
 function profilePhone(user: Awaited<ReturnType<typeof requireUser>>) {
   return user.citizenProfile?.phone ?? user.driverProfile?.phone ?? user.organizationProfile?.phone ?? "Ikke angivet";
@@ -21,7 +21,8 @@ export default async function ProfilePage({
 }) {
   const user = await requireUser();
   const params = await searchParams;
-  const role = isRole(user.role) ? user.role : "CITIZEN";
+  const accessRoles = accessRolesForUser(user);
+  const hasMembershipProfile = Boolean(user.citizenProfile || user.organizationProfile);
 
   return (
     <main className="mx-auto grid max-w-3xl gap-6 px-4 py-6 md:py-8">
@@ -36,7 +37,8 @@ export default async function ProfilePage({
         </Link>
       </div>
 
-      <FormMessage message={params.error || params.success} />
+      <FormMessage message={params.error} />
+      <FormMessage message={params.success} type="success" />
 
       <section className="rounded-[32px] border-2 border-fjord/25 bg-white p-6 shadow-sm">
         <div className="flex items-center gap-4">
@@ -45,10 +47,14 @@ export default async function ProfilePage({
           </div>
           <div>
             <h2 className="text-2xl font-extrabold text-ink">{user.name}</h2>
-            <p className="mt-1 inline-flex items-center gap-2 rounded-full bg-fjord/20 px-3 py-1 text-xs font-bold text-ink">
-              <BadgeCheck size={14} />
-              {roleLabels[role]}
-            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {accessRoles.map((role) => (
+                <span key={role} className="inline-flex items-center gap-2 rounded-full bg-fjord/20 px-3 py-1 text-xs font-bold text-ink">
+                  <BadgeCheck size={14} />
+                  {roleLabels[role]}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -83,8 +89,43 @@ export default async function ProfilePage({
               </div>
             </div>
           ) : null}
+          {hasMembershipProfile ? (
+            <div className="flex gap-3 rounded-2xl bg-cream px-4 py-3">
+              <CreditCard className="mt-0.5 shrink-0 text-bus" size={18} />
+              <div>
+                <dt className="text-xs font-bold uppercase text-slate-500">Medlemskab</dt>
+                <dd className="font-semibold text-ink">{membershipTypeLabel(user.membership)}</dd>
+                <dd className="text-sm text-slate-600">Status: {membershipLabel(user.membership)}</dd>
+              </div>
+            </div>
+          ) : null}
         </dl>
       </section>
+
+      {hasMembershipProfile ? (
+        <section className="rounded-[32px] border-2 border-fjord/25 bg-white p-6 shadow-sm">
+          <div className="flex items-start gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-bus/15 text-brown">
+              <CreditCard size={22} />
+            </span>
+            <div>
+              <h2 className="text-xl font-extrabold text-ink">Betaling og afmelding</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                Tilmelding, betaling og afmelding håndteres hos Unioo. Når du har foretaget en ændring, opdaterer kontoret din medlemsstatus i appen manuelt.
+              </p>
+            </div>
+          </div>
+          <a
+            href="https://frivilligcenterlemvig.unioo.info/subscriptions"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="button mt-5 w-full gap-2 bg-bus text-white hover:bg-bus/90 sm:w-fit"
+          >
+            Tilmeld, betal eller afmeld
+            <ExternalLink size={16} />
+          </a>
+        </section>
+      ) : null}
 
       <section className="rounded-[32px] border-2 border-fjord/25 bg-white p-6 shadow-sm">
         <div className="flex items-start gap-3">

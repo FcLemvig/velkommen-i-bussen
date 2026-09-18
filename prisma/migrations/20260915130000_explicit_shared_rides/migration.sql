@@ -1,0 +1,1 @@
+ALTER TABLE "RideRequest" ADD COLUMN "isSharedRide" BOOLEAN NOT NULL DEFAULT false;

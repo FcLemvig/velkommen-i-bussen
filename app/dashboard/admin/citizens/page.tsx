@@ -4,13 +4,18 @@ import { updateMembershipAction } from "@/app/dashboard/admin/citizens/actions";
 import { FormMessage } from "@/components/FormMessage";
 import { StatusBadge } from "@/components/StatusBadge";
 import { requireUser } from "@/lib/auth";
-import { membershipLabel } from "@/lib/membership";
+import { membershipLabel, membershipTypeLabel } from "@/lib/membership";
 import { prisma } from "@/lib/prisma";
 
-function MembershipForm({ userId, status }: { userId: string; status?: string }) {
+function MembershipForm({ userId, status, type }: { userId: string; status?: string; type?: string }) {
   return (
     <form action={updateMembershipAction} className="grid gap-2">
       <input type="hidden" name="userId" value={userId} />
+      <input type="hidden" name="returnTo" value="citizens" />
+      <select name="membershipType" defaultValue={type ?? "INDIVIDUAL"} className="min-w-44">
+        <option value="INDIVIDUAL">Borger</option>
+        <option value="FAMILY">Familie</option>
+      </select>
       <select name="membershipStatus" defaultValue={status ?? "PENDING_PAYMENT"} className="min-w-44">
         <option value="PENDING_PAYMENT">Afventer betaling</option>
         <option value="ACTIVE">Aktiv</option>
@@ -64,7 +69,62 @@ export default async function CitizensPage({
         </p>
       ) : null}
 
-      <section className="overflow-x-auto rounded-[32px] border-2 border-fjord/25 bg-white shadow-sm">
+      <section className="grid gap-4 md:hidden">
+        {citizens.map((citizen) => {
+          const latestRide = citizen.rideRequests[0];
+
+          return (
+            <article key={citizen.id} className="rounded-[24px] border-2 border-fjord/25 bg-white p-5 shadow-sm">
+              <div>
+                <h2 className="text-lg font-extrabold text-ink">{citizen.user.name}</h2>
+                <a href={`mailto:${citizen.user.email}`} className="mt-1 block break-all text-sm text-slate-600">
+                  {citizen.user.email}
+                </a>
+              </div>
+
+              <dl className="mt-4 grid gap-3 text-sm">
+                <div>
+                  <dt className="text-xs font-bold uppercase text-slate-500">Telefon</dt>
+                  <dd className="mt-1 font-semibold text-ink">{citizen.phone || "Ikke angivet"}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-bold uppercase text-slate-500">Adresse</dt>
+                  <dd className="mt-1 text-slate-700">{citizen.address || "Ikke angivet"}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-bold uppercase text-slate-500">Ture</dt>
+                  <dd className="mt-1 text-slate-700">{citizen._count.rideRequests}</dd>
+                </div>
+              </dl>
+
+              {latestRide ? (
+                <div className="mt-4 rounded-2xl bg-cream p-4 text-sm">
+                  <p className="font-bold text-ink">Seneste tur</p>
+                  <p className="mt-1 text-slate-700">
+                    {latestRide.rideDate.toLocaleDateString("da-DK")} kl. {latestRide.rideTime}
+                  </p>
+                  <p className="mt-1 text-slate-600">{latestRide.pickupAddress} til {latestRide.destinationAddress}</p>
+                  <div className="mt-2"><StatusBadge status={latestRide.status} /></div>
+                </div>
+              ) : null}
+
+              <div className="mt-4 border-t border-slate-100 pt-4">
+                <p className="mb-2 text-sm font-extrabold text-ink">
+                  {membershipTypeLabel(citizen.user.membership)} · {membershipLabel(citizen.user.membership)}
+                </p>
+                <MembershipForm userId={citizen.user.id} status={citizen.user.membership?.status} type={citizen.user.membership?.type} />
+              </div>
+            </article>
+          );
+        })}
+        {citizens.length === 0 ? (
+          <div className="rounded-[24px] border-2 border-dashed border-fjord/25 bg-white p-7 text-center text-slate-500">
+            Der er ingen borgerprofiler endnu.
+          </div>
+        ) : null}
+      </section>
+
+      <section className="hidden overflow-x-auto rounded-[32px] border-2 border-fjord/25 bg-white shadow-sm md:block">
         <table className="w-full min-w-[960px] text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
             <tr>
@@ -89,8 +149,9 @@ export default async function CitizensPage({
                   <td className="px-4 py-3">{citizen.phone || "Ikke angivet"}</td>
                   <td className="px-4 py-3">{citizen.address || "Ikke angivet"}</td>
                   <td className="px-4 py-3">
-                    <div className="mb-2 font-bold text-ink">{membershipLabel(citizen.user.membership)}</div>
-                    <MembershipForm userId={citizen.user.id} status={citizen.user.membership?.status} />
+                    <div className="mb-1 font-bold text-ink">{membershipTypeLabel(citizen.user.membership)}</div>
+                    <div className="mb-2 text-xs text-slate-500">{membershipLabel(citizen.user.membership)}</div>
+                    <MembershipForm userId={citizen.user.id} status={citizen.user.membership?.status} type={citizen.user.membership?.type} />
                   </td>
                   <td className="px-4 py-3">{citizen._count.rideRequests}</td>
                   <td className="px-4 py-3">

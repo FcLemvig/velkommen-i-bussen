@@ -4,18 +4,21 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createAuditLog } from "@/lib/audit";
 import { requireUser } from "@/lib/auth";
-import { createNotification } from "@/lib/notifications";
+import { createNotification, createNotifications } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 import { shiftsOverlap } from "@/lib/shifts";
 import { getSuperSaaSBookings } from "@/lib/supersaas-calendar";
 import { eventSchema } from "@/lib/validation";
 
 function dayRange(date: Date) {
-  const start = new Date(date);
-  start.setHours(0, 0, 0, 0);
+  const start = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
   const end = new Date(start);
-  end.setDate(end.getDate() + 1);
+  end.setUTCDate(end.getUTCDate() + 1);
   return { start, end };
+}
+
+function sameDate(left: Date, right: Date) {
+  return left.toISOString().slice(0, 10) === right.toISOString().slice(0, 10);
 }
 
 async function eventHasConflict(data: {
@@ -24,6 +27,9 @@ async function eventHasConflict(data: {
   startTime: string;
   endTime: string;
   driverProfileId?: string;
+  excludeEventId?: string;
+  excludeRideRequestId?: string;
+  skipBusConflicts?: boolean;
 }) {
   const { start, end } = dayRange(data.date);
   const [bookings, shifts, events, supersaasBookings] = await Promise.all([
@@ -44,15 +50,16 @@ async function eventHasConflict(data: {
       where: {
         bus: data.bus,
         eventDate: { gte: start, lt: end },
+        id: data.excludeEventId ? { not: data.excludeEventId } : undefined,
         status: { not: "CANCELLED" }
       }
     }),
     getSuperSaaSBookings(start, end)
   ]);
 
-  const busBusy = [
+  const busBusy = !data.skipBusConflicts && [
     ...bookings.map((booking) => ({ startTime: booking.startTime, endTime: booking.endTime })),
-    ...shifts.map((shift) => ({ startTime: shift.startTime, endTime: shift.endTime })),
+    ...shifts.filter((shift) => shift.rideRequestId !== data.excludeRideRequestId).map((shift) => ({ startTime: shift.startTime, endTime: shift.endTime })),
     ...events.map((event) => ({ startTime: event.startTime, endTime: event.endTime })),
     ...supersaasBookings.filter((booking) => booking.bus === data.bus).map((booking) => ({ startTime: booking.startTime, endTime: booking.endTime }))
   ].some((item) => shiftsOverlap(data.startTime, data.endTime, item.startTime, item.endTime));
@@ -79,6 +86,7 @@ async function eventHasConflict(data: {
       where: {
         driverProfileId: data.driverProfileId,
         eventDate: { gte: start, lt: end },
+        id: data.excludeEventId ? { not: data.excludeEventId } : undefined,
         status: { not: "CANCELLED" }
       }
     })
@@ -86,7 +94,7 @@ async function eventHasConflict(data: {
 
   const driverBusy = [
     ...driverBookings.map((booking) => ({ startTime: booking.startTime, endTime: booking.endTime })),
-    ...driverShifts.map((shift) => ({ startTime: shift.startTime, endTime: shift.endTime })),
+    ...driverShifts.filter((shift) => shift.rideRequestId !== data.excludeRideRequestId).map((shift) => ({ startTime: shift.startTime, endTime: shift.endTime })),
     ...driverEvents.map((event) => ({ startTime: event.startTime, endTime: event.endTime }))
   ].some((item) => shiftsOverlap(data.startTime, data.endTime, item.startTime, item.endTime));
 
@@ -101,7 +109,7 @@ export async function createEventAction(formData: FormData) {
     redirect(`/dashboard/admin/events?error=${encodeURIComponent(parsed.error.issues[0].message)}`);
   }
 
-  const eventDate = new Date(`${parsed.data.date}T00:00:00`);
+  const eventDate = new Date(`${parsed.data.date}T00:00:00Z`);
   if (Number.isNaN(eventDate.getTime())) {
     redirect("/dashboard/admin/events?error=Datoen%20er%20ikke%20gyldig.");
   }
@@ -199,6 +207,192 @@ export async function updateEventStatusAction(formData: FormData) {
   revalidatePath("/dashboard/citizen/events");
   revalidatePath("/dashboard/organization/buses");
   redirect("/dashboard/admin/events?success=Status%20er%20opdateret.");
+}
+
+export async function updateEventAction(eventId: string, formData: FormData) {
+  const admin = await requireUser(["ADMIN"]);
+  const parsed = eventSchema.safeParse(Object.fromEntries(formData));
+
+  if (!parsed.success) {
+    redirect(`/dashboard/admin/events/${eventId}?error=${encodeURIComponent(parsed.error.issues[0].message)}`);
+  }
+
+  const existingEvent = await prisma.event.findUnique({
+    where: { id: eventId },
+    include: {
+      signups: { include: { citizenProfile: { include: { user: true } } } },
+      driverProfile: { include: { user: true } }
+    }
+  });
+
+  if (!existingEvent) {
+    redirect("/dashboard/admin/events?error=Begivenheden%20kunne%20ikke%20findes.");
+  }
+
+  const eventDate = new Date(`${parsed.data.date}T00:00:00Z`);
+  if (Number.isNaN(eventDate.getTime())) {
+    redirect(`/dashboard/admin/events/${eventId}?error=Datoen%20er%20ikke%20gyldig.`);
+  }
+
+  const takenSeats = existingEvent.signups.reduce((sum, signup) => sum + signup.passengers, 0);
+  if (parsed.data.capacity < takenSeats) {
+    redirect(`/dashboard/admin/events/${eventId}?error=${encodeURIComponent(`Der er allerede tilmeldt ${takenSeats} passagerer. Antallet af pladser kan ikke sættes lavere.`)}`);
+  }
+
+  if (parsed.data.driverProfileId) {
+    const driverExists = await prisma.driverProfile.findFirst({
+      where: { id: parsed.data.driverProfileId, isActive: true },
+      select: { id: true }
+    });
+
+    if (!driverExists) {
+      redirect(`/dashboard/admin/events/${eventId}?error=Den%20valgte%20chauff%C3%B8r%20kunne%20ikke%20findes.`);
+    }
+  }
+
+  if (parsed.data.status !== "CANCELLED") {
+    const scheduleUnchanged = sameDate(existingEvent.eventDate, eventDate) && existingEvent.bus === parsed.data.bus && existingEvent.startTime === parsed.data.startTime && existingEvent.endTime === parsed.data.endTime;
+    const conflict = await eventHasConflict({
+      date: eventDate,
+      bus: parsed.data.bus,
+      startTime: parsed.data.startTime,
+      endTime: parsed.data.endTime,
+      driverProfileId: parsed.data.driverProfileId,
+      excludeEventId: eventId,
+      excludeRideRequestId: existingEvent.sourceRideRequestId ?? undefined,
+      skipBusConflicts: scheduleUnchanged
+    });
+
+    if (conflict) {
+      redirect(`/dashboard/admin/events/${eventId}?error=${encodeURIComponent(conflict)}`);
+    }
+  }
+
+  const event = await prisma.event.update({
+    where: { id: eventId },
+    data: {
+      title: parsed.data.title,
+      description: parsed.data.description,
+      location: parsed.data.location,
+      eventDate,
+      startTime: parsed.data.startTime,
+      endTime: parsed.data.endTime,
+      pickupInfo: parsed.data.pickupInfo?.trim() || null,
+      capacity: parsed.data.capacity,
+      bus: parsed.data.bus,
+      driverProfileId: parsed.data.driverProfileId || null,
+      status: parsed.data.status
+    }
+  });
+
+  await createAuditLog({
+    actorUserId: admin.id,
+    action: "EVENT_UPDATED",
+    entityType: "Event",
+    entityId: event.id,
+    description: `${admin.name} redigerede begivenheden ${event.title} den ${event.eventDate.toLocaleDateString("da-DK")} kl. ${event.startTime}-${event.endTime}.`
+  });
+
+  await createNotifications(
+    existingEvent.signups.map((signup) => ({
+      userId: signup.citizenProfile.userId,
+      title: "En begivenhed er ændret",
+      body: `${event.title} afholdes den ${event.eventDate.toLocaleDateString("da-DK")} kl. ${event.startTime}. Se de opdaterede oplysninger i appen.`,
+      href: "/dashboard/citizen/events"
+    }))
+  );
+
+  if (parsed.data.driverProfileId && parsed.data.driverProfileId !== existingEvent.driverProfileId) {
+    const newDriver = await prisma.driverProfile.findUnique({
+      where: { id: parsed.data.driverProfileId },
+      select: { userId: true }
+    });
+    if (newDriver) {
+      await createNotification({
+        userId: newDriver.userId,
+        title: "Ny tildelt fællestur",
+        body: `${event.title} den ${event.eventDate.toLocaleDateString("da-DK")} kl. ${event.startTime}.`,
+        href: "/dashboard/driver#mine-ture",
+        driverType: "ASSIGNED_RIDES"
+      });
+    }
+  }
+
+  if (existingEvent.driverProfile && existingEvent.driverProfileId !== parsed.data.driverProfileId) {
+    await createNotification({
+      userId: existingEvent.driverProfile.userId,
+      title: "Din fællestur er ændret",
+      body: `Du er ikke længere tilknyttet ${existingEvent.title}.`,
+      href: "/dashboard/driver#mine-ture",
+      driverType: "RIDE_CHANGES"
+    });
+  }
+
+  revalidateEventPaths();
+  redirect("/dashboard/admin/events?success=Begivenheden%20er%20opdateret.");
+}
+
+export async function deleteEventAction(formData: FormData) {
+  const admin = await requireUser(["ADMIN"]);
+  const eventId = String(formData.get("eventId") ?? "");
+
+  if (!eventId) {
+    redirect("/dashboard/admin/events?error=Begivenheden%20kunne%20ikke%20slettes.");
+  }
+
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+    include: {
+      signups: { include: { citizenProfile: { include: { user: true } } } },
+      driverProfile: { include: { user: true } }
+    }
+  });
+
+  if (!event) {
+    redirect("/dashboard/admin/events?error=Begivenheden%20kunne%20ikke%20findes.");
+  }
+
+  await prisma.event.delete({ where: { id: event.id } });
+
+  await createAuditLog({
+    actorUserId: admin.id,
+    action: "EVENT_DELETED",
+    entityType: "Event",
+    entityId: event.id,
+    description: `${admin.name} slettede begivenheden ${event.title} den ${event.eventDate.toLocaleDateString("da-DK")}. ${event.signups.length} tilmelding(er) blev fjernet.`
+  });
+
+  await createNotifications(
+    event.signups.map((signup) => ({
+      userId: signup.citizenProfile.userId,
+      title: "En begivenhed er slettet",
+      body: `${event.title} den ${event.eventDate.toLocaleDateString("da-DK")} er slettet, og din tilmelding er fjernet.`,
+      href: "/dashboard/citizen/events"
+    }))
+  );
+
+  if (event.driverProfile) {
+    await createNotification({
+      userId: event.driverProfile.userId,
+      title: "En fællestur er slettet",
+      body: `${event.title} den ${event.eventDate.toLocaleDateString("da-DK")} er slettet.`,
+      href: "/dashboard/driver#mine-ture",
+      driverType: "RIDE_CHANGES"
+    });
+  }
+
+  revalidateEventPaths();
+  redirect("/dashboard/admin/events?success=Begivenheden%20er%20slettet.");
+}
+
+function revalidateEventPaths() {
+  revalidatePath("/dashboard/admin/events");
+  revalidatePath("/dashboard/admin/buses");
+  revalidatePath("/dashboard/admin/activity");
+  revalidatePath("/dashboard/citizen/events");
+  revalidatePath("/dashboard/driver");
+  revalidatePath("/dashboard/organization/buses");
+  revalidatePath("/");
 }
 
 export async function deleteEventSignupAction(formData: FormData) {

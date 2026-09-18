@@ -29,7 +29,7 @@ export const changePasswordSchema = z.object({
 });
 
 export const registerSchema = z.object({
-  accountType: z.enum(["CITIZEN", "ORGANIZATION"]).default("CITIZEN"),
+  registrationType: z.enum(["INDIVIDUAL", "FAMILY", "ORGANIZATION"]).default("INDIVIDUAL"),
   name: z.string().min(2, "Skriv dit navn."),
   email: z.string().email("Skriv en gyldig email."),
   phone: z.string().min(8, "Skriv et telefonnummer med mindst 8 cifre."),
@@ -44,6 +44,7 @@ export const rideRequestSchema = z.object({
   time: z.string().regex(/^\d{2}:\d{2}$/, "Vælg et tidspunkt."),
   passengers: z.coerce.number().int().min(1, "Der skal være mindst 1 passager.").max(6, "Der er højst plads til 6 passagerer i bussen."),
   purpose: z.string().min(2, "Skriv formålet med turen."),
+  isSharedRide: z.preprocess((value) => value === "on" || value === true, z.boolean()),
   includesMinors: z.coerce.boolean().default(false),
   parentalConsent: z.coerce.boolean().default(false),
   guardianName: z.string().optional(),
