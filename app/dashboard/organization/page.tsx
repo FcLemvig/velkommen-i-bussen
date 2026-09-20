@@ -4,7 +4,7 @@ import { cancelOrganizationBookingAction, createOrganizationBookingAction } from
 import { FormMessage } from "@/components/FormMessage";
 import { requireUser } from "@/lib/auth";
 import { isMembershipActive } from "@/lib/membership";
-import { organizationName } from "@/lib/organizations";
+import { organizationName, primaryOrganizationForUser } from "@/lib/organizations";
 import { prisma } from "@/lib/prisma";
 import { busLabels, busOptions, BusName } from "@/lib/shifts";
 
@@ -15,8 +15,9 @@ export default async function OrganizationDashboardPage({
 }) {
   const params = await searchParams;
   const user = await requireUser(["ORGANIZATION"]);
+  const organization = primaryOrganizationForUser(user);
 
-  const [drivers, bookings] = user.organizationProfile
+  const [drivers, bookings] = organization
     ? await Promise.all([
         prisma.driverProfile.findMany({
           where: { isActive: true },
@@ -24,7 +25,7 @@ export default async function OrganizationDashboardPage({
           include: { user: true }
         }),
         prisma.busBooking.findMany({
-          where: { organizationProfileId: user.organizationProfile.id },
+          where: { organizationProfileId: organization.id },
           orderBy: [{ bookingDate: "desc" }, { startTime: "desc" }],
           take: 40,
           include: { driverProfile: { include: { user: true } } }
@@ -33,8 +34,8 @@ export default async function OrganizationDashboardPage({
     : [[], []];
 
   const nextBooking = bookings.find((booking) => booking.status !== "CANCELLED");
-  const hasActiveMembership = isMembershipActive(user.membership);
-  const displayName = user.organizationProfile ? organizationName({ ...user.organizationProfile, user }) : user.name;
+  const hasActiveMembership = isMembershipActive(organization?.user.membership ?? user.membership);
+  const displayName = organization ? organizationName(organization) : user.name;
 
   return (
     <main className="mx-auto grid max-w-5xl gap-6 px-4 py-5 md:py-8">

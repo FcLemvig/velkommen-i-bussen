@@ -16,6 +16,7 @@ async function getUserForAccess(userId: string) {
       citizenProfile: true,
       driverProfile: true,
       organizationProfile: true,
+      organizationMemberships: { include: { organizationProfile: { include: { user: true } } } },
       membership: true
     }
   });
@@ -106,7 +107,18 @@ export async function addOrganizationAccessToUserAction(formData: FormData) {
 
   await prisma.$transaction(async (tx) => {
     await tx.organizationProfile.create({
-      data: { userId: user.id, name, phone, address }
+      data: {
+        userId: user.id,
+        name,
+        phone,
+        address,
+        contacts: {
+          create: {
+            userId: user.id,
+            role: "OWNER"
+          }
+        }
+      }
     });
 
     if (!user.membership) {

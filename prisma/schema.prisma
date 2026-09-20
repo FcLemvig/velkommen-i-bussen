@@ -18,6 +18,7 @@ model User {
   citizenProfile CitizenProfile?
   driverProfile  DriverProfile?
   organizationProfile OrganizationProfile?
+  organizationMemberships OrganizationContact[]
   membership     Membership?
   sessions       Session[]
   notifications  Notification[]
@@ -137,6 +138,21 @@ model OrganizationProfile {
   address  String
   user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   bookings BusBooking[]
+  contacts OrganizationContact[]
+}
+
+model OrganizationContact {
+  id                    String              @id @default(cuid())
+  userId                String
+  organizationProfileId String
+  role                  String              @default("CONTACT")
+  createdAt             DateTime            @default(now())
+  user                  User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationProfile   OrganizationProfile @relation(fields: [organizationProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationProfileId])
+  @@index([userId])
+  @@index([organizationProfileId])
 }
 
 model RideRequest {

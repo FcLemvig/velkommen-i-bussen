@@ -33,6 +33,7 @@ export default async function AdminUsersPage({
       citizenProfile: true,
       driverProfile: true,
       organizationProfile: true,
+      organizationMemberships: { include: { organizationProfile: { include: { user: true } } } },
       membership: true
     }
   });
@@ -56,7 +57,9 @@ export default async function AdminUsersPage({
         {users.map((user) => {
           const defaultPhone = user.citizenProfile?.phone || user.driverProfile?.phone || user.organizationProfile?.phone || "";
           const defaultAddress = user.citizenProfile?.address || user.organizationProfile?.address || "";
-          const orgName = user.organizationProfile ? organizationName({ ...user.organizationProfile, user }) : "";
+          const orgName = user.organizationProfile
+            ? organizationName({ ...user.organizationProfile, user })
+            : user.organizationMemberships.map((membership) => organizationName(membership.organizationProfile)).join(", ");
 
           return (
             <article key={user.id} className="grid gap-4 rounded-[28px] border-2 border-fjord/20 bg-white p-5 shadow-sm">
@@ -71,7 +74,7 @@ export default async function AdminUsersPage({
                 <div className="flex flex-wrap gap-2">
                   <AccessBadge active={Boolean(user.citizenProfile)} label="Borger" />
                   <AccessBadge active={Boolean(user.driverProfile)} label="Chauffør" />
-                  <AccessBadge active={Boolean(user.organizationProfile)} label="Forening" />
+                  <AccessBadge active={Boolean(user.organizationProfile || user.organizationMemberships.length > 0)} label="Forening" />
                   {user.role === "ADMIN" ? <AccessBadge active label="Admin" /> : null}
                 </div>
               </div>
@@ -112,7 +115,7 @@ export default async function AdminUsersPage({
                   </form>
                 )}
 
-                {user.organizationProfile ? (
+                {user.organizationProfile || user.organizationMemberships.length > 0 ? (
                   <div className="rounded-2xl bg-cream p-4 text-sm">
                     <p className="flex items-center gap-2 font-extrabold text-ink"><Building2 size={16} /> Foreningsadgang aktiv</p>
                     <p className="mt-2 text-slate-600">{orgName}</p>

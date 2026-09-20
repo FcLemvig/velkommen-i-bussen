@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { addOrganizationContactAction, removeOrganizationContactAction } from "@/app/dashboard/admin/organizations/actions";
 import { updateMembershipAction } from "@/app/dashboard/admin/citizens/actions";
 import { FormMessage } from "@/components/FormMessage";
 import { requireUser } from "@/lib/auth";
@@ -42,6 +43,10 @@ export default async function OrganizationsPage({
       bookings: {
         orderBy: [{ bookingDate: "desc" }, { startTime: "desc" }],
         take: 1
+      },
+      contacts: {
+        orderBy: { createdAt: "asc" },
+        include: { user: true }
       }
     }
   });
@@ -92,6 +97,10 @@ export default async function OrganizationsPage({
                   <dt className="text-xs font-bold uppercase text-slate-500">Bookinger</dt>
                   <dd className="mt-1 text-slate-700">{organization._count.bookings}</dd>
                 </div>
+                <div>
+                  <dt className="text-xs font-bold uppercase text-slate-500">Kontaktpersoner</dt>
+                  <dd className="mt-1 text-slate-700">{organization.contacts.length}</dd>
+                </div>
               </dl>
 
               {latestBooking ? (
@@ -113,6 +122,27 @@ export default async function OrganizationsPage({
                 </p>
                 <MembershipForm userId={organization.user.id} status={organization.user.membership?.status} />
               </div>
+              <div className="mt-4 border-t border-slate-100 pt-4">
+                <p className="mb-2 text-sm font-extrabold text-ink">Kontaktpersoner</p>
+                <div className="grid gap-2 text-sm text-slate-700">
+                  {organization.contacts.map((contact) => (
+                    <div key={contact.id} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-cream px-3 py-2">
+                      <span>{contact.user.name} · {contact.user.email}</span>
+                      {contact.role !== "OWNER" && contact.userId !== organization.userId ? (
+                        <form action={removeOrganizationContactAction}>
+                          <input type="hidden" name="contactId" value={contact.id} />
+                          <button type="submit" className="border border-red-200 bg-white px-3 py-1 text-xs text-red-700 hover:bg-red-50">Fjern</button>
+                        </form>
+                      ) : <span className="text-xs font-bold text-slate-500">Ejer</span>}
+                    </div>
+                  ))}
+                </div>
+                <form action={addOrganizationContactAction} className="mt-3 grid gap-2">
+                  <input type="hidden" name="organizationProfileId" value={organization.id} />
+                  <input name="contactEmail" type="email" placeholder="Email på eksisterende bruger" required />
+                  <button type="submit" className="bg-bus text-white hover:bg-bus/90">Tilføj kontaktperson</button>
+                </form>
+              </div>
             </article>
           );
         })}
@@ -131,6 +161,7 @@ export default async function OrganizationsPage({
               <th className="px-4 py-3">Telefon</th>
               <th className="px-4 py-3">Adresse</th>
               <th className="px-4 py-3">Medlemskab</th>
+              <th className="px-4 py-3">Kontaktpersoner</th>
               <th className="px-4 py-3">Bookinger</th>
               <th className="px-4 py-3">Seneste booking</th>
             </tr>
@@ -151,6 +182,27 @@ export default async function OrganizationsPage({
                     <div className="mb-1 font-bold text-ink">{membershipTypeLabel(organization.user.membership)}</div>
                     <div className="mb-2 text-xs text-slate-500">{membershipLabel(organization.user.membership)}</div>
                     <MembershipForm userId={organization.user.id} status={organization.user.membership?.status} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="grid gap-2">
+                      {organization.contacts.map((contact) => (
+                        <div key={contact.id} className="rounded-2xl bg-cream px-3 py-2 text-xs">
+                          <div className="font-bold text-ink">{contact.user.name}</div>
+                          <div className="break-all text-slate-600">{contact.user.email}</div>
+                          {contact.role !== "OWNER" && contact.userId !== organization.userId ? (
+                            <form action={removeOrganizationContactAction} className="mt-2">
+                              <input type="hidden" name="contactId" value={contact.id} />
+                              <button type="submit" className="border border-red-200 bg-white px-3 py-1 text-xs text-red-700 hover:bg-red-50">Fjern</button>
+                            </form>
+                          ) : <div className="mt-1 font-bold text-slate-500">Ejer</div>}
+                        </div>
+                      ))}
+                      <form action={addOrganizationContactAction} className="grid gap-2">
+                        <input type="hidden" name="organizationProfileId" value={organization.id} />
+                        <input name="contactEmail" type="email" placeholder="Email på bruger" required />
+                        <button type="submit" className="border-2 border-fjord/30 bg-white text-ink hover:bg-cream">Tilføj</button>
+                      </form>
+                    </div>
                   </td>
                   <td className="px-4 py-3">{organization._count.bookings}</td>
                   <td className="px-4 py-3">
@@ -173,7 +225,7 @@ export default async function OrganizationsPage({
             })}
             {organizations.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
                   Der er ingen foreningsprofiler endnu.
                 </td>
               </tr>

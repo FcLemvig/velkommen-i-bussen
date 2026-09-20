@@ -71,7 +71,20 @@ export const getCurrentUser = cache(async () => {
         include: {
           citizenProfile: true,
           driverProfile: true,
-          organizationProfile: true,
+          organizationProfile: {
+            include: {
+              user: { include: { membership: true } }
+            }
+          },
+          organizationMemberships: {
+            include: {
+              organizationProfile: {
+                include: {
+                  user: { include: { membership: true } }
+                }
+              }
+            }
+          },
           membership: true,
           _count: {
             select: {
@@ -120,13 +133,14 @@ export function accessRolesForUser(user: {
   citizenProfile?: unknown;
   driverProfile?: unknown;
   organizationProfile?: unknown;
+  organizationMemberships?: unknown[] | null;
 }) {
   const roles = new Set<Role>();
 
   if (user.role === "ADMIN") roles.add("ADMIN");
   if (user.citizenProfile) roles.add("CITIZEN");
   if (user.driverProfile) roles.add("DRIVER");
-  if (user.organizationProfile) roles.add("ORGANIZATION");
+  if (user.organizationProfile || (Array.isArray(user.organizationMemberships) && user.organizationMemberships.length > 0)) roles.add("ORGANIZATION");
   if (isRole(user.role)) roles.add(user.role);
 
   return Array.from(roles);
@@ -138,6 +152,7 @@ export function userHasAccess(
     citizenProfile?: unknown;
     driverProfile?: unknown;
     organizationProfile?: unknown;
+    organizationMemberships?: unknown[] | null;
   },
   role: Role
 ) {

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { createNotification, createNotifications, notifyAdmins } from "@/lib/notifications";
 import { isMembershipActive } from "@/lib/membership";
-import { organizationName } from "@/lib/organizations";
+import { organizationName, primaryOrganizationForUser } from "@/lib/organizations";
 import { prisma } from "@/lib/prisma";
 import { shiftsOverlap } from "@/lib/shifts";
 import { getSuperSaaSBookings } from "@/lib/supersaas-calendar";
@@ -86,12 +86,13 @@ async function driverIsBooked(data: {
 
 export async function createOrganizationBookingAction(formData: FormData) {
   const user = await requireUser(["ORGANIZATION"]);
+  const organization = primaryOrganizationForUser(user);
 
-  if (!user.organizationProfile) {
+  if (!organization) {
     redirect("/dashboard/organization?error=Foreningsprofilen%20mangler.");
   }
 
-  if (!isMembershipActive(user.membership)) {
+  if (!isMembershipActive(organization.user.membership ?? user.membership)) {
     redirect("/dashboard/organization?error=Medlemskabet%20skal%20v%C3%A6re%20betalt%2C%20f%C3%B8r%20I%20kan%20booke%20en%20bus.");
   }
 
@@ -123,7 +124,7 @@ export async function createOrganizationBookingAction(formData: FormData) {
 
   const booking = await prisma.busBooking.create({
     data: {
-      organizationProfileId: user.organizationProfile.id,
+      organizationProfileId: organization.id,
       driverProfileId: parsed.data.driverProfileId,
       bus: parsed.data.bus,
       bookingDate: new Date(`${parsed.data.date}T00:00:00`),
@@ -135,7 +136,7 @@ export async function createOrganizationBookingAction(formData: FormData) {
   });
 
   const bookingText = `${booking.bookingDate.toLocaleDateString("da-DK")} kl. ${booking.startTime}-${booking.endTime}`;
-  const displayName = organizationName({ ...user.organizationProfile, user });
+  const displayName = organizationName(organization);
 
   await createNotifications([
     {
@@ -166,16 +167,17 @@ export async function createOrganizationBookingAction(formData: FormData) {
 
 export async function cancelOrganizationBookingAction(formData: FormData) {
   const user = await requireUser(["ORGANIZATION"]);
+  const organization = primaryOrganizationForUser(user);
   const bookingId = String(formData.get("bookingId") ?? "");
 
-  if (!user.organizationProfile || !bookingId) {
+  if (!organization || !bookingId) {
     redirect("/dashboard/organization?error=Bookingen%20kunne%20ikke%20annulleres.");
   }
 
   const booking = await prisma.busBooking.findFirst({
     where: {
       id: bookingId,
-      organizationProfileId: user.organizationProfile.id
+      organizationProfileId: organization.id
     }
   });
 

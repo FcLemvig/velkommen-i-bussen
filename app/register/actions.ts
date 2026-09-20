@@ -16,22 +16,37 @@ export async function registerAction(formData: FormData) {
   const accountType = parsed.data.registrationType === "ORGANIZATION" ? "ORGANIZATION" : "CITIZEN";
 
   try {
-    const user = await prisma.user.create({
-      data: {
-        name: parsed.data.name,
-        email: parsed.data.email.toLowerCase(),
-        passwordHash: await hashPassword(parsed.data.password),
-        role: accountType,
-        citizenProfile:
-          accountType === "CITIZEN"
-            ? { create: { phone: parsed.data.phone, address: parsed.data.address || null } }
-            : undefined,
-        organizationProfile:
-          accountType === "ORGANIZATION"
-            ? { create: { name: parsed.data.name, phone: parsed.data.phone, address: parsed.data.address ?? "" } }
-            : undefined,
-        membership: { create: { status: "PENDING_PAYMENT", type: parsed.data.registrationType } }
+    const user = await prisma.$transaction(async (tx) => {
+      const createdUser = await tx.user.create({
+        data: {
+          name: parsed.data.name,
+          email: parsed.data.email.toLowerCase(),
+          passwordHash: await hashPassword(parsed.data.password),
+          role: accountType,
+          citizenProfile:
+            accountType === "CITIZEN"
+              ? { create: { phone: parsed.data.phone, address: parsed.data.address || null } }
+              : undefined,
+          organizationProfile:
+            accountType === "ORGANIZATION"
+              ? { create: { name: parsed.data.name, phone: parsed.data.phone, address: parsed.data.address ?? "" } }
+              : undefined,
+          membership: { create: { status: "PENDING_PAYMENT", type: parsed.data.registrationType } }
+        },
+        include: { organizationProfile: true }
+      });
+
+      if (createdUser.organizationProfile) {
+        await tx.organizationContact.create({
+          data: {
+            userId: createdUser.id,
+            organizationProfileId: createdUser.organizationProfile.id,
+            role: "OWNER"
+          }
+        });
       }
+
+      return createdUser;
     });
 
     await createSession(user.id);
