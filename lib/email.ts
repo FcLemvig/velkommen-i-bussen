@@ -102,6 +102,17 @@ export async function sendDriverWelcomeEmail(to: EmailRecipient, setupToken?: st
   );
 }
 
+export async function sendOrganizationWelcomeEmail(to: EmailRecipient, setupToken: string) {
+  const loginUrl = `${appUrl}/login`;
+  const setupUrl = `${appUrl}/reset-password?token=${encodeURIComponent(setupToken)}`;
+
+  return safelySendEmail(
+    to,
+    "Velkommen til Velkommen i Bussen",
+    `Hej ${to.name || "forening/institution"}\n\nJeres profil er nu oprettet i Velkommen i Bussen.\n\nVælg først en adgangskode her:\n${setupUrl}\n\nLinket virker i 7 dage og kan kun bruges én gang.\n\nNår adgangskoden er valgt, kan I logge ind på:\n${loginUrl}\n\nI appen kan I se buskalenderen, booke en ledig bus og tilknytte en frivillig chauffør. Jeres bookinger samles på foreningssiden.\n\nHar I brug for hjælp, kan I kontakte Velkommen i Bussen.\n\nVenlig hilsen\nVelkommen i Bussen`
+  );
+}
+
 export async function notifyAdminAboutNewRide(ride: RideEmailData) {
   await safelySendEmail(
     adminEmail ? { email: adminEmail, name: "Velkommen i Bussen" } : null,

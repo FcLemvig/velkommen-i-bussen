@@ -93,6 +93,14 @@ export const driverSchema = z.object({
   )
 });
 
+export const organizationAdminSchema = z.object({
+  name: z.string().min(2, "Skriv foreningens eller institutionens navn."),
+  email: z.string().email("Skriv en gyldig email."),
+  phone: z.string().min(8, "Skriv et telefonnummer med mindst 8 cifre."),
+  address: z.string().min(3, "Skriv adressen."),
+  membershipStatus: z.enum(["PENDING_PAYMENT", "ACTIVE", "PAUSED", "ENDED"])
+});
+
 export const createDriverSchema = driverSchema.extend({
   password: z.string().min(8, "Adgangskoden skal være mindst 8 tegn.")
 });

@@ -1,10 +1,16 @@
 "use server";
 
+import { Prisma } from "@prisma/client";
+import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireUser } from "@/lib/auth";
+import { hashPassword, requireUser } from "@/lib/auth";
+import { createAuditLog } from "@/lib/audit";
+import { sendOrganizationWelcomeEmail } from "@/lib/email";
 import { organizationName } from "@/lib/organizations";
+import { createPasswordResetToken, DRIVER_INVITE_MAX_AGE_MS } from "@/lib/password-reset";
 import { prisma } from "@/lib/prisma";
+import { organizationAdminSchema } from "@/lib/validation";
 
 function redirectToOrganizations(type: "error" | "success", message: string): never {
   redirect(`/dashboard/admin/organizations?${type}=${encodeURIComponent(message)}`);
@@ -81,4 +87,164 @@ export async function removeOrganizationContactAction(formData: FormData) {
   revalidatePath("/dashboard/admin/organizations");
   revalidatePath("/dashboard/admin/users");
   redirectToOrganizations("success", "Kontaktpersonen er fjernet.");
+}
+
+function parseOrganization(formData: FormData) {
+  return organizationAdminSchema.safeParse(Object.fromEntries(formData));
+}
+
+export async function createOrganizationAction(formData: FormData) {
+  const admin = await requireUser(["ADMIN"]);
+  const parsed = parseOrganization(formData);
+
+  if (!parsed.success) {
+    redirect(`/dashboard/admin/organizations/new?error=${encodeURIComponent(parsed.error.issues[0].message)}`);
+  }
+
+  const email = parsed.data.email.trim().toLowerCase();
+  const invite = createPasswordResetToken();
+  let organizationId = "";
+
+  try {
+    const passwordHash = await hashPassword(randomBytes(32).toString("hex"));
+
+    await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          name: parsed.data.name.trim(),
+          email,
+          passwordHash,
+          role: "ORGANIZATION",
+          organizationProfile: {
+            create: {
+              name: parsed.data.name.trim(),
+              phone: parsed.data.phone.trim(),
+              address: parsed.data.address.trim()
+            }
+          },
+          membership: {
+            create: {
+              type: "ORGANIZATION",
+              status: parsed.data.membershipStatus,
+              startsAt: parsed.data.membershipStatus === "ACTIVE" ? new Date() : undefined
+            }
+          },
+          passwordResetTokens: {
+            create: {
+              tokenHash: invite.tokenHash,
+              expiresAt: new Date(Date.now() + DRIVER_INVITE_MAX_AGE_MS)
+            }
+          }
+        },
+        include: { organizationProfile: true }
+      });
+
+      organizationId = user.organizationProfile?.id ?? "";
+
+      if (user.organizationProfile) {
+        await tx.organizationContact.create({
+          data: {
+            userId: user.id,
+            organizationProfileId: user.organizationProfile.id,
+            role: "OWNER"
+          }
+        });
+      }
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      redirect("/dashboard/admin/organizations/new?error=Emailen%20er%20allerede%20i%20brug.");
+    }
+
+    redirect("/dashboard/admin/organizations/new?error=Foreningen%20kunne%20ikke%20oprettes.");
+  }
+
+  await createAuditLog({
+    actorUserId: admin.id,
+    action: "ORGANIZATION_CREATED",
+    entityType: "ORGANIZATION_PROFILE",
+    entityId: organizationId,
+    description: `${admin.name} oprettede ${parsed.data.name.trim()} som forening/institution.`
+  });
+
+  const emailSent = await sendOrganizationWelcomeEmail(
+    { email, name: parsed.data.name.trim() },
+    invite.token
+  );
+
+  revalidatePath("/dashboard/admin/organizations");
+  revalidatePath("/dashboard/admin");
+  const message = emailSent
+    ? "Foreningen er oprettet, og velkomstmailen er sendt."
+    : "Foreningen er oprettet, men velkomstmailen kunne ikke sendes. Kontroller emailopsætningen.";
+  redirect(`/dashboard/admin/organizations?${emailSent ? "success" : "error"}=${encodeURIComponent(message)}`);
+}
+
+export async function updateOrganizationAction(organizationProfileId: string, formData: FormData) {
+  const admin = await requireUser(["ADMIN"]);
+  const parsed = parseOrganization(formData);
+
+  if (!parsed.success) {
+    redirect(`/dashboard/admin/organizations/${organizationProfileId}?error=${encodeURIComponent(parsed.error.issues[0].message)}`);
+  }
+
+  try {
+    const organization = await prisma.organizationProfile.findUnique({
+      where: { id: organizationProfileId },
+      select: { userId: true }
+    });
+
+    if (!organization) {
+      redirect("/dashboard/admin/organizations?error=Foreningen%20blev%20ikke%20fundet.");
+    }
+
+    await prisma.$transaction([
+      prisma.organizationProfile.update({
+        where: { id: organizationProfileId },
+        data: {
+          name: parsed.data.name.trim(),
+          phone: parsed.data.phone.trim(),
+          address: parsed.data.address.trim(),
+          user: {
+            update: {
+              email: parsed.data.email.trim().toLowerCase()
+            }
+          }
+        }
+      }),
+      prisma.membership.upsert({
+        where: { userId: organization.userId },
+        create: {
+          userId: organization.userId,
+          type: "ORGANIZATION",
+          status: parsed.data.membershipStatus,
+          startsAt: parsed.data.membershipStatus === "ACTIVE" ? new Date() : undefined
+        },
+        update: {
+          type: "ORGANIZATION",
+          status: parsed.data.membershipStatus,
+          endsAt: parsed.data.membershipStatus === "ENDED" ? new Date() : null
+        }
+      })
+    ]);
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      redirect(`/dashboard/admin/organizations/${organizationProfileId}?error=Emailen%20er%20allerede%20i%20brug.`);
+    }
+
+    redirect(`/dashboard/admin/organizations/${organizationProfileId}?error=Foreningen%20kunne%20ikke%20opdateres.`);
+  }
+
+  await createAuditLog({
+    actorUserId: admin.id,
+    action: "ORGANIZATION_UPDATED",
+    entityType: "ORGANIZATION_PROFILE",
+    entityId: organizationProfileId,
+    description: `${admin.name} opdaterede ${parsed.data.name.trim()}.`
+  });
+
+  revalidatePath("/dashboard/admin/organizations");
+  revalidatePath(`/dashboard/admin/organizations/${organizationProfileId}`);
+  revalidatePath("/dashboard/admin");
+  redirect("/dashboard/admin/organizations?success=Foreningen%20er%20opdateret.");
 }

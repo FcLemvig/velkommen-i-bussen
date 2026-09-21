@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Pencil, Plus } from "lucide-react";
 import { addOrganizationContactAction, removeOrganizationContactAction } from "@/app/dashboard/admin/organizations/actions";
 import { updateMembershipAction } from "@/app/dashboard/admin/citizens/actions";
 import { FormMessage } from "@/components/FormMessage";
@@ -58,10 +58,16 @@ export default async function OrganizationsPage({
           <h1 className="text-3xl font-bold text-ink">Foreninger og institutioner</h1>
           <p className="mt-2 text-slate-600">Oversigt over foreningsprofiler, busbookinger og medlemsbetaling.</p>
         </div>
-        <Link href="/dashboard/admin" className="button gap-2 border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
-          <ArrowLeft size={16} />
-          Tilbage
-        </Link>
+        <div className="flex flex-wrap gap-3">
+          <Link href="/dashboard/admin/organizations/new" className="button gap-2 bg-bus text-white hover:bg-bus/90">
+            <Plus size={17} />
+            Opret forening
+          </Link>
+          <Link href="/dashboard/admin" className="button gap-2 border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
+            <ArrowLeft size={16} />
+            Tilbage
+          </Link>
+        </div>
       </div>
 
       <FormMessage message={params.error} />
@@ -143,6 +149,13 @@ export default async function OrganizationsPage({
                   <button type="submit" className="bg-bus text-white hover:bg-bus/90">Tilføj kontaktperson</button>
                 </form>
               </div>
+              <Link
+                href={`/dashboard/admin/organizations/${organization.id}`}
+                className="button mt-4 w-full gap-2 border-2 border-fjord/30 bg-white text-ink hover:bg-cream"
+              >
+                <Pencil size={16} />
+                Rediger forening
+              </Link>
             </article>
           );
         })}
@@ -164,6 +177,7 @@ export default async function OrganizationsPage({
               <th className="px-4 py-3">Kontaktpersoner</th>
               <th className="px-4 py-3">Bookinger</th>
               <th className="px-4 py-3">Seneste booking</th>
+              <th className="px-4 py-3">Handling</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -220,12 +234,21 @@ export default async function OrganizationsPage({
                       "Ingen bookinger endnu"
                     )}
                   </td>
+                  <td className="px-4 py-3">
+                    <Link
+                      href={`/dashboard/admin/organizations/${organization.id}`}
+                      className="button gap-2 border-2 border-fjord/30 bg-white text-ink hover:bg-cream"
+                    >
+                      <Pencil size={16} />
+                      Rediger
+                    </Link>
+                  </td>
                 </tr>
               );
             })}
             {organizations.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
                   Der er ingen foreningsprofiler endnu.
                 </td>
               </tr>
