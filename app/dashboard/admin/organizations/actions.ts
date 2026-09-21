@@ -248,3 +248,66 @@ export async function updateOrganizationAction(organizationProfileId: string, fo
   revalidatePath("/dashboard/admin");
   redirect("/dashboard/admin/organizations?success=Foreningen%20er%20opdateret.");
 }
+
+export async function deleteOrganizationAction(organizationProfileId: string) {
+  const admin = await requireUser(["ADMIN"]);
+  const organization = await prisma.organizationProfile.findUnique({
+    where: { id: organizationProfileId },
+    include: {
+      user: {
+        include: {
+          citizenProfile: true,
+          driverProfile: true
+        }
+      },
+      _count: { select: { bookings: true } }
+    }
+  });
+
+  if (!organization) {
+    redirectToOrganizations("error", "Foreningen blev ikke fundet.");
+  }
+
+  const [otherOrganizationAccesses] = await Promise.all([
+    prisma.organizationContact.count({
+      where: {
+        userId: organization.userId,
+        organizationProfileId: { not: organization.id }
+      }
+    })
+  ]);
+  const deleteOwnerUser =
+    organization.user.role === "ORGANIZATION" &&
+    !organization.user.citizenProfile &&
+    !organization.user.driverProfile &&
+    otherOrganizationAccesses === 0;
+  const displayName = organizationName(organization);
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      if (deleteOwnerUser) {
+        await tx.user.delete({ where: { id: organization.userId } });
+      } else {
+        await tx.organizationProfile.delete({ where: { id: organization.id } });
+      }
+
+      await tx.auditLog.create({
+        data: {
+          actorUserId: admin.id,
+          action: "ORGANIZATION_DELETED",
+          entityType: "ORGANIZATION_PROFILE",
+          entityId: organization.id,
+          description: `${admin.name} slettede ${displayName} og ${organization._count.bookings} tilknyttede booking(er).`
+        }
+      });
+    });
+  } catch {
+    redirect(`/dashboard/admin/organizations/${organizationProfileId}?error=Foreningen%20kunne%20ikke%20slettes.`);
+  }
+
+  revalidatePath("/dashboard/admin/organizations");
+  revalidatePath("/dashboard/admin/buses");
+  revalidatePath("/dashboard/admin/users");
+  revalidatePath("/dashboard/admin");
+  redirectToOrganizations("success", `${displayName} er slettet.`);
+}

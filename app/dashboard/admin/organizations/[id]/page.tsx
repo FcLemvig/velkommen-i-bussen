@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { updateOrganizationAction } from "@/app/dashboard/admin/organizations/actions";
+import { deleteOrganizationAction, updateOrganizationAction } from "@/app/dashboard/admin/organizations/actions";
+import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { FormMessage } from "@/components/FormMessage";
 import { requireUser } from "@/lib/auth";
 import { organizationName } from "@/lib/organizations";
@@ -18,7 +19,10 @@ export default async function EditOrganizationPage({
   const [{ id }, query] = await Promise.all([params, searchParams]);
   const organization = await prisma.organizationProfile.findUnique({
     where: { id },
-    include: { user: { include: { membership: true } } }
+    include: {
+      user: { include: { membership: true } },
+      _count: { select: { bookings: true, contacts: true } }
+    }
   });
 
   if (!organization) {
@@ -68,6 +72,20 @@ export default async function EditOrganizationPage({
           </Link>
         </div>
       </form>
+
+      <section className="rounded-[32px] border-2 border-red-200 bg-white p-6 shadow-sm">
+        <h2 className="text-xl font-extrabold text-red-800">Slet forening</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-700">
+          Sletning fjerner foreningen, {organization._count.bookings} booking(er) og {organization._count.contacts} kontaktpersonkobling(er).
+          Handlingen kan ikke fortrydes.
+        </p>
+        <form action={deleteOrganizationAction.bind(null, organization.id)} className="mt-4">
+          <ConfirmSubmitButton
+            label="Slet forening"
+            message={`Er du sikker på, at du vil slette ${organizationName(organization)}? Alle foreningens bookinger og kontaktpersonkoblinger bliver også slettet.`}
+          />
+        </form>
+      </section>
     </main>
   );
 }
