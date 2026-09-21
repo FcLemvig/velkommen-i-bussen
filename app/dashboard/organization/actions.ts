@@ -3,11 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
+import { sendOrganizationBookingConfirmation } from "@/lib/email";
 import { createNotification, createNotifications, notifyAdmins } from "@/lib/notifications";
 import { isMembershipActive } from "@/lib/membership";
 import { organizationName, primaryOrganizationForUser } from "@/lib/organizations";
 import { prisma } from "@/lib/prisma";
-import { shiftsOverlap } from "@/lib/shifts";
+import { busLabels, BusName, shiftsOverlap } from "@/lib/shifts";
 import { getSuperSaaSBookings } from "@/lib/supersaas-calendar";
 import { organizationBookingSchema } from "@/lib/validation";
 
@@ -160,9 +161,26 @@ export async function createOrganizationBookingAction(formData: FormData) {
     "/dashboard/admin/buses"
   );
 
+  const confirmationSent = await sendOrganizationBookingConfirmation(
+    { email: user.email, name: user.name },
+    {
+      organizationName: displayName,
+      busName: busLabels[booking.bus as BusName] ?? booking.bus,
+      bookingDate: booking.bookingDate,
+      startTime: booking.startTime,
+      endTime: booking.endTime,
+      driverName: driver.user.name,
+      purpose: booking.purpose,
+      notes: booking.notes
+    }
+  );
+
   revalidatePath("/dashboard/organization");
   revalidatePath("/dashboard/admin/buses");
-  redirect("/dashboard/organization?success=Bookingen%20er%20oprettet.");
+  const message = confirmationSent
+    ? "Bookingen er oprettet, og en bekræftelse er sendt på email."
+    : "Bookingen er oprettet, men bekræftelsesmailen kunne ikke sendes.";
+  redirect(`/dashboard/organization?success=${encodeURIComponent(message)}`);
 }
 
 export async function cancelOrganizationBookingAction(formData: FormData) {

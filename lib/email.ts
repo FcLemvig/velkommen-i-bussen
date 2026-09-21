@@ -17,6 +17,17 @@ type RideEmailData = {
   notes?: string | null;
 };
 
+type OrganizationBookingEmailData = {
+  organizationName: string;
+  busName: string;
+  bookingDate: Date;
+  startTime: string;
+  endTime: string;
+  driverName: string;
+  purpose: string;
+  notes?: string | null;
+};
+
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://velkommen-i-bussen.vercel.app";
 const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL;
 const fromEmail = process.env.EMAIL_FROM || "Velkommen i Bussen <onboarding@resend.dev>";
@@ -110,6 +121,30 @@ export async function sendOrganizationWelcomeEmail(to: EmailRecipient, setupToke
     to,
     "Velkommen til Velkommen i Bussen",
     `Hej ${to.name || "forening/institution"}\n\nJeres profil er nu oprettet i Velkommen i Bussen.\n\nVælg først en adgangskode her:\n${setupUrl}\n\nLinket virker i 7 dage og kan kun bruges én gang.\n\nNår adgangskoden er valgt, kan I logge ind på:\n${loginUrl}\n\nI appen kan I se buskalenderen, booke en ledig bus og tilknytte en frivillig chauffør. Jeres bookinger samles på foreningssiden.\n\nHar I brug for hjælp, kan I kontakte Velkommen i Bussen.\n\nVenlig hilsen\nVelkommen i Bussen`
+  );
+}
+
+export async function sendOrganizationBookingConfirmation(
+  to: EmailRecipient,
+  booking: OrganizationBookingEmailData
+) {
+  const details = [
+    `Forening/institution: ${booking.organizationName}`,
+    `Dato: ${formatRideDate(booking.bookingDate)}`,
+    `Tidspunkt: kl. ${booking.startTime}-${booking.endTime}`,
+    `Bus: ${booking.busName}`,
+    `Chauffør: ${booking.driverName}`,
+    `Formål: ${booking.purpose}`
+  ];
+
+  if (booking.notes) {
+    details.push(`Note: ${booking.notes}`);
+  }
+
+  return safelySendEmail(
+    to,
+    `Bekræftelse på booking af ${booking.busName}`,
+    `Hej ${to.name || booking.organizationName}\n\nJeres booking af frivilligbussen er bekræftet.\n\n${details.join("\n")}\n\nPraktisk inden turen:\n- Afhentningsstedet kan variere. Er I i tvivl, så send en SMS til 2080 1450 dagen før turen.\n- Tjek bussen for synlige skader inden afgang, og meld eventuelle skader til 2080 1450.\n- Den valgte chauffør skal selv køre turen. Kørslen må ikke overlades til andre.\n- Send en SMS til 2080 1450, når chaufføren står ved bussen, så den kan blive låst op.\n- Nøglen ligger i handskerummet og kan bruges, hvis bussen skal låses undervejs.\n\nNår bussen afleveres:\n- Parkér på den aftalte plads, sæt bussen i P, og sluk den.\n- Læg nøglen tilbage i handskerummet, tjek for nye skader, og kontrollér at alle døre er lukket.\n- Send en SMS til 2080 1450, når bussen er afleveret. I får en bekræftelse, når den er låst.\n\nSe hele vejledningen her:\nhttps://velkommenibussen.dk/bus-qa/\n\nVenlig hilsen\nVelkommen i Bussen`
   );
 }
 
