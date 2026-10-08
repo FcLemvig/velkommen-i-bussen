@@ -37,6 +37,7 @@ export default async function OrganizationsPage({
 
   const organizations = await prisma.organizationProfile.findMany({
     orderBy: { user: { name: "asc" } },
+    take: 200,
     include: {
       user: { include: { membership: true } },
       _count: { select: { bookings: true } },

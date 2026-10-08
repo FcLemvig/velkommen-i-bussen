@@ -39,6 +39,7 @@ export default async function CitizensPage({
 
   const citizens = await prisma.citizenProfile.findMany({
     orderBy: { user: { name: "asc" } },
+    take: 200,
     include: {
       user: { include: { membership: true } },
       _count: { select: { rideRequests: true } },

@@ -14,7 +14,11 @@ export default async function DriversPage({
   const params = await searchParams;
   const drivers = await prisma.driverProfile.findMany({
     orderBy: { user: { name: "asc" } },
-    include: { user: true, assignments: true }
+    take: 200,
+    include: {
+      user: true,
+      _count: { select: { assignments: true } }
+    }
   });
 
   return (
@@ -71,7 +75,7 @@ export default async function DriversPage({
               </div>
               <div>
                 <dt className="text-xs font-bold uppercase text-slate-500">Ture</dt>
-                <dd className="mt-1 text-ink">{driver.assignments.length}</dd>
+                <dd className="mt-1 text-ink">{driver._count.assignments}</dd>
               </div>
               <div>
                 <dt className="text-xs font-bold uppercase text-slate-500">Kørekort</dt>
@@ -123,7 +127,7 @@ export default async function DriversPage({
                 <td className="px-4 py-3">{driver.phone || "Ikke angivet"}</td>
                 <td className="px-4 py-3">{driver.licenseNumber || "Ikke angivet"}</td>
                 <td className="px-4 py-3">{driver.isActive ? "Aktiv" : "Inaktiv"}</td>
-                <td className="px-4 py-3">{driver.assignments.length}</td>
+                <td className="px-4 py-3">{driver._count.assignments}</td>
                 <td className="px-4 py-3">
                   <Link href={`/dashboard/admin/drivers/${driver.id}`} className="font-semibold text-ink hover:text-bus">
                     Rediger

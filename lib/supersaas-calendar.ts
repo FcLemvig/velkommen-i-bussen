@@ -84,7 +84,7 @@ function parseEvents(calendar: string) {
 export async function getSuperSaaSBookings(start: Date, end: Date): Promise<SuperSaaSBooking[]> {
   try {
     const response = await fetch(supersaasFeedUrl, {
-      cache: "no-store"
+      next: { revalidate: 300 }
     });
 
     if (!response.ok) {

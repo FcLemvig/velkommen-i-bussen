@@ -29,6 +29,7 @@ export default async function AdminUsersPage({
   const params = await searchParams;
   const users = await prisma.user.findMany({
     orderBy: { name: "asc" },
+    take: 200,
     include: {
       citizenProfile: true,
       driverProfile: true,
