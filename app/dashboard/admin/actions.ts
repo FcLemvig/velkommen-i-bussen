@@ -131,9 +131,33 @@ export async function assignDriverAction(formData: FormData) {
   const admin = await requireUser(["ADMIN"]);
   const rideRequestId = String(formData.get("rideRequestId") ?? "");
   const driverProfileId = String(formData.get("driverProfileId") ?? "");
+  const requestedBusValue = String(formData.get("bus") ?? "");
+  const requestedBus = busOptions.find((bus) => bus === requestedBusValue) as BusName | undefined;
 
   if (!rideRequestId || !driverProfileId) {
     redirect("/dashboard/admin?error=V%C3%A6lg%20en%20aktiv%20chauff%C3%B8r.");
+  }
+
+  const rideBeforeAssignment = await prisma.rideRequest.findUnique({
+    where: { id: rideRequestId },
+    select: { status: true, automaticShift: { select: { id: true } } },
+  });
+
+  if (!rideBeforeAssignment) {
+    redirect("/dashboard/admin?error=" + encodeURIComponent("Turen findes ikke længere."));
+  }
+  if (["CANCELLED", "COMPLETED"].includes(rideBeforeAssignment.status)) {
+    redirect("/dashboard/admin?error=" + encodeURIComponent("En afsluttet tur kan ikke tildeles."));
+  }
+  if (!rideBeforeAssignment.automaticShift) {
+    if (!requestedBus) {
+      redirect("/dashboard/admin?error=" + encodeURIComponent("Vælg en bus til turen."));
+    }
+
+    const busResult = await setRideBus(rideRequestId, requestedBus);
+    if ("error" in busResult && busResult.error) {
+      redirect("/dashboard/admin?error=" + encodeURIComponent(busResult.error));
+    }
   }
 
   const { currentRide, ride } = await scheduleTransaction(async () => {

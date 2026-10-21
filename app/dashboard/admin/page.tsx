@@ -288,7 +288,12 @@ export default async function AdminDashboardPage({
                 <form action={updateRideBusAction} className="grid gap-2">
                   <input type="hidden" name="rideRequestId" value={ride.id} />
                   <label htmlFor={`bus-${ride.id}`}>Bus</label>
-                  <select id={`bus-${ride.id}`} name="bus" defaultValue={ride.automaticShift?.bus ?? ""} required>
+                  <select
+                    id={`bus-${ride.id}`}
+                    name="bus"
+                    defaultValue={ride.automaticShift?.bus ?? matchingShifts[0]?.bus ?? ""}
+                    required
+                  >
                     <option value="">Vælg bus</option>
                     <option value="EAST">Bus Øst</option>
                     <option value="WEST">Bus Vest</option>
@@ -299,6 +304,23 @@ export default async function AdminDashboardPage({
                 </form>
                 <form action={assignDriverAction} className="grid gap-2">
                   <input type="hidden" name="rideRequestId" value={ride.id} />
+                  {!ride.automaticShift ? (
+                    <>
+                      <label htmlFor={`assignment-bus-${ride.id}`}>Bus til turen</label>
+                      <select
+                        id={`assignment-bus-${ride.id}`}
+                        name="bus"
+                        defaultValue={matchingShifts[0]?.bus ?? ""}
+                        required
+                      >
+                        <option value="">Vælg bus</option>
+                        <option value="EAST">Bus Øst</option>
+                        <option value="WEST">Bus Vest</option>
+                      </select>
+                    </>
+                  ) : (
+                    <input type="hidden" name="bus" value={ride.automaticShift.bus} />
+                  )}
                   <label htmlFor={`driver-${ride.id}`}>Chauffør</label>
                   <select
                     id={`driver-${ride.id}`}
@@ -313,7 +335,7 @@ export default async function AdminDashboardPage({
                     ))}
                   </select>
                   <button type="submit" className="bg-ink text-white hover:bg-brown">
-                    Tildel
+                    {ride.automaticShift ? "Tildel" : "Tildel bus og chauffør"}
                   </button>
                 </form>
                 <form action={updateRideStatusAction} className="grid gap-2">
@@ -406,7 +428,12 @@ export default async function AdminDashboardPage({
                   <td className="px-4 py-3">
                     <form action={updateRideBusAction} className="mb-3 grid gap-2">
                       <input type="hidden" name="rideRequestId" value={ride.id} />
-                      <select name="bus" aria-label="Bus" defaultValue={ride.automaticShift?.bus ?? ""} required>
+                      <select
+                        name="bus"
+                        aria-label="Bus"
+                        defaultValue={ride.automaticShift?.bus ?? matchingShifts[0]?.bus ?? ""}
+                        required
+                      >
                         <option value="">Vælg bus</option>
                         <option value="EAST">Bus Øst</option>
                         <option value="WEST">Bus Vest</option>
@@ -417,6 +444,20 @@ export default async function AdminDashboardPage({
                     </form>
                     <form action={assignDriverAction} className="grid gap-2">
                       <input type="hidden" name="rideRequestId" value={ride.id} />
+                      {!ride.automaticShift ? (
+                        <select
+                          name="bus"
+                          aria-label="Bus til turen"
+                          defaultValue={matchingShifts[0]?.bus ?? ""}
+                          required
+                        >
+                          <option value="">Vælg bus</option>
+                          <option value="EAST">Bus Øst</option>
+                          <option value="WEST">Bus Vest</option>
+                        </select>
+                      ) : (
+                        <input type="hidden" name="bus" value={ride.automaticShift.bus} />
+                      )}
                       <select name="driverProfileId" defaultValue={ride.assignment?.driverProfileId ?? ""}>
                         <option value="">Vælg chauffør</option>
                         {drivers.map((driver) => (
@@ -426,7 +467,7 @@ export default async function AdminDashboardPage({
                         ))}
                       </select>
                       <button type="submit" className="bg-ink text-white hover:bg-brown">
-                        Tildel
+                        {ride.automaticShift ? "Tildel" : "Tildel bus og chauffør"}
                       </button>
                     </form>
                   </td>
