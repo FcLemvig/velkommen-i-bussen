@@ -1,3 +1,4 @@
+import { danishToday } from "@/lib/dates";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -9,7 +10,7 @@ import { busLabels, busOptions } from "@/lib/shifts";
 
 export default async function EditShiftPage({
   params,
-  searchParams
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ error?: string }>;
@@ -20,13 +21,13 @@ export default async function EditShiftPage({
   const [shift, drivers] = await Promise.all([
     prisma.driverShift.findUnique({
       where: { id },
-      include: { driverProfile: { include: { user: true } } }
+      include: { driverProfile: { include: { user: true } } },
     }),
     prisma.driverProfile.findMany({
       where: { isActive: true },
       orderBy: { user: { name: "asc" } },
-      include: { user: true }
-    })
+      include: { user: true },
+    }),
   ]);
 
   if (!shift) {
@@ -34,8 +35,7 @@ export default async function EditShiftPage({
   }
 
   const action = updateShiftAction.bind(null, shift.id);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = new Date(danishToday() + "T00:00:00Z");
   const todayInput = today.toISOString().slice(0, 10);
 
   return (
@@ -45,18 +45,32 @@ export default async function EditShiftPage({
           <h1 className="text-3xl font-bold text-ink">Rediger vagt</h1>
           <p className="mt-2 text-slate-600">Opdater tidspunkt, bus, note eller hvilken chauffør der har vagten.</p>
         </div>
-        <Link href="/dashboard/admin/shifts" className="button gap-2 border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
+        <Link
+          href="/dashboard/admin/shifts"
+          className="button gap-2 border-2 border-fjord/30 bg-white text-ink hover:bg-cream"
+        >
           <ArrowLeft size={16} />
           Tilbage
         </Link>
       </div>
 
-      <form action={action} className="grid gap-4 rounded-[28px] border-2 border-fjord/25 bg-white p-5 shadow-sm md:p-6">
+      <form
+        action={action}
+        className="grid gap-4 rounded-[28px] border-2 border-fjord/25 bg-white p-5 shadow-sm md:p-6"
+      >
         <FormMessage message={query.error} />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="grid min-w-0 gap-2">
             <label htmlFor="date">Dato</label>
-            <input id="date" name="date" type="date" min={todayInput} defaultValue={shift.shiftDate.toISOString().slice(0, 10)} required className="min-w-0" />
+            <input
+              id="date"
+              name="date"
+              type="date"
+              min={todayInput}
+              defaultValue={shift.shiftDate.toISOString().slice(0, 10)}
+              required
+              className="min-w-0"
+            />
           </div>
           <div className="grid min-w-0 gap-2">
             <label htmlFor="bus">Bus</label>
@@ -70,7 +84,14 @@ export default async function EditShiftPage({
           </div>
           <div className="grid min-w-0 gap-2">
             <label htmlFor="startTime">Start</label>
-            <input id="startTime" name="startTime" type="time" defaultValue={shift.startTime} required className="min-w-0" />
+            <input
+              id="startTime"
+              name="startTime"
+              type="time"
+              defaultValue={shift.startTime}
+              required
+              className="min-w-0"
+            />
           </div>
           <div className="grid min-w-0 gap-2">
             <label htmlFor="endTime">Slut</label>

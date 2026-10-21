@@ -24,8 +24,8 @@ async function driverAllowsNotification(userId: string, type?: DriverNotificatio
     where: { id: userId },
     select: {
       driverProfile: { select: { id: true } },
-      driverNotificationPreference: true
-    }
+      driverNotificationPreference: true,
+    },
   });
 
   if (!user?.driverProfile) return true;
@@ -40,8 +40,8 @@ async function filterAllowedNotifications(inputs: NotificationInput[]) {
   const checks = await Promise.all(
     inputs.map(async (input) => ({
       input,
-      allowed: await driverAllowsNotification(input.userId, input.driverType)
-    }))
+      allowed: await driverAllowsNotification(input.userId, input.driverType),
+    })),
   );
 
   return checks.filter((check) => check.allowed).map((check) => check.input);
@@ -57,8 +57,8 @@ export async function createNotification(input: NotificationInput) {
         userId: input.userId,
         title: input.title,
         body: input.body,
-        href: input.href
-      }
+        href: input.href,
+      },
     });
     await sendPushToUser(input.userId, input.title, input.body, input.href);
   } catch (error) {
@@ -78,8 +78,8 @@ export async function createNotifications(inputs: NotificationInput[]) {
         userId: input.userId,
         title: input.title,
         body: input.body,
-        href: input.href
-      }))
+        href: input.href,
+      })),
     });
     await Promise.all(allowedInputs.map((input) => sendPushToUser(input.userId, input.title, input.body, input.href)));
   } catch (error) {
@@ -90,7 +90,7 @@ export async function createNotifications(inputs: NotificationInput[]) {
 export async function notifyAdmins(title: string, body: string, href = "/dashboard/admin") {
   const admins = await prisma.user.findMany({
     where: { role: "ADMIN" },
-    select: { id: true }
+    select: { id: true },
   });
 
   await createNotifications(
@@ -98,24 +98,40 @@ export async function notifyAdmins(title: string, body: string, href = "/dashboa
       userId: admin.id,
       title,
       body,
-      href
-    }))
+      href,
+    })),
   );
+}
+
+export async function notifyRideParticipants(rideId: string, title: string, body: string, extraUserIds: string[] = []) {
+  const ride = await prisma.rideRequest.findUnique({
+    where: { id: rideId },
+    include: {
+      citizenProfile: true,
+      assignment: { include: { driverProfile: true } },
+      sharedEvent: { include: { signups: { include: { citizenProfile: true } } } },
+    },
+  });
+  if (!ride) return;
+  const ids = new Set([ride.citizenProfile.userId, ...extraUserIds]);
+  if (ride.assignment) ids.add(ride.assignment.driverProfile.userId);
+  ride.sharedEvent?.signups.forEach((signup) => ids.add(signup.citizenProfile.userId));
+  await createNotifications([...ids].map((userId) => ({ userId, title, body, href: "/dashboard/notifications" })));
 }
 
 export async function notifyActiveDrivers(
   title: string,
   body: string,
   href = "/dashboard/driver",
-  driverType: DriverNotificationType = "NEW_SHIFTS"
+  driverType: DriverNotificationType = "NEW_SHIFTS",
 ) {
   const drivers = await prisma.user.findMany({
     where: {
       driverProfile: {
-        isActive: true
-      }
+        isActive: true,
+      },
     },
-    select: { id: true }
+    select: { id: true },
   });
 
   await createNotifications(
@@ -124,7 +140,7 @@ export async function notifyActiveDrivers(
       title,
       body,
       href,
-      driverType
-    }))
+      driverType,
+    })),
   );
 }

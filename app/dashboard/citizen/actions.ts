@@ -5,8 +5,8 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { createAuditLog } from "@/lib/audit";
 import { notifyAdminAboutNewRide, notifyDriverAboutCitizenMessage } from "@/lib/email";
-import { createNotification, notifyAdmins } from "@/lib/notifications";
-import { prisma } from "@/lib/prisma";
+import { createNotification, notifyAdmins, notifyActiveDrivers, notifyRideParticipants } from "@/lib/notifications";
+import { prisma, scheduleTransaction } from "@/lib/prisma";
 import { createRideWithAutomaticShift } from "@/lib/ride-requests";
 import { ensureRideSharingEvent } from "@/lib/ride-sharing";
 import { busLabels, BusName } from "@/lib/shifts";
@@ -25,9 +25,9 @@ export async function createRideRequestAction(formData: FormData) {
   }
 
   const { ride, shift } = await createRideWithAutomaticShift({
-    citizenProfileId: user.citizenProfile.id,
+    citizenProfileId: user.citizenProfile!.id,
     citizenName: user.name,
-    ride: parsed.data
+    ride: parsed.data,
   });
 
   if (ride.isSharedRide && shift) {
@@ -39,8 +39,15 @@ export async function createRideRequestAction(formData: FormData) {
     action: "RIDE_CREATED",
     entityType: "RIDE_REQUEST",
     entityId: ride.id,
-    description: `${user.name} oprettede en tur den ${ride.rideDate.toLocaleDateString("da-DK")} kl. ${ride.rideTime} fra ${ride.pickupAddress} til ${ride.destinationAddress}.${shift ? " En tilhørende vagt blev oprettet automatisk." : " Der kunne ikke oprettes en automatisk vagt."}`
+    description: `${user.name} oprettede en tur den ${ride.rideDate.toLocaleDateString("da-DK")} kl. ${ride.rideTime} fra ${ride.pickupAddress} til ${ride.destinationAddress}.${shift ? " En tilhørende vagt blev oprettet automatisk." : " Der kunne ikke oprettes en automatisk vagt."}`,
   });
+
+  if (shift)
+    await notifyActiveDrivers(
+      "Ny ledig vagt",
+      `Ny vagt den ${shift.shiftDate.toLocaleDateString("da-DK")} kl. ${shift.startTime}-${shift.endTime}.`,
+      "/dashboard/driver#vagter",
+    );
 
   await notifyAdminAboutNewRide({
     citizenName: user.name,
@@ -50,14 +57,14 @@ export async function createRideRequestAction(formData: FormData) {
     rideTime: ride.rideTime,
     passengers: ride.passengers,
     purpose: ride.purpose,
-    notes: ride.notes
+    notes: ride.notes,
   });
 
   await createNotification({
     userId: user.id,
     title: "Din tur er oprettet",
     body: `${ride.pickupAddress} til ${ride.destinationAddress} den ${ride.rideDate.toLocaleDateString("da-DK")} kl. ${ride.rideTime}.`,
-    href: "/dashboard/citizen#mine-ture"
+    href: "/dashboard/citizen#mine-ture",
   });
 
   await notifyAdmins(
@@ -65,7 +72,7 @@ export async function createRideRequestAction(formData: FormData) {
     shift
       ? `${user.name} ønsker en tur den ${ride.rideDate.toLocaleDateString("da-DK")} kl. ${ride.rideTime}. Der er automatisk oprettet en ledig vagt på ${busLabels[(shift.bus || "EAST") as BusName]} kl. ${shift.startTime}-${shift.endTime}.`
       : `${user.name} ønsker en tur den ${ride.rideDate.toLocaleDateString("da-DK")} kl. ${ride.rideTime}. Ingen bus var ledig til automatisk vagt.`,
-    "/dashboard/admin"
+    "/dashboard/admin",
   );
 
   revalidatePath("/dashboard/citizen");
@@ -94,40 +101,49 @@ export async function deleteRideRequestAction(formData: FormData) {
     redirect("/dashboard/citizen?error=Turen%20kunne%20ikke%20slettes.");
   }
 
-  const ride = await prisma.rideRequest.findFirst({
-    where: {
-      id: rideRequestId,
-      citizenProfileId: user.citizenProfile.id
-    },
-    include: { automaticShift: true }
+  const { ride } = await scheduleTransaction(async () => {
+    const ride = await prisma.rideRequest.findFirst({
+      where: {
+        id: rideRequestId,
+        citizenProfileId: user.citizenProfile!.id,
+      },
+      include: { automaticShift: true, assignment: { include: { driverProfile: true } } },
+    });
+
+    if (!ride) {
+      redirect("/dashboard/citizen?error=Du%20kan%20kun%20slette%20dine%20egne%20ture.");
+    }
+
+    if (ride.status === "COMPLETED") {
+      redirect("/dashboard/citizen?error=Gennemf%C3%B8rte%20ture%20kan%20ikke%20slettes.");
+    }
+
+    await prisma.$transaction([
+      ...(ride.automaticShift ? [prisma.driverShift.delete({ where: { id: ride.automaticShift.id } })] : []),
+      prisma.rideAssignment.deleteMany({ where: { rideRequestId: ride.id } }),
+      prisma.event.updateMany({ where: { sourceRideRequestId: ride.id }, data: { status: "CANCELLED" } }),
+      prisma.rideRequest.update({
+        where: { id: ride.id },
+        data: { status: "CANCELLED" },
+      }),
+    ]);
+
+    return { ride };
   });
 
-  if (!ride) {
-    redirect("/dashboard/citizen?error=Du%20kan%20kun%20slette%20dine%20egne%20ture.");
-  }
-
-  if (ride.status === "COMPLETED") {
-    redirect("/dashboard/citizen?error=Gennemf%C3%B8rte%20ture%20kan%20ikke%20slettes.");
-  }
-
-  await prisma.$transaction([
-    ...(ride.automaticShift
-      ? [prisma.driverShift.delete({ where: { id: ride.automaticShift.id } })]
-      : []),
-    prisma.rideAssignment.deleteMany({ where: { rideRequestId: ride.id } }),
-    prisma.event.updateMany({ where: { sourceRideRequestId: ride.id }, data: { status: "CANCELLED" } }),
-    prisma.rideRequest.update({
-      where: { id: ride.id },
-      data: { status: "CANCELLED" }
-    })
-  ]);
+  await notifyRideParticipants(
+    ride.id,
+    "Turen er aflyst",
+    `Turen den ${ride.rideDate.toLocaleDateString("da-DK")} kl. ${ride.rideTime} er aflyst.`,
+    ride.assignment ? [ride.assignment.driverProfile.userId] : [],
+  );
 
   await createAuditLog({
     actorUserId: user.id,
     action: "RIDE_CANCELLED",
     entityType: "RIDE_REQUEST",
     entityId: ride.id,
-    description: `${user.name} annullerede sin tur den ${ride.rideDate.toLocaleDateString("da-DK")} kl. ${ride.rideTime} fra ${ride.pickupAddress} til ${ride.destinationAddress}. Turen er bevaret i historikken, og den automatisk tilknyttede vagt blev fjernet.`
+    description: `${user.name} annullerede sin tur den ${ride.rideDate.toLocaleDateString("da-DK")} kl. ${ride.rideTime} fra ${ride.pickupAddress} til ${ride.destinationAddress}. Turen er bevaret i historikken, og den automatisk tilknyttede vagt blev fjernet.`,
   });
 
   revalidatePath("/dashboard/citizen");
@@ -162,16 +178,16 @@ export async function sendCitizenRideMessageAction(formData: FormData) {
   const ride = await prisma.rideRequest.findFirst({
     where: {
       id: rideRequestId,
-      citizenProfileId: user.citizenProfile.id
+      citizenProfileId: user.citizenProfile!.id,
     },
     include: {
       citizenProfile: { include: { user: true } },
       assignment: {
         include: {
-          driverProfile: { include: { user: true } }
-        }
-      }
-    }
+          driverProfile: { include: { user: true } },
+        },
+      },
+    },
   });
 
   if (!ride?.assignment?.driverProfile) {
@@ -181,11 +197,11 @@ export async function sendCitizenRideMessageAction(formData: FormData) {
   const driverUser = ride.assignment.driverProfile.user;
   const driver = {
     email: driverUser.email,
-    name: driverUser.name
+    name: driverUser.name,
   };
   const citizen = {
     email: user.email,
-    name: user.name
+    name: user.name,
   };
   const rideData = {
     citizenName: user.name,
@@ -195,7 +211,7 @@ export async function sendCitizenRideMessageAction(formData: FormData) {
     rideTime: ride.rideTime,
     passengers: ride.passengers,
     purpose: ride.purpose,
-    notes: ride.notes
+    notes: ride.notes,
   };
 
   await createNotification({
@@ -203,7 +219,7 @@ export async function sendCitizenRideMessageAction(formData: FormData) {
     title: "Svar fra borger",
     body: `${user.name}: ${message}`,
     href: "/dashboard/driver",
-    driverType: "RIDE_CHANGES"
+    driverType: "RIDE_CHANGES",
   });
 
   await notifyDriverAboutCitizenMessage(driver, rideData, citizen, message);

@@ -27,12 +27,7 @@ function unfoldIcsLines(input: string) {
 }
 
 function decodeIcsText(value = "") {
-  return value
-    .replace(/\\n/g, "\n")
-    .replace(/\\,/g, ",")
-    .replace(/\\;/g, ";")
-    .replace(/\\\\/g, "\\")
-    .trim();
+  return value.replace(/\\n/g, "\n").replace(/\\,/g, ",").replace(/\\;/g, ";").replace(/\\\\/g, "\\").trim();
 }
 
 function parseIcsDate(value?: string) {
@@ -40,10 +35,28 @@ function parseIcsDate(value?: string) {
   const match = value.match(/^(\d{4})(\d{2})(\d{2})T?(\d{2})?(\d{2})?/);
   if (!match) return null;
 
-  const [, year, month, day, hour = "00", minute = "00"] = match;
+  let [, year, month, day, hour = "00", minute = "00"] = match;
+  if (value.endsWith("Z")) {
+    const instant = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute)));
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Copenhagen",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(instant);
+    const part = (type: string) => parts.find((p) => p.type === type)!.value;
+    year = part("year");
+    month = part("month");
+    day = part("day");
+    hour = part("hour");
+    minute = part("minute");
+  }
   return {
     date: new Date(Date.UTC(Number(year), Number(month) - 1, Number(day))),
-    time: `${hour}:${minute}`
+    time: `${hour}:${minute}`,
   };
 }
 
@@ -81,18 +94,27 @@ function parseEvents(calendar: string) {
   return events;
 }
 
+export class CalendarUnavailableError extends Error {
+  constructor() {
+    super("Kalenderen kan ikke kontrolleres lige nu. Prøv igen om lidt.");
+  }
+}
+
 export async function getSuperSaaSBookings(start: Date, end: Date): Promise<SuperSaaSBooking[]> {
   try {
     const response = await fetch(supersaasFeedUrl, {
-      next: { revalidate: 300 }
+      cache: "no-store",
+      signal: AbortSignal.timeout(5000),
     });
 
     if (!response.ok) {
-      return [];
+      throw new CalendarUnavailableError();
     }
 
     const calendar = await response.text();
 
+    if (!calendar.includes("BEGIN:VCALENDAR") || !calendar.includes("END:VCALENDAR"))
+      throw new CalendarUnavailableError();
     const bookings: SuperSaaSBooking[] = [];
 
     for (const event of parseEvents(calendar)) {
@@ -100,25 +122,34 @@ export async function getSuperSaaSBookings(start: Date, end: Date): Promise<Supe
       const endDate = parseIcsDate(event.DTEND);
       const description = decodeIcsText(event.DESCRIPTION);
 
-      if (!startDate || !endDate || startDate.date < start || startDate.date >= end) {
-        continue;
+      if (event.STATUS === "CANCELLED") continue;
+      if (!startDate || !endDate || event.RRULE) throw new CalendarUnavailableError();
+      // Split overnight and all-day bookings into daily intervals.
+      for (let day = new Date(startDate.date); day <= endDate.date; day = new Date(day.getTime() + 86400000)) {
+        if (day < start || day >= end) continue;
+        const first = day.getTime() === startDate.date.getTime();
+        const last = day.getTime() === endDate.date.getTime();
+        const from = first ? startDate.time : "00:00";
+        const until = last ? endDate.time : "24:00";
+        if (from >= until) continue;
+        bookings.push({
+          id: "supersaas-" + (event.UID ?? event.DTSTART) + "-" + day.toISOString().slice(0, 10),
+          bus: busFromDescription(description),
+          date: day,
+          startTime: from,
+          endTime: until,
+          title: decodeIcsText(event.SUMMARY) || "SuperSaaS booking",
+          organizer: decodeIcsText(event.ORGANIZER),
+          description,
+          url: decodeIcsText(event.URL),
+        });
       }
-
-      bookings.push({
-        id: `supersaas-${event.UID ?? `${event.DTSTART}-${event.SUMMARY}`}`,
-        bus: busFromDescription(description),
-        date: startDate.date,
-        startTime: startDate.time,
-        endTime: endDate.time,
-        title: decodeIcsText(event.SUMMARY) || "SuperSaaS booking",
-        organizer: decodeIcsText(event.ORGANIZER),
-        description,
-        url: decodeIcsText(event.URL)
-      });
     }
 
-    return bookings.sort((left, right) => left.date.getTime() - right.date.getTime() || left.startTime.localeCompare(right.startTime));
+    return bookings.sort(
+      (left, right) => left.date.getTime() - right.date.getTime() || left.startTime.localeCompare(right.startTime),
+    );
   } catch {
-    return [];
+    throw new CalendarUnavailableError();
   }
 }

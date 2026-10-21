@@ -2,8 +2,9 @@ export function organizationName(profile: { name?: string | null; user: { name: 
   return profile.name?.trim() || profile.user.name;
 }
 
-export function primaryOrganizationForUser<T extends { organizationProfile?: any; organizationMemberships?: Array<{ organizationProfile: any }> | null }>(
-  user: T
-) {
+export function primaryOrganizationForUser<T>(user: {
+  organizationProfile?: T | null;
+  organizationMemberships?: Array<{ organizationProfile: T }> | null;
+}) {
   return user.organizationProfile ?? user.organizationMemberships?.[0]?.organizationProfile ?? null;
 }

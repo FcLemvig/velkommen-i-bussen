@@ -36,7 +36,7 @@ function formatRideDate(date: Date) {
   return new Intl.DateTimeFormat("da-DK", {
     day: "numeric",
     month: "long",
-    year: "numeric"
+    year: "numeric",
   }).format(date);
 }
 
@@ -47,7 +47,7 @@ function rideSummary(ride: RideEmailData) {
     `Fra: ${ride.pickupAddress}`,
     `Til: ${ride.destinationAddress}`,
     `Passagerer: ${ride.passengers}`,
-    `Form\u00e5l: ${ride.purpose}`
+    `Form\u00e5l: ${ride.purpose}`,
   ];
 
   if (ride.notes) {
@@ -67,16 +67,17 @@ async function sendEmail(to: EmailRecipient, subject: string, text: string) {
 
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
+    signal: AbortSignal.timeout(10000),
     headers: {
       Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       from: fromEmail,
       to: [to.email],
       subject,
-      text
-    })
+      text,
+    }),
   });
 
   if (!response.ok) {
@@ -109,7 +110,7 @@ export async function sendDriverWelcomeEmail(to: EmailRecipient, setupToken?: st
   return safelySendEmail(
     to,
     "Velkommen som frivillig chauffør",
-    `Hej ${to.name || "chauffør"}\n\nDu er nu oprettet som frivillig chauffør i Velkommen i Bussen.\n\n${accessSection}\n\nSådan kommer du i gang:\n1. Log ind på ${loginUrl}\n2. Åbn Chauffør fra Min side.\n3. Under Ledige vagter kan du læse om en kørsel og tage den.\n4. Dine vagter og tildelte ture vises på chaufførsiden. Her kan du også skrive med borgeren og markere turen som gennemført.\n\nGem appen på mobilen:\nAndroid: Åbn siden i Chrome, tryk på menuen med tre prikker, og vælg Installer app eller Føj til startskærm.\niPhone: Åbn siden i Safari, tryk på Del, vælg Føj til hjemmeskærm, og tryk Tilføj.\n\nNotifikationer:\nÅbn ${notificationsUrl} efter login, tryk Slå push til, og tillad notifikationer. Du kan vælge beskeder om nye vagter, tildelte ture samt ændringer og aflysninger.\n\nHar du brug for hjælp, kan du kontakte Velkommen i Bussen.\n\nVenlig hilsen\nVelkommen i Bussen`
+    `Hej ${to.name || "chauffør"}\n\nDu er nu oprettet som frivillig chauffør i Velkommen i Bussen.\n\n${accessSection}\n\nSådan kommer du i gang:\n1. Log ind på ${loginUrl}\n2. Åbn Chauffør fra Min side.\n3. Under Ledige vagter kan du læse om en kørsel og tage den.\n4. Dine vagter og tildelte ture vises på chaufførsiden. Her kan du også skrive med borgeren og markere turen som gennemført.\n\nGem appen på mobilen:\nAndroid: Åbn siden i Chrome, tryk på menuen med tre prikker, og vælg Installer app eller Føj til startskærm.\niPhone: Åbn siden i Safari, tryk på Del, vælg Føj til hjemmeskærm, og tryk Tilføj.\n\nNotifikationer:\nÅbn ${notificationsUrl} efter login, tryk Slå push til, og tillad notifikationer. Du kan vælge beskeder om nye vagter, tildelte ture samt ændringer og aflysninger.\n\nHar du brug for hjælp, kan du kontakte Velkommen i Bussen.\n\nVenlig hilsen\nVelkommen i Bussen`,
   );
 }
 
@@ -120,21 +121,18 @@ export async function sendOrganizationWelcomeEmail(to: EmailRecipient, setupToke
   return safelySendEmail(
     to,
     "Velkommen til Velkommen i Bussen",
-    `Hej ${to.name || "forening/institution"}\n\nJeres profil er nu oprettet i Velkommen i Bussen.\n\nVælg først en adgangskode her:\n${setupUrl}\n\nLinket virker i 7 dage og kan kun bruges én gang.\n\nNår adgangskoden er valgt, kan I logge ind på:\n${loginUrl}\n\nI appen kan I se buskalenderen, booke en ledig bus og tilknytte en frivillig chauffør. Jeres bookinger samles på foreningssiden.\n\nHar I brug for hjælp, kan I kontakte Velkommen i Bussen.\n\nVenlig hilsen\nVelkommen i Bussen`
+    `Hej ${to.name || "forening/institution"}\n\nJeres profil er nu oprettet i Velkommen i Bussen.\n\nVælg først en adgangskode her:\n${setupUrl}\n\nLinket virker i 7 dage og kan kun bruges én gang.\n\nNår adgangskoden er valgt, kan I logge ind på:\n${loginUrl}\n\nI appen kan I se buskalenderen, booke en ledig bus og tilknytte en frivillig chauffør. Jeres bookinger samles på foreningssiden.\n\nHar I brug for hjælp, kan I kontakte Velkommen i Bussen.\n\nVenlig hilsen\nVelkommen i Bussen`,
   );
 }
 
-export async function sendOrganizationBookingConfirmation(
-  to: EmailRecipient,
-  booking: OrganizationBookingEmailData
-) {
+export async function sendOrganizationBookingConfirmation(to: EmailRecipient, booking: OrganizationBookingEmailData) {
   const details = [
     `Forening/institution: ${booking.organizationName}`,
     `Dato: ${formatRideDate(booking.bookingDate)}`,
     `Tidspunkt: kl. ${booking.startTime}-${booking.endTime}`,
     `Bus: ${booking.busName}`,
     `Chauffør: ${booking.driverName}`,
-    `Formål: ${booking.purpose}`
+    `Formål: ${booking.purpose}`,
   ];
 
   if (booking.notes) {
@@ -144,7 +142,7 @@ export async function sendOrganizationBookingConfirmation(
   return safelySendEmail(
     to,
     `Bekræftelse på booking af ${booking.busName}`,
-    `Hej ${to.name || booking.organizationName}\n\nJeres booking af frivilligbussen er bekræftet.\n\n${details.join("\n")}\n\nPraktisk inden turen:\n- Afhentningsstedet kan variere. Er I i tvivl, så send en SMS til 2080 1450 dagen før turen.\n- Tjek bussen for synlige skader inden afgang, og meld eventuelle skader til 2080 1450.\n- Den valgte chauffør skal selv køre turen. Kørslen må ikke overlades til andre.\n- Send en SMS til 2080 1450, når chaufføren står ved bussen, så den kan blive låst op.\n- Nøglen ligger i handskerummet og kan bruges, hvis bussen skal låses undervejs.\n\nNår bussen afleveres:\n- Parkér på den aftalte plads, sæt bussen i P, og sluk den.\n- Læg nøglen tilbage i handskerummet, tjek for nye skader, og kontrollér at alle døre er lukket.\n- Send en SMS til 2080 1450, når bussen er afleveret. I får en bekræftelse, når den er låst.\n\nSe hele vejledningen her:\nhttps://velkommenibussen.dk/bus-qa/\n\nVenlig hilsen\nVelkommen i Bussen`
+    `Hej ${to.name || booking.organizationName}\n\nJeres booking af frivilligbussen er bekræftet.\n\n${details.join("\n")}\n\nPraktisk inden turen:\n- Afhentningsstedet kan variere. Er I i tvivl, så send en SMS til 2080 1450 dagen før turen.\n- Tjek bussen for synlige skader inden afgang, og meld eventuelle skader til 2080 1450.\n- Den valgte chauffør skal selv køre turen. Kørslen må ikke overlades til andre.\n- Send en SMS til 2080 1450, når chaufføren står ved bussen, så den kan blive låst op.\n- Nøglen ligger i handskerummet og kan bruges, hvis bussen skal låses undervejs.\n\nNår bussen afleveres:\n- Parkér på den aftalte plads, sæt bussen i P, og sluk den.\n- Læg nøglen tilbage i handskerummet, tjek for nye skader, og kontrollér at alle døre er lukket.\n- Send en SMS til 2080 1450, når bussen er afleveret. I får en bekræftelse, når den er låst.\n\nSe hele vejledningen her:\nhttps://velkommenibussen.dk/bus-qa/\n\nVenlig hilsen\nVelkommen i Bussen`,
   );
 }
 
@@ -152,42 +150,35 @@ export async function notifyAdminAboutNewRide(ride: RideEmailData) {
   await safelySendEmail(
     adminEmail ? { email: adminEmail, name: "Velkommen i Bussen" } : null,
     "Ny k\u00f8rselsanmodning",
-    `Der er kommet en ny k\u00f8rselsanmodning.\n\n${rideSummary(ride)}\n\nSe den i admin:\n${appUrl}/dashboard/admin`
+    `Der er kommet en ny k\u00f8rselsanmodning.\n\n${rideSummary(ride)}\n\nSe den i admin:\n${appUrl}/dashboard/admin`,
   );
 }
 
 export async function notifyCitizenAboutAssignment(
   citizen: EmailRecipient,
   ride: RideEmailData,
-  driver: EmailRecipient
+  driver: EmailRecipient,
 ) {
   await safelySendEmail(
     citizen,
     "Din tur er tildelt",
-    `Hej ${citizen.name || ride.citizenName}\n\nDin tur er nu tildelt til ${driver.name || "en chauff\u00f8r"}.\n\n${rideSummary(ride)}\n\nVenlig hilsen\nVelkommen i Bussen`
+    `Hej ${citizen.name || ride.citizenName}\n\nDin tur er nu tildelt til ${driver.name || "en chauff\u00f8r"}.\n\n${rideSummary(ride)}\n\nVenlig hilsen\nVelkommen i Bussen`,
   );
 }
 
-export async function notifyDriverAboutAssignment(
-  driver: EmailRecipient,
-  ride: RideEmailData
-) {
+export async function notifyDriverAboutAssignment(driver: EmailRecipient, ride: RideEmailData) {
   await safelySendEmail(
     driver,
     "Du har f\u00e5et tildelt en tur",
-    `Hej ${driver.name || "chauff\u00f8r"}\n\nDu har f\u00e5et tildelt en tur.\n\n${rideSummary(ride)}\n\nSe dine ture her:\n${appUrl}/dashboard/driver`
+    `Hej ${driver.name || "chauff\u00f8r"}\n\nDu har f\u00e5et tildelt en tur.\n\n${rideSummary(ride)}\n\nSe dine ture her:\n${appUrl}/dashboard/driver`,
   );
 }
 
-export async function notifyCitizenAboutStatus(
-  citizen: EmailRecipient,
-  ride: RideEmailData,
-  status: RideStatus
-) {
+export async function notifyCitizenAboutStatus(citizen: EmailRecipient, ride: RideEmailData, status: RideStatus) {
   await safelySendEmail(
     citizen,
     `Status p\u00e5 din tur: ${rideStatusLabels[status]}`,
-    `Hej ${citizen.name || ride.citizenName}\n\nStatus p\u00e5 din tur er \u00e6ndret til: ${rideStatusLabels[status]}.\n\n${rideSummary(ride)}\n\nVenlig hilsen\nVelkommen i Bussen`
+    `Hej ${citizen.name || ride.citizenName}\n\nStatus p\u00e5 din tur er \u00e6ndret til: ${rideStatusLabels[status]}.\n\n${rideSummary(ride)}\n\nVenlig hilsen\nVelkommen i Bussen`,
   );
 }
 
@@ -195,12 +186,12 @@ export async function notifyCitizenAboutDriverMessage(
   citizen: EmailRecipient,
   ride: RideEmailData,
   driver: EmailRecipient,
-  message: string
+  message: string,
 ) {
   await safelySendEmail(
     citizen,
     "Besked fra din chauff\u00f8r",
-    `Hej ${citizen.name || ride.citizenName}\n\n${driver.name || "Din chauff\u00f8r"} har sendt en besked om din tur:\n\n${message}\n\n${rideSummary(ride)}\n\nVenlig hilsen\nVelkommen i Bussen`
+    `Hej ${citizen.name || ride.citizenName}\n\n${driver.name || "Din chauff\u00f8r"} har sendt en besked om din tur:\n\n${message}\n\n${rideSummary(ride)}\n\nVenlig hilsen\nVelkommen i Bussen`,
   );
 }
 
@@ -208,12 +199,12 @@ export async function notifyDriverAboutCitizenMessage(
   driver: EmailRecipient,
   ride: RideEmailData,
   citizen: EmailRecipient,
-  message: string
+  message: string,
 ) {
   await safelySendEmail(
     driver,
     "Svar fra borger",
-    `Hej ${driver.name || "chauff\u00f8r"}\n\n${citizen.name || ride.citizenName} har sendt et svar om turen:\n\n${message}\n\n${rideSummary(ride)}\n\nVenlig hilsen\nVelkommen i Bussen`
+    `Hej ${driver.name || "chauff\u00f8r"}\n\n${citizen.name || ride.citizenName} har sendt et svar om turen:\n\n${message}\n\n${rideSummary(ride)}\n\nVenlig hilsen\nVelkommen i Bussen`,
   );
 }
 
@@ -223,6 +214,6 @@ export async function sendPasswordResetEmail(to: EmailRecipient, token: string) 
   await safelySendEmail(
     to,
     "Vælg en ny adgangskode",
-    `Hej ${to.name || ""}\n\nVi har modtaget en anmodning om at vælge en ny adgangskode til din profil i Velkommen i Bussen.\n\nVælg en ny adgangskode her:\n${resetUrl}\n\nLinket virker i 1 time og kan kun bruges én gang. Hvis du ikke har bedt om dette, kan du blot se bort fra mailen.\n\nVenlig hilsen\nVelkommen i Bussen`
+    `Hej ${to.name || ""}\n\nVi har modtaget en anmodning om at vælge en ny adgangskode til din profil i Velkommen i Bussen.\n\nVælg en ny adgangskode her:\n${resetUrl}\n\nLinket virker i 1 time og kan kun bruges én gang. Hvis du ikke har bedt om dette, kan du blot se bort fra mailen.\n\nVenlig hilsen\nVelkommen i Bussen`,
   );
 }

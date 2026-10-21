@@ -1,12 +1,13 @@
 "use server";
 
+import { hasDeparted } from "@/lib/dates";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createAuditLog } from "@/lib/audit";
 import { requireUser } from "@/lib/auth";
 import { createNotification } from "@/lib/notifications";
 import { isMembershipActive } from "@/lib/membership";
-import { prisma } from "@/lib/prisma";
+import { prisma, scheduleTransaction } from "@/lib/prisma";
 import { eventSignupSchema } from "@/lib/validation";
 
 export async function signupForEventAction(formData: FormData) {
@@ -18,40 +19,46 @@ export async function signupForEventAction(formData: FormData) {
   }
 
   if (!isMembershipActive(user.membership)) {
-    redirect("/dashboard/citizen/events?error=Du%20skal%20have%20et%20aktivt%20medlemskab%2C%20f%C3%B8r%20du%20kan%20reservere%20pladser.");
+    redirect(
+      "/dashboard/citizen/events?error=Du%20skal%20have%20et%20aktivt%20medlemskab%2C%20f%C3%B8r%20du%20kan%20reservere%20pladser.",
+    );
   }
 
   if (!parsed.success) {
     redirect(`/dashboard/citizen/events?error=${encodeURIComponent(parsed.error.issues[0].message)}`);
   }
 
-  const event = await prisma.event.findUnique({
-    where: { id: parsed.data.eventId },
-    include: { signups: true }
-  });
+  const { event, signup } = await scheduleTransaction(async () => {
+    const event = await prisma.event.findUnique({
+      where: { id: parsed.data.eventId },
+      include: { signups: true },
+    });
 
-  if (!event || event.status !== "OPEN") {
-    redirect("/dashboard/citizen/events?error=Begivenheden%20er%20ikke%20%C3%A5ben%20for%20tilmelding.");
-  }
-
-  const alreadySignedUp = event.signups.some((signup) => signup.citizenProfileId === user.citizenProfile?.id);
-  if (alreadySignedUp) {
-    redirect("/dashboard/citizen/events?error=Du%20er%20allerede%20tilmeldt.");
-  }
-
-  const takenSeats = event.signups.reduce((sum, signup) => sum + signup.passengers, 0);
-  if (takenSeats + parsed.data.passengers > event.capacity) {
-    redirect("/dashboard/citizen/events?error=Der%20er%20ikke%20plads%20til%20det%20antal%20passagerer.");
-  }
-
-  const signup = await prisma.eventSignup.create({
-    data: {
-      eventId: event.id,
-      citizenProfileId: user.citizenProfile.id,
-      pickupAddress: parsed.data.pickupAddress?.trim() || null,
-      passengers: parsed.data.passengers,
-      notes: parsed.data.notes?.trim() || null
+    if (!event || event.status !== "OPEN" || hasDeparted(event.eventDate, event.startTime)) {
+      redirect("/dashboard/citizen/events?error=Begivenheden%20er%20ikke%20%C3%A5ben%20for%20tilmelding.");
     }
+
+    const alreadySignedUp = event.signups.some((signup) => signup.citizenProfileId === user.citizenProfile?.id);
+    if (alreadySignedUp) {
+      redirect("/dashboard/citizen/events?error=Du%20er%20allerede%20tilmeldt.");
+    }
+
+    const takenSeats = event.signups.reduce((sum, signup) => sum + signup.passengers, 0);
+    if (takenSeats + parsed.data.passengers > event.capacity) {
+      redirect("/dashboard/citizen/events?error=Der%20er%20ikke%20plads%20til%20det%20antal%20passagerer.");
+    }
+
+    const signup = await prisma.eventSignup.create({
+      data: {
+        eventId: event.id,
+        citizenProfileId: user.citizenProfile!.id,
+        pickupAddress: parsed.data.pickupAddress?.trim() || null,
+        passengers: parsed.data.passengers,
+        notes: parsed.data.notes?.trim() || null,
+      },
+    });
+
+    return { event, signup };
   });
 
   await createAuditLog({
@@ -59,13 +66,13 @@ export async function signupForEventAction(formData: FormData) {
     action: "EVENT_SIGNUP_CREATED",
     entityType: "EventSignup",
     entityId: signup.id,
-    description: `${user.name} tilmeldte ${parsed.data.passengers} passager(er) til ${event.title}.`
+    description: `${user.name} tilmeldte ${parsed.data.passengers} passager(er) til ${event.title}.`,
   });
 
   if (event.driverProfileId) {
     const driver = await prisma.driverProfile.findUnique({
       where: { id: event.driverProfileId },
-      select: { userId: true }
+      select: { userId: true },
     });
     if (driver) {
       await createNotification({
@@ -73,7 +80,7 @@ export async function signupForEventAction(formData: FormData) {
         title: "Ny passager på din fællestur",
         body: `${user.name} har tilmeldt ${parsed.data.passengers} passager(er) til ${event.title}.`,
         href: "/dashboard/driver#mine-ture",
-        driverType: "RIDE_CHANGES"
+        driverType: "RIDE_CHANGES",
       });
     }
   }
@@ -93,26 +100,28 @@ export async function cancelEventSignupAction(formData: FormData) {
     redirect("/dashboard/citizen/events?error=Tilmeldingen%20kunne%20ikke%20fjernes.");
   }
 
-  const signup = await prisma.eventSignup.delete({
-    where: {
-      id: signupId,
-      citizenProfileId: user.citizenProfile.id
-    },
-    include: { event: true }
-  });
+  const signup = await scheduleTransaction(() =>
+    prisma.eventSignup.delete({
+      where: {
+        id: signupId,
+        citizenProfileId: user.citizenProfile!.id,
+      },
+      include: { event: true },
+    }),
+  );
 
   await createAuditLog({
     actorUserId: user.id,
     action: "EVENT_SIGNUP_CANCELLED",
     entityType: "EventSignup",
     entityId: signup.id,
-    description: `${user.name} frameldte sig ${signup.event.title}.`
+    description: `${user.name} frameldte sig ${signup.event.title}.`,
   });
 
   if (signup.event.driverProfileId) {
     const driver = await prisma.driverProfile.findUnique({
       where: { id: signup.event.driverProfileId },
-      select: { userId: true }
+      select: { userId: true },
     });
     if (driver) {
       await createNotification({
@@ -120,7 +129,7 @@ export async function cancelEventSignupAction(formData: FormData) {
         title: "Framelding fra din fællestur",
         body: `${user.name} har frameldt sig ${signup.event.title}.`,
         href: "/dashboard/driver#mine-ture",
-        driverType: "RIDE_CHANGES"
+        driverType: "RIDE_CHANGES",
       });
     }
   }

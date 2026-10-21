@@ -1,4 +1,6 @@
-import { prisma } from "@/lib/prisma";
+import { driverIsUnavailable } from "@/lib/scheduling";
+import { ensureRideSharingEvent, updateRideSharingEventStatus } from "@/lib/ride-sharing";
+import { prisma, scheduleTransaction } from "@/lib/prisma";
 import { getSuperSaaSBookings } from "@/lib/supersaas-calendar";
 import { addMinutesToDateAndTime, BusName, preferredBusForAddress, shiftsOverlap } from "@/lib/shifts";
 
@@ -28,14 +30,30 @@ function sameUtcDate(left: Date, right: Date) {
   return left.toISOString().slice(0, 10) === right.toISOString().slice(0, 10);
 }
 
-async function findLinkableShift(data: { rideRequestId: string; bus: BusName; date: Date; rideTime: string; assignedDriverProfileId?: string }) {
+async function findLinkableShift(data: {
+  rideRequestId: string;
+  bus: BusName;
+  date: Date;
+  rideTime: string;
+  assignedDriverProfileId?: string;
+}) {
   const { start, end } = dayRange(data.date);
   const candidates = await prisma.driverShift.findMany({
-    where: { rideRequestId: null, bus: data.bus, shiftDate: { gte: start, lt: end }, startTime: { lte: data.rideTime }, endTime: { gt: data.rideTime } },
-    orderBy: [{ startTime: "asc" }, { createdAt: "asc" }]
+    where: {
+      rideRequestId: null,
+      bus: data.bus,
+      shiftDate: { gte: start, lt: end },
+      startTime: { lte: data.rideTime },
+      endTime: { gt: data.rideTime },
+    },
+    orderBy: [{ startTime: "asc" }, { createdAt: "asc" }],
   });
   if (data.assignedDriverProfileId) {
-    return candidates.find((shift) => shift.driverProfileId === data.assignedDriverProfileId) ?? candidates.find((shift) => !shift.driverProfileId) ?? null;
+    return (
+      candidates.find((shift) => shift.driverProfileId === data.assignedDriverProfileId) ??
+      candidates.find((shift) => !shift.driverProfileId) ??
+      null
+    );
   }
   return candidates.find((shift) => Boolean(shift.driverProfileId)) ?? candidates[0] ?? null;
 }
@@ -53,24 +71,24 @@ async function busIsAvailable(data: {
     prisma.driverShift.findMany({
       where: {
         bus: data.bus,
-        shiftDate: { gte: start, lt: end }
-      }
+        shiftDate: { gte: start, lt: end },
+      },
     }),
     prisma.busBooking.findMany({
       where: {
         bus: data.bus,
         bookingDate: { gte: start, lt: end },
-        status: { not: "CANCELLED" }
-      }
+        status: { not: "CANCELLED" },
+      },
     }),
     prisma.event.findMany({
       where: {
         bus: data.bus,
         eventDate: { gte: start, lt: end },
-        status: { not: "CANCELLED" }
-      }
+        status: { not: "CANCELLED" },
+      },
     }),
-    getSuperSaaSBookings(start, end)
+    getSuperSaaSBookings(start, end),
   ]);
 
   return ![
@@ -83,62 +101,94 @@ async function busIsAvailable(data: {
       .map((event) => ({ startTime: event.startTime, endTime: event.endTime })),
     ...supersaasBookings
       .filter((booking) => booking.bus === data.bus)
-      .map((booking) => ({ startTime: booking.startTime, endTime: booking.endTime }))
+      .map((booking) => ({ startTime: booking.startTime, endTime: booking.endTime })),
   ].some((item) => shiftsOverlap(data.startTime, data.endTime, item.startTime, item.endTime));
 }
 
 export async function setRideBus(rideRequestId: string, bus: BusName) {
-  const ride = await prisma.rideRequest.findUnique({
-    where: { id: rideRequestId },
-    include: { automaticShift: true, assignment: true }
-  });
+  return scheduleTransaction(async () => {
+    const ride = await prisma.rideRequest.findUnique({
+      where: { id: rideRequestId },
+      include: { automaticShift: true, assignment: true },
+    });
 
-  if (!ride) {
-    return { error: "Turen kunne ikke findes." } as const;
-  }
-
-  const shiftStart = addMinutesToDateAndTime(ride.rideDate, ride.rideTime, -30);
-  const shiftEnd = addMinutesToDateAndTime(shiftStart.date, shiftStart.time, 120);
-  const linkableShift = ride.automaticShift ? null : await findLinkableShift({ rideRequestId: ride.id, bus, date: ride.rideDate, rideTime: ride.rideTime, assignedDriverProfileId: ride.assignment?.driverProfileId });
-
-  if (!sameUtcDate(shiftStart.date, shiftEnd.date)) {
-    return { error: "Turen går over midnat og skal planlægges manuelt." } as const;
-  }
-
-  const available = linkableShift ? true : await busIsAvailable({
-    bus,
-    date: shiftStart.date,
-    startTime: shiftStart.time,
-    endTime: shiftEnd.time,
-    excludeShiftId: ride.automaticShift?.id,
-    excludeRideRequestId: ride.id
-  });
-
-  if (!available) {
-    return { error: `${bus === "EAST" ? "Bus Øst" : "Bus Vest"} er optaget i det valgte tidsrum.` } as const;
-  }
-
-  const shift = await prisma.$transaction(async (tx) => {
-    if (ride.automaticShift) return tx.driverShift.update({
-        where: { id: ride.automaticShift.id },
-        data: {
-          bus,
-          shiftDate: shiftStart.date,
-          startTime: shiftStart.time,
-          endTime: shiftEnd.time,
-          driverProfileId: ride.assignment?.driverProfileId ?? null
-        }
-      });
-    if (linkableShift) {
-      const driverProfileId = linkableShift.driverProfileId ?? ride.assignment?.driverProfileId ?? null;
-      const linkedShift = await tx.driverShift.update({ where: { id: linkableShift.id }, data: { rideRequestId: ride.id, driverProfileId } });
-      if (driverProfileId) {
-        await tx.rideAssignment.upsert({ where: { rideRequestId: ride.id }, create: { rideRequestId: ride.id, driverProfileId }, update: { driverProfileId } });
-        await tx.rideRequest.update({ where: { id: ride.id }, data: { status: "ASSIGNED" } });
-      }
-      return linkedShift;
+    if (!ride) {
+      return { error: "Turen kunne ikke findes." } as const;
     }
-    return tx.driverShift.create({
+
+    if (["CANCELLED", "COMPLETED"].includes(ride.status))
+      return { error: "En afsluttet tur kan ikke få en ny bus." } as const;
+    const shiftStart = addMinutesToDateAndTime(ride.rideDate, ride.rideTime, -30);
+    const shiftEnd = addMinutesToDateAndTime(shiftStart.date, shiftStart.time, 120);
+    const linkableShift = ride.automaticShift
+      ? null
+      : await findLinkableShift({
+          rideRequestId: ride.id,
+          bus,
+          date: ride.rideDate,
+          rideTime: ride.rideTime,
+          assignedDriverProfileId: ride.assignment?.driverProfileId,
+        });
+
+    if (!sameUtcDate(shiftStart.date, shiftEnd.date)) {
+      return { error: "Turen går over midnat og skal planlægges manuelt." } as const;
+    }
+
+    const available = await busIsAvailable({
+      bus,
+      date: shiftStart.date,
+      startTime: shiftStart.time,
+      endTime: shiftEnd.time,
+      excludeShiftId: ride.automaticShift?.id ?? linkableShift?.id,
+      excludeRideRequestId: ride.id,
+    });
+
+    if (!available) {
+      return { error: `${bus === "EAST" ? "Bus Øst" : "Bus Vest"} er optaget i det valgte tidsrum.` } as const;
+    }
+
+    const selectedDriver = linkableShift?.driverProfileId ?? ride.assignment?.driverProfileId;
+    if (
+      selectedDriver &&
+      (await driverIsUnavailable(
+        selectedDriver,
+        shiftStart.date,
+        shiftStart.time,
+        shiftEnd.time,
+        ride.automaticShift?.id ?? linkableShift?.id,
+        ride.id,
+      ))
+    )
+      return { error: "Chaufføren er inaktiv eller optaget i tidsrummet." } as const;
+    const shift = await prisma.$transaction(async (tx) => {
+      if (ride.automaticShift)
+        return tx.driverShift.update({
+          where: { id: ride.automaticShift.id },
+          data: {
+            bus,
+            shiftDate: shiftStart.date,
+            startTime: shiftStart.time,
+            endTime: shiftEnd.time,
+            driverProfileId: ride.assignment?.driverProfileId ?? null,
+          },
+        });
+      if (linkableShift) {
+        const driverProfileId = linkableShift.driverProfileId ?? ride.assignment?.driverProfileId ?? null;
+        const linkedShift = await tx.driverShift.update({
+          where: { id: linkableShift.id },
+          data: { rideRequestId: ride.id, driverProfileId },
+        });
+        if (driverProfileId) {
+          await tx.rideAssignment.upsert({
+            where: { rideRequestId: ride.id },
+            create: { rideRequestId: ride.id, driverProfileId },
+            update: { driverProfileId },
+          });
+          await tx.rideRequest.update({ where: { id: ride.id }, data: { status: "ASSIGNED" } });
+        }
+        return linkedShift;
+      }
+      return tx.driverShift.create({
         data: {
           rideRequestId: ride.id,
           bus,
@@ -146,96 +196,153 @@ export async function setRideBus(rideRequestId: string, bus: BusName) {
           startTime: shiftStart.time,
           endTime: shiftEnd.time,
           driverProfileId: ride.assignment?.driverProfileId,
-          notes: `Bus valgt af administrationen til tur fra ${ride.pickupAddress} til ${ride.destinationAddress}.`
-        }
+          notes: `Bus valgt af administrationen til tur fra ${ride.pickupAddress} til ${ride.destinationAddress}.`,
+        },
       });
-  });
-
-  return { ride, shift } as const;
-}
-
-export async function updateRideDetails(
-  rideRequestId: string,
-  data: RideRequestInput,
-  requestedBus?: BusName
-) {
-  const existingRide = await prisma.rideRequest.findUnique({
-    where: { id: rideRequestId },
-    include: {
-      automaticShift: true,
-      assignment: true,
-      sharedEvent: { include: { signups: true } }
-    }
-  });
-
-  if (!existingRide) return { error: "Turen kunne ikke findes." } as const;
-
-  const rideDate = new Date(`${data.date}T00:00:00Z`);
-  if (Number.isNaN(rideDate.getTime())) return { error: "Datoen er ikke gyldig." } as const;
-
-  const takenSharedSeats = existingRide.sharedEvent?.signups.reduce((sum, signup) => sum + signup.passengers, 0) ?? 0;
-  const availableSharedSeats = Math.max(6 - data.passengers, 0);
-  if (data.isSharedRide && takenSharedSeats > availableSharedSeats) {
-    return { error: `Der er allerede reserveret ${takenSharedSeats} ekstra plads(er). Antallet af passagerer på selve turen kan derfor ikke sættes så højt.` } as const;
-  }
-
-  const bus = requestedBus ?? (existingRide.automaticShift?.bus as BusName | undefined);
-  const shiftStart = addMinutesToDateAndTime(rideDate, data.time, -30);
-  const shiftEnd = addMinutesToDateAndTime(shiftStart.date, shiftStart.time, 120);
-  const linkableShift = bus && !existingRide.automaticShift ? await findLinkableShift({ rideRequestId: existingRide.id, bus, date: rideDate, rideTime: data.time, assignedDriverProfileId: existingRide.assignment?.driverProfileId }) : null;
-
-  if (bus) {
-    if (!sameUtcDate(shiftStart.date, shiftEnd.date)) {
-      return { error: "Turen går over midnat og skal planlægges manuelt." } as const;
-    }
-    const available = linkableShift ? true : await busIsAvailable({ bus, date: shiftStart.date, startTime: shiftStart.time, endTime: shiftEnd.time, excludeShiftId: existingRide.automaticShift?.id, excludeRideRequestId: existingRide.id });
-    if (!available) return { error: `${bus === "EAST" ? "Bus Øst" : "Bus Vest"} er optaget i det nye tidsrum.` } as const;
-  }
-
-  const result = await prisma.$transaction(async (tx) => {
-    const ride = await tx.rideRequest.update({
-      where: { id: existingRide.id },
-      data: {
-        pickupAddress: data.pickupAddress,
-        destinationAddress: data.destinationAddress,
-        rideDate,
-        rideTime: data.time,
-        passengers: data.passengers,
-        purpose: data.purpose,
-        isSharedRide: data.isSharedRide,
-        includesMinors: data.includesMinors,
-        parentalConsent: data.includesMinors ? data.parentalConsent : false,
-        guardianName: data.includesMinors ? data.guardianName?.trim() || null : null,
-        guardianPhone: data.includesMinors ? data.guardianPhone?.trim() || null : null,
-        notes: data.notes?.trim() || null
-      }
     });
 
-    let shift = existingRide.automaticShift;
-    if (bus && existingRide.automaticShift) {
-      shift = await tx.driverShift.update({ where: { id: existingRide.automaticShift.id }, data: { bus, shiftDate: shiftStart.date, startTime: shiftStart.time, endTime: shiftEnd.time, driverProfileId: existingRide.assignment?.driverProfileId ?? null } });
-    } else if (bus && linkableShift) {
-      const driverProfileId = linkableShift.driverProfileId ?? existingRide.assignment?.driverProfileId ?? null;
-      shift = await tx.driverShift.update({ where: { id: linkableShift.id }, data: { rideRequestId: existingRide.id, driverProfileId } });
-      if (driverProfileId) {
-        await tx.rideAssignment.upsert({ where: { rideRequestId: existingRide.id }, create: { rideRequestId: existingRide.id, driverProfileId }, update: { driverProfileId } });
-        await tx.rideRequest.update({ where: { id: existingRide.id }, data: { status: "ASSIGNED" } });
-      }
-    } else if (bus) {
-      shift = await tx.driverShift.create({ data: { rideRequestId: existingRide.id, bus, shiftDate: shiftStart.date, startTime: shiftStart.time, endTime: shiftEnd.time, driverProfileId: existingRide.assignment?.driverProfileId, notes: `Oprettet ved redigering af tur fra ${data.pickupAddress} til ${data.destinationAddress}.` } });
-    }
-    return { ride, shift };
+    await ensureRideSharingEvent(ride.id);
+    return { ride, shift } as const;
   });
-
-  return { ...result, existingRide } as const;
 }
 
-async function findAvailableBus(data: {
-  pickupAddress: string;
-  date: Date;
-  startTime: string;
-  endTime: string;
-}) {
+export async function updateRideDetails(rideRequestId: string, data: RideRequestInput, requestedBus?: BusName) {
+  return scheduleTransaction(async () => {
+    const existingRide = await prisma.rideRequest.findUnique({
+      where: { id: rideRequestId },
+      include: {
+        automaticShift: true,
+        assignment: true,
+        sharedEvent: { include: { signups: true } },
+      },
+    });
+
+    if (!existingRide) return { error: "Turen kunne ikke findes." } as const;
+
+    if (["CANCELLED", "COMPLETED"].includes(existingRide.status))
+      return { error: "En afsluttet tur kan ikke redigeres." } as const;
+    const rideDate = new Date(`${data.date}T00:00:00Z`);
+    if (Number.isNaN(rideDate.getTime())) return { error: "Datoen er ikke gyldig." } as const;
+
+    const takenSharedSeats = existingRide.sharedEvent?.signups.reduce((sum, signup) => sum + signup.passengers, 0) ?? 0;
+    const availableSharedSeats = Math.max(6 - data.passengers, 0);
+    if (data.isSharedRide && takenSharedSeats > availableSharedSeats) {
+      return {
+        error: `Der er allerede reserveret ${takenSharedSeats} ekstra plads(er). Antallet af passagerer på selve turen kan derfor ikke sættes så højt.`,
+      } as const;
+    }
+
+    const bus = requestedBus ?? (existingRide.automaticShift?.bus as BusName | undefined);
+    const shiftStart = addMinutesToDateAndTime(rideDate, data.time, -30);
+    const shiftEnd = addMinutesToDateAndTime(shiftStart.date, shiftStart.time, 120);
+    const linkableShift =
+      bus && !existingRide.automaticShift
+        ? await findLinkableShift({
+            rideRequestId: existingRide.id,
+            bus,
+            date: rideDate,
+            rideTime: data.time,
+            assignedDriverProfileId: existingRide.assignment?.driverProfileId,
+          })
+        : null;
+
+    if (bus) {
+      if (!sameUtcDate(shiftStart.date, shiftEnd.date)) {
+        return { error: "Turen går over midnat og skal planlægges manuelt." } as const;
+      }
+      const available = await busIsAvailable({
+        bus,
+        date: shiftStart.date,
+        startTime: shiftStart.time,
+        endTime: shiftEnd.time,
+        excludeShiftId: existingRide.automaticShift?.id ?? linkableShift?.id,
+        excludeRideRequestId: existingRide.id,
+      });
+      if (!available)
+        return { error: `${bus === "EAST" ? "Bus Øst" : "Bus Vest"} er optaget i det nye tidsrum.` } as const;
+    }
+
+    const selectedDriver = linkableShift?.driverProfileId ?? existingRide.assignment?.driverProfileId;
+    if (
+      selectedDriver &&
+      (await driverIsUnavailable(
+        selectedDriver,
+        shiftStart.date,
+        shiftStart.time,
+        shiftEnd.time,
+        existingRide.automaticShift?.id ?? linkableShift?.id,
+        existingRide.id,
+      ))
+    )
+      return { error: "Chaufføren er inaktiv eller optaget i tidsrummet." } as const;
+    const result = await prisma.$transaction(async (tx) => {
+      const ride = await tx.rideRequest.update({
+        where: { id: existingRide.id },
+        data: {
+          pickupAddress: data.pickupAddress,
+          destinationAddress: data.destinationAddress,
+          rideDate,
+          rideTime: data.time,
+          passengers: data.passengers,
+          purpose: data.purpose,
+          isSharedRide: data.isSharedRide,
+          includesMinors: data.includesMinors,
+          parentalConsent: data.includesMinors ? data.parentalConsent : false,
+          guardianName: data.includesMinors ? data.guardianName?.trim() || null : null,
+          guardianPhone: data.includesMinors ? data.guardianPhone?.trim() || null : null,
+          notes: data.notes?.trim() || null,
+        },
+      });
+
+      let shift = existingRide.automaticShift;
+      if (bus && existingRide.automaticShift) {
+        shift = await tx.driverShift.update({
+          where: { id: existingRide.automaticShift.id },
+          data: {
+            bus,
+            shiftDate: shiftStart.date,
+            startTime: shiftStart.time,
+            endTime: shiftEnd.time,
+            driverProfileId: existingRide.assignment?.driverProfileId ?? null,
+          },
+        });
+      } else if (bus && linkableShift) {
+        const driverProfileId = linkableShift.driverProfileId ?? existingRide.assignment?.driverProfileId ?? null;
+        shift = await tx.driverShift.update({
+          where: { id: linkableShift.id },
+          data: { rideRequestId: existingRide.id, driverProfileId },
+        });
+        if (driverProfileId) {
+          await tx.rideAssignment.upsert({
+            where: { rideRequestId: existingRide.id },
+            create: { rideRequestId: existingRide.id, driverProfileId },
+            update: { driverProfileId },
+          });
+          await tx.rideRequest.update({ where: { id: existingRide.id }, data: { status: "ASSIGNED" } });
+        }
+      } else if (bus) {
+        shift = await tx.driverShift.create({
+          data: {
+            rideRequestId: existingRide.id,
+            bus,
+            shiftDate: shiftStart.date,
+            startTime: shiftStart.time,
+            endTime: shiftEnd.time,
+            driverProfileId: existingRide.assignment?.driverProfileId,
+            notes: `Oprettet ved redigering af tur fra ${data.pickupAddress} til ${data.destinationAddress}.`,
+          },
+        });
+      }
+      return { ride, shift };
+    });
+
+    if (result.ride.isSharedRide && result.shift) await ensureRideSharingEvent(result.ride.id);
+    else await updateRideSharingEventStatus(result.ride.id, "CANCELLED");
+    return { ...result, existingRide } as const;
+  });
+}
+
+async function findAvailableBus(data: { pickupAddress: string; date: Date; startTime: string; endTime: string }) {
   const preferredBus = preferredBusForAddress(data.pickupAddress);
   const busOrder: BusName[] = preferredBus === "EAST" ? ["EAST", "WEST"] : ["WEST", "EAST"];
 
@@ -253,51 +360,52 @@ export async function createRideWithAutomaticShift(data: {
   citizenName: string;
   ride: RideRequestInput;
 }) {
-  const rideDate = new Date(`${data.ride.date}T00:00:00Z`);
-  const shiftStart = addMinutesToDateAndTime(rideDate, data.ride.time, -30);
-  const shiftEnd = addMinutesToDateAndTime(shiftStart.date, shiftStart.time, 120);
-  const automaticShiftBus =
-    sameUtcDate(shiftStart.date, shiftEnd.date)
+  return scheduleTransaction(async () => {
+    const rideDate = new Date(`${data.ride.date}T00:00:00Z`);
+    const shiftStart = addMinutesToDateAndTime(rideDate, data.ride.time, -30);
+    const shiftEnd = addMinutesToDateAndTime(shiftStart.date, shiftStart.time, 120);
+    const automaticShiftBus = sameUtcDate(shiftStart.date, shiftEnd.date)
       ? await findAvailableBus({
           pickupAddress: data.ride.pickupAddress,
           date: shiftStart.date,
           startTime: shiftStart.time,
-          endTime: shiftEnd.time
+          endTime: shiftEnd.time,
         })
       : null;
 
-  return prisma.$transaction(async (tx) => {
-    const createdRide = await tx.rideRequest.create({
-      data: {
-        citizenProfileId: data.citizenProfileId,
-        pickupAddress: data.ride.pickupAddress,
-        destinationAddress: data.ride.destinationAddress,
-        rideDate,
-        rideTime: data.ride.time,
-        passengers: data.ride.passengers,
-        purpose: data.ride.purpose,
-        isSharedRide: data.ride.isSharedRide,
-        includesMinors: data.ride.includesMinors,
-        parentalConsent: data.ride.parentalConsent,
-        guardianName: data.ride.includesMinors ? data.ride.guardianName : undefined,
-        guardianPhone: data.ride.includesMinors ? data.ride.guardianPhone : undefined,
-        notes: data.ride.notes
-      }
+    return prisma.$transaction(async (tx) => {
+      const createdRide = await tx.rideRequest.create({
+        data: {
+          citizenProfileId: data.citizenProfileId,
+          pickupAddress: data.ride.pickupAddress,
+          destinationAddress: data.ride.destinationAddress,
+          rideDate,
+          rideTime: data.ride.time,
+          passengers: data.ride.passengers,
+          purpose: data.ride.purpose,
+          isSharedRide: data.ride.isSharedRide,
+          includesMinors: data.ride.includesMinors,
+          parentalConsent: data.ride.parentalConsent,
+          guardianName: data.ride.includesMinors ? data.ride.guardianName : undefined,
+          guardianPhone: data.ride.includesMinors ? data.ride.guardianPhone : undefined,
+          notes: data.ride.notes,
+        },
+      });
+
+      const createdShift = automaticShiftBus
+        ? await tx.driverShift.create({
+            data: {
+              rideRequestId: createdRide.id,
+              bus: automaticShiftBus,
+              shiftDate: shiftStart.date,
+              startTime: shiftStart.time,
+              endTime: shiftEnd.time,
+              notes: `Automatisk oprettet fra turanmodning: ${data.citizenName}, ${data.ride.pickupAddress} til ${data.ride.destinationAddress}.`,
+            },
+          })
+        : null;
+
+      return { ride: createdRide, shift: createdShift };
     });
-
-    const createdShift = automaticShiftBus
-      ? await tx.driverShift.create({
-          data: {
-            rideRequestId: createdRide.id,
-            bus: automaticShiftBus,
-            shiftDate: shiftStart.date,
-            startTime: shiftStart.time,
-            endTime: shiftEnd.time,
-            notes: `Automatisk oprettet fra turanmodning: ${data.citizenName}, ${data.ride.pickupAddress} til ${data.ride.destinationAddress}.`
-          }
-        })
-      : null;
-
-    return { ride: createdRide, shift: createdShift };
   });
 }

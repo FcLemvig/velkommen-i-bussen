@@ -1,3 +1,4 @@
+import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { addCitizenAccessAction, updateDriverAction } from "@/app/dashboard/admin/drivers/actions";
@@ -7,7 +8,7 @@ import { prisma } from "@/lib/prisma";
 
 export default async function EditDriverPage({
   params,
-  searchParams
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ error?: string; success?: string }>;
@@ -16,7 +17,7 @@ export default async function EditDriverPage({
   const [{ id }, query] = await Promise.all([params, searchParams]);
   const driver = await prisma.driverProfile.findUnique({
     where: { id },
-    include: { user: { include: { citizenProfile: true, membership: true } } }
+    include: { user: { include: { citizenProfile: true, membership: true } } },
   });
 
   if (!driver) {
@@ -69,7 +70,8 @@ export default async function EditDriverPage({
           <label htmlFor="password">Ny midlertidig adgangskode</label>
           <input id="password" name="password" type="password" minLength={8} autoComplete="new-password" />
           <p className="text-xs text-slate-600">
-            Udfyld kun feltet, hvis chauff&oslash;ren skal have nulstillet sin adgangskode. Chauff&oslash;ren kan selv skifte den bagefter under Profil.
+            Udfyld kun feltet, hvis chauff&oslash;ren skal have nulstillet sin adgangskode. Chauff&oslash;ren kan selv
+            skifte den bagefter under Profil.
           </p>
         </div>
         <label className="flex items-center gap-2">
@@ -80,7 +82,10 @@ export default async function EditDriverPage({
           <button type="submit" className="bg-bus text-white hover:bg-bus/90">
             Gem ændringer
           </button>
-          <Link href="/dashboard/admin/drivers" className="button border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
+          <Link
+            href="/dashboard/admin/drivers"
+            className="button border-2 border-fjord/30 bg-white text-ink hover:bg-cream"
+          >
             Tilbage
           </Link>
         </div>
@@ -89,13 +94,21 @@ export default async function EditDriverPage({
       {driver.user.citizenProfile ? (
         <section className="rounded-[32px] border-2 border-fjord/25 bg-white p-6 shadow-sm">
           <h2 className="text-xl font-bold text-ink">Borger og chauffør</h2>
-          <p className="mt-2 text-sm text-slate-600">Denne bruger har allerede adgang til både borger- og chaufførdelen med samme login.</p>
+          <p className="mt-2 text-sm text-slate-600">
+            Denne bruger har allerede adgang til både borger- og chaufførdelen med samme login.
+          </p>
         </section>
       ) : (
-        <form action={addCitizenAccessAction.bind(null, driver.id)} className="grid gap-4 rounded-[32px] border-2 border-fjord/25 bg-white p-6 shadow-sm">
+        <form
+          action={addCitizenAccessAction.bind(null, driver.id)}
+          className="grid gap-4 rounded-[32px] border-2 border-fjord/25 bg-white p-6 shadow-sm"
+        >
           <div>
             <h2 className="text-xl font-bold text-ink">Tilføj borgermedlemskab</h2>
-            <p className="mt-2 text-sm text-slate-600">Giver chaufføren borgeradgang med samme email og adgangskode. Medlemskabet starter med at afvente betaling.</p>
+            <p className="mt-2 text-sm text-slate-600">
+              Giver chaufføren borgeradgang med samme email og adgangskode. Medlemskabet starter med at afvente
+              betaling.
+            </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
@@ -110,11 +123,10 @@ export default async function EditDriverPage({
               </select>
             </div>
           </div>
-          <div className="grid gap-2">
-            <label htmlFor="citizenAddress">Adresse</label>
-            <input id="citizenAddress" name="citizenAddress" autoComplete="street-address" required />
-          </div>
-          <button type="submit" className="w-full bg-bus text-white hover:bg-bus/90 sm:w-fit">Tilføj borgermedlemskab</button>
+          <AddressAutocompleteInput id="citizenAddress" name="citizenAddress" label="Adresse" required />
+          <button type="submit" className="w-full bg-bus text-white hover:bg-bus/90 sm:w-fit">
+            Tilføj borgermedlemskab
+          </button>
         </form>
       )}
     </main>

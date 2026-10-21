@@ -7,81 +7,71 @@ import { sendOrganizationBookingConfirmation } from "@/lib/email";
 import { createNotification, createNotifications, notifyAdmins } from "@/lib/notifications";
 import { isMembershipActive } from "@/lib/membership";
 import { organizationName, primaryOrganizationForUser } from "@/lib/organizations";
-import { prisma } from "@/lib/prisma";
+import { prisma, scheduleTransaction } from "@/lib/prisma";
 import { busLabels, BusName, shiftsOverlap } from "@/lib/shifts";
 import { getSuperSaaSBookings } from "@/lib/supersaas-calendar";
 import { organizationBookingSchema } from "@/lib/validation";
 
-async function busIsBooked(data: {
-  bus: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-}) {
-  const bookingDate = new Date(`${data.date}T00:00:00`);
+async function busIsBooked(data: { bus: string; date: string; startTime: string; endTime: string }) {
+  const bookingDate = new Date(`${data.date}T00:00:00Z`);
   const nextDate = new Date(bookingDate);
-  nextDate.setDate(nextDate.getDate() + 1);
+  nextDate.setUTCDate(nextDate.getUTCDate() + 1);
   const [shifts, bookings, events, supersaasBookings] = await Promise.all([
     prisma.driverShift.findMany({
       where: {
         bus: data.bus,
-        shiftDate: bookingDate
-      }
+        shiftDate: bookingDate,
+      },
     }),
     prisma.busBooking.findMany({
       where: {
         bus: data.bus,
         bookingDate,
-        status: { not: "CANCELLED" }
-      }
+        status: { not: "CANCELLED" },
+      },
     }),
     prisma.event.findMany({
       where: {
         bus: data.bus,
         eventDate: bookingDate,
-        status: { not: "CANCELLED" }
-      }
+        status: { not: "CANCELLED" },
+      },
     }),
-    getSuperSaaSBookings(bookingDate, nextDate)
+    getSuperSaaSBookings(bookingDate, nextDate),
   ]);
 
-  return [...shifts, ...bookings, ...events, ...supersaasBookings.filter((booking) => booking.bus === data.bus)].some((item) =>
-    shiftsOverlap(data.startTime, data.endTime, item.startTime, item.endTime)
+  return [...shifts, ...bookings, ...events, ...supersaasBookings.filter((booking) => booking.bus === data.bus)].some(
+    (item) => shiftsOverlap(data.startTime, data.endTime, item.startTime, item.endTime),
   );
 }
 
-async function driverIsBooked(data: {
-  driverProfileId: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-}) {
-  const bookingDate = new Date(`${data.date}T00:00:00`);
+async function driverIsBooked(data: { driverProfileId: string; date: string; startTime: string; endTime: string }) {
+  const bookingDate = new Date(`${data.date}T00:00:00Z`);
   const [shifts, bookings, events] = await Promise.all([
     prisma.driverShift.findMany({
       where: {
         driverProfileId: data.driverProfileId,
-        shiftDate: bookingDate
-      }
+        shiftDate: bookingDate,
+      },
     }),
     prisma.busBooking.findMany({
       where: {
         driverProfileId: data.driverProfileId,
         bookingDate,
-        status: { not: "CANCELLED" }
-      }
+        status: { not: "CANCELLED" },
+      },
     }),
     prisma.event.findMany({
       where: {
         driverProfileId: data.driverProfileId,
         eventDate: bookingDate,
-        status: { not: "CANCELLED" }
-      }
-    })
+        status: { not: "CANCELLED" },
+      },
+    }),
   ]);
 
   return [...shifts, ...bookings, ...events].some((item) =>
-    shiftsOverlap(data.startTime, data.endTime, item.startTime, item.endTime)
+    shiftsOverlap(data.startTime, data.endTime, item.startTime, item.endTime),
   );
 }
 
@@ -94,7 +84,9 @@ export async function createOrganizationBookingAction(formData: FormData) {
   }
 
   if (!isMembershipActive(organization.user.membership ?? user.membership)) {
-    redirect("/dashboard/organization?error=Medlemskabet%20skal%20v%C3%A6re%20betalt%2C%20f%C3%B8r%20I%20kan%20booke%20en%20bus.");
+    redirect(
+      "/dashboard/organization?error=Medlemskabet%20skal%20v%C3%A6re%20betalt%2C%20f%C3%B8r%20I%20kan%20booke%20en%20bus.",
+    );
   }
 
   const parsed = organizationBookingSchema.safeParse(Object.fromEntries(formData));
@@ -103,37 +95,41 @@ export async function createOrganizationBookingAction(formData: FormData) {
     redirect(`/dashboard/organization?error=${encodeURIComponent(parsed.error.issues[0].message)}`);
   }
 
-  const driver = await prisma.driverProfile.findFirst({
-    where: {
-      id: parsed.data.driverProfileId,
-      isActive: true
-    },
-    include: { user: true }
-  });
+  const { driver, booking } = await scheduleTransaction(async () => {
+    const driver = await prisma.driverProfile.findFirst({
+      where: {
+        id: parsed.data.driverProfileId,
+        isActive: true,
+      },
+      include: { user: true },
+    });
 
-  if (!driver) {
-    redirect("/dashboard/organization?error=V%C3%A6lg%20en%20aktiv%20frivillig%20chauff%C3%B8r.");
-  }
-
-  if (await busIsBooked(parsed.data)) {
-    redirect("/dashboard/organization?error=Den%20bus%20er%20allerede%20booket%20i%20det%20tidsrum.");
-  }
-
-  if (await driverIsBooked(parsed.data)) {
-    redirect("/dashboard/organization?error=Chauff%C3%B8ren%20er%20allerede%20optaget%20i%20det%20tidsrum.");
-  }
-
-  const booking = await prisma.busBooking.create({
-    data: {
-      organizationProfileId: organization.id,
-      driverProfileId: parsed.data.driverProfileId,
-      bus: parsed.data.bus,
-      bookingDate: new Date(`${parsed.data.date}T00:00:00`),
-      startTime: parsed.data.startTime,
-      endTime: parsed.data.endTime,
-      purpose: parsed.data.purpose,
-      notes: parsed.data.notes
+    if (!driver) {
+      redirect("/dashboard/organization?error=V%C3%A6lg%20en%20aktiv%20frivillig%20chauff%C3%B8r.");
     }
+
+    if (await busIsBooked(parsed.data)) {
+      redirect("/dashboard/organization?error=Den%20bus%20er%20allerede%20booket%20i%20det%20tidsrum.");
+    }
+
+    if (await driverIsBooked(parsed.data)) {
+      redirect("/dashboard/organization?error=Chauff%C3%B8ren%20er%20allerede%20optaget%20i%20det%20tidsrum.");
+    }
+
+    const booking = await prisma.busBooking.create({
+      data: {
+        organizationProfileId: organization.id,
+        driverProfileId: parsed.data.driverProfileId,
+        bus: parsed.data.bus,
+        bookingDate: new Date(`${parsed.data.date}T00:00:00Z`),
+        startTime: parsed.data.startTime,
+        endTime: parsed.data.endTime,
+        purpose: parsed.data.purpose,
+        notes: parsed.data.notes,
+      },
+    });
+
+    return { driver, booking };
   });
 
   const bookingText = `${booking.bookingDate.toLocaleDateString("da-DK")} kl. ${booking.startTime}-${booking.endTime}`;
@@ -144,22 +140,18 @@ export async function createOrganizationBookingAction(formData: FormData) {
       userId: user.id,
       title: "Busbooking er oprettet",
       body: `Jeres booking ${bookingText} er bekræftet.`,
-      href: "/dashboard/organization#mine-bookinger"
+      href: "/dashboard/organization#mine-bookinger",
     },
     {
       userId: driver.user.id,
       title: "Du er valgt som chauffør",
       body: `${displayName} har booket bus med dig som chauffør ${bookingText}.`,
       href: "/dashboard/driver",
-      driverType: "ASSIGNED_RIDES"
-    }
+      driverType: "ASSIGNED_RIDES",
+    },
   ]);
 
-  await notifyAdmins(
-    "Ny busbooking",
-    `${displayName} har booket bus ${bookingText}.`,
-    "/dashboard/admin/buses"
-  );
+  await notifyAdmins("Ny busbooking", `${displayName} har booket bus ${bookingText}.`, "/dashboard/admin/buses");
 
   const confirmationSent = await sendOrganizationBookingConfirmation(
     { email: user.email, name: user.name },
@@ -171,8 +163,8 @@ export async function createOrganizationBookingAction(formData: FormData) {
       endTime: booking.endTime,
       driverName: driver.user.name,
       purpose: booking.purpose,
-      notes: booking.notes
-    }
+      notes: booking.notes,
+    },
   );
 
   revalidatePath("/dashboard/organization");
@@ -195,26 +187,51 @@ export async function cancelOrganizationBookingAction(formData: FormData) {
   const booking = await prisma.busBooking.findFirst({
     where: {
       id: bookingId,
-      organizationProfileId: organization.id
-    }
+      organizationProfileId: organization.id,
+    },
   });
 
   if (!booking) {
     redirect("/dashboard/organization?error=Du%20kan%20kun%20annullere%20dine%20egne%20bookinger.");
   }
 
-  await prisma.busBooking.update({
-    where: { id: booking.id },
-    data: { status: "CANCELLED" }
-  });
+  await scheduleTransaction(() =>
+    prisma.busBooking.update({
+      where: { id: booking.id },
+      data: { status: "CANCELLED" },
+    }),
+  );
 
   await createNotification({
     userId: user.id,
     title: "Busbooking er annulleret",
     body: `Jeres booking den ${booking.bookingDate.toLocaleDateString("da-DK")} kl. ${booking.startTime}-${booking.endTime} er annulleret.`,
-    href: "/dashboard/organization#mine-bookinger"
+    href: "/dashboard/organization#mine-bookinger",
   });
 
+  const cancelledDriver = await prisma.driverProfile.findUnique({
+    where: { id: booking.driverProfileId },
+    select: { userId: true },
+  });
+  if (cancelledDriver)
+    await createNotification({
+      userId: cancelledDriver.userId,
+      title: "Busbooking er aflyst",
+      body:
+        "Bookingen den " +
+        booking.bookingDate.toLocaleDateString("da-DK") +
+        " kl. " +
+        booking.startTime +
+        " er aflyst.",
+      href: "/dashboard/driver",
+      driverType: "RIDE_CHANGES",
+    });
+  await notifyAdmins(
+    "Busbooking er aflyst",
+    "En foreningsbooking er aflyst. Se buskalenderen.",
+    "/dashboard/admin/buses",
+  );
+  revalidatePath("/dashboard/driver");
   revalidatePath("/dashboard/organization");
   revalidatePath("/dashboard/admin/buses");
   redirect("/dashboard/organization?success=Bookingen%20er%20annulleret.");

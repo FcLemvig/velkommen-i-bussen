@@ -1,3 +1,4 @@
+import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -10,7 +11,7 @@ import { prisma } from "@/lib/prisma";
 
 export default async function EditOrganizationPage({
   params,
-  searchParams
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ error?: string }>;
@@ -21,8 +22,8 @@ export default async function EditOrganizationPage({
     where: { id },
     include: {
       user: { include: { membership: true } },
-      _count: { select: { bookings: true, contacts: true } }
-    }
+      _count: { select: { bookings: true, contacts: true } },
+    },
   });
 
   if (!organization) {
@@ -36,7 +37,10 @@ export default async function EditOrganizationPage({
         <p className="mt-2 text-slate-600">Opdater profilens kontaktoplysninger og medlemsstatus.</p>
       </div>
 
-      <form action={updateOrganizationAction.bind(null, organization.id)} className="grid gap-4 rounded-[32px] border-2 border-fjord/25 bg-white p-6 shadow-sm">
+      <form
+        action={updateOrganizationAction.bind(null, organization.id)}
+        className="grid gap-4 rounded-[32px] border-2 border-fjord/25 bg-white p-6 shadow-sm"
+      >
         <FormMessage message={query.error} />
         <div className="grid gap-2">
           <label htmlFor="name">Navn på forening/institution</label>
@@ -52,13 +56,20 @@ export default async function EditOrganizationPage({
             <input id="phone" name="phone" type="tel" defaultValue={organization.phone} required />
           </div>
         </div>
-        <div className="grid gap-2">
-          <label htmlFor="address">Adresse</label>
-          <input id="address" name="address" defaultValue={organization.address} required />
-        </div>
+        <AddressAutocompleteInput
+          id="address"
+          name="address"
+          label="Adresse"
+          initialValue={organization.address}
+          required
+        />
         <div className="grid gap-2">
           <label htmlFor="membershipStatus">Medlemsstatus</label>
-          <select id="membershipStatus" name="membershipStatus" defaultValue={organization.user.membership?.status ?? "PENDING_PAYMENT"}>
+          <select
+            id="membershipStatus"
+            name="membershipStatus"
+            defaultValue={organization.user.membership?.status ?? "PENDING_PAYMENT"}
+          >
             <option value="PENDING_PAYMENT">Afventer betaling</option>
             <option value="ACTIVE">Aktiv</option>
             <option value="PAUSED">Pause</option>
@@ -66,8 +77,13 @@ export default async function EditOrganizationPage({
           </select>
         </div>
         <div className="flex flex-wrap gap-3">
-          <button type="submit" className="bg-bus text-white hover:bg-bus/90">Gem ændringer</button>
-          <Link href="/dashboard/admin/organizations" className="button gap-2 border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
+          <button type="submit" className="bg-bus text-white hover:bg-bus/90">
+            Gem ændringer
+          </button>
+          <Link
+            href="/dashboard/admin/organizations"
+            className="button gap-2 border-2 border-fjord/30 bg-white text-ink hover:bg-cream"
+          >
             <ArrowLeft size={16} /> Tilbage
           </Link>
         </div>
@@ -76,8 +92,8 @@ export default async function EditOrganizationPage({
       <section className="rounded-[32px] border-2 border-red-200 bg-white p-6 shadow-sm">
         <h2 className="text-xl font-extrabold text-red-800">Slet forening</h2>
         <p className="mt-2 text-sm leading-6 text-slate-700">
-          Sletning fjerner foreningen, {organization._count.bookings} booking(er) og {organization._count.contacts} kontaktpersonkobling(er).
-          Handlingen kan ikke fortrydes.
+          Sletning fjerner foreningen, {organization._count.bookings} booking(er) og {organization._count.contacts}{" "}
+          kontaktpersonkobling(er). Handlingen kan ikke fortrydes.
         </p>
         <form action={deleteOrganizationAction.bind(null, organization.id)} className="mt-4">
           <ConfirmSubmitButton

@@ -1,3 +1,4 @@
+import { danishToday } from "@/lib/dates";
 import Link from "next/link";
 import { ArrowLeft, CalendarDays, ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import { requireUser } from "@/lib/auth";
@@ -8,15 +9,15 @@ import { getSuperSaaSBookings } from "@/lib/supersaas-calendar";
 
 function startOfWeek(date: Date) {
   const next = new Date(date);
-  next.setHours(0, 0, 0, 0);
-  const day = next.getDay() || 7;
-  next.setDate(next.getDate() - day + 1);
+  next.setUTCHours(0, 0, 0, 0);
+  const day = next.getUTCDay() || 7;
+  next.setUTCDate(next.getUTCDate() - day + 1);
   return next;
 }
 
 function addDays(date: Date, days: number) {
   const next = new Date(date);
-  next.setDate(next.getDate() + days);
+  next.setUTCDate(next.getUTCDate() + days);
   return next;
 }
 
@@ -25,17 +26,13 @@ function toDateInputValue(date: Date) {
 }
 
 function sameDate(left: Date, right: Date) {
-  return left.toDateString() === right.toDateString();
+  return left.toISOString().slice(0, 10) === right.toISOString().slice(0, 10);
 }
 
-export default async function BusCalendarPage({
-  searchParams
-}: {
-  searchParams: Promise<{ week?: string }>;
-}) {
+export default async function BusCalendarPage({ searchParams }: { searchParams: Promise<{ week?: string }> }) {
   await requireUser(["ADMIN"]);
   const params = await searchParams;
-  const selectedDate = params.week ? new Date(`${params.week}T00:00:00`) : new Date();
+  const selectedDate = params.week ? new Date(`${params.week}T00:00:00Z`) : new Date(danishToday() + "T00:00:00Z");
   const weekStart = startOfWeek(Number.isNaN(selectedDate.getTime()) ? new Date() : selectedDate);
   const weekDays = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
   const weekEnd = addDays(weekStart, 7);
@@ -45,47 +42,47 @@ export default async function BusCalendarPage({
       where: {
         shiftDate: {
           gte: weekStart,
-          lt: weekEnd
-        }
+          lt: weekEnd,
+        },
       },
       orderBy: [{ shiftDate: "asc" }, { startTime: "asc" }],
-      include: { driverProfile: { include: { user: true } } }
+      include: { driverProfile: { include: { user: true } } },
     }),
     prisma.busBooking.findMany({
       where: {
         bookingDate: {
           gte: weekStart,
-          lt: weekEnd
+          lt: weekEnd,
         },
-        status: { not: "CANCELLED" }
+        status: { not: "CANCELLED" },
       },
       orderBy: [{ bookingDate: "asc" }, { startTime: "asc" }],
       include: {
         organizationProfile: { include: { user: true } },
-        driverProfile: { include: { user: true } }
-      }
+        driverProfile: { include: { user: true } },
+      },
     }),
     prisma.event.findMany({
       where: {
         eventDate: {
           gte: weekStart,
-          lt: weekEnd
+          lt: weekEnd,
         },
         sourceRideRequestId: null,
-        status: { not: "CANCELLED" }
+        status: { not: "CANCELLED" },
       },
       orderBy: [{ eventDate: "asc" }, { startTime: "asc" }],
       include: {
         driverProfile: { include: { user: true } },
-        signups: true
-      }
+        signups: true,
+      },
     }),
-    getSuperSaaSBookings(weekStart, weekEnd)
+    getSuperSaaSBookings(weekStart, weekEnd),
   ]);
 
   const previousWeek = toDateInputValue(addDays(weekStart, -7));
   const nextWeek = toDateInputValue(addDays(weekStart, 7));
-  const thisWeek = toDateInputValue(new Date());
+  const thisWeek = danishToday();
 
   return (
     <main className="mx-auto grid max-w-6xl gap-5 px-4 pb-24 pt-5 md:py-8">
@@ -98,7 +95,10 @@ export default async function BusCalendarPage({
               Se hvornår Bus Øst og Bus Vest er booket via vagter og foreningsbookinger.
             </p>
           </div>
-          <Link href="/dashboard/admin" className="button gap-2 border border-white/25 bg-white/10 text-white hover:bg-white/15">
+          <Link
+            href="/dashboard/admin"
+            className="button gap-2 border border-white/25 bg-white/10 text-white hover:bg-white/15"
+          >
             <ArrowLeft size={16} />
             Tilbage
           </Link>
@@ -117,14 +117,23 @@ export default async function BusCalendarPage({
             </div>
           </div>
           <div className="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto sm:flex-wrap">
-            <Link href={`/dashboard/admin/buses?week=${previousWeek}`} className="button justify-center gap-1 border-2 border-fjord/30 bg-white px-3 text-ink hover:bg-cream">
+            <Link
+              href={`/dashboard/admin/buses?week=${previousWeek}`}
+              className="button justify-center gap-1 border-2 border-fjord/30 bg-white px-3 text-ink hover:bg-cream"
+            >
               <ChevronLeft size={16} />
               Forrige
             </Link>
-            <Link href={`/dashboard/admin/buses?week=${thisWeek}`} className="button justify-center border-2 border-fjord/30 bg-white px-3 text-ink hover:bg-cream">
+            <Link
+              href={`/dashboard/admin/buses?week=${thisWeek}`}
+              className="button justify-center border-2 border-fjord/30 bg-white px-3 text-ink hover:bg-cream"
+            >
               I dag
             </Link>
-            <Link href={`/dashboard/admin/buses?week=${nextWeek}`} className="button justify-center gap-1 bg-bus px-3 text-white hover:bg-bus/90">
+            <Link
+              href={`/dashboard/admin/buses?week=${nextWeek}`}
+              className="button justify-center gap-1 bg-bus px-3 text-white hover:bg-bus/90"
+            >
               Næste
               <ChevronRight size={16} />
             </Link>
@@ -139,10 +148,18 @@ export default async function BusCalendarPage({
             <div className="mt-4 grid gap-3">
               {weekDays.map((day) => {
                 const dayShifts = shifts.filter((shift) => shift.bus === bus && sameDate(shift.shiftDate, day));
-                const dayBookings = bookings.filter((booking) => booking.bus === bus && sameDate(booking.bookingDate, day));
-                const daySuperSaaSBookings = supersaasBookings.filter((booking) => booking.bus === bus && sameDate(booking.date, day));
+                const dayBookings = bookings.filter(
+                  (booking) => booking.bus === bus && sameDate(booking.bookingDate, day),
+                );
+                const daySuperSaaSBookings = supersaasBookings.filter(
+                  (booking) => booking.bus === bus && sameDate(booking.date, day),
+                );
                 const dayEvents = events.filter((event) => event.bus === bus && sameDate(event.eventDate, day));
-                const hasItems = dayShifts.length > 0 || dayBookings.length > 0 || dayEvents.length > 0 || daySuperSaaSBookings.length > 0;
+                const hasItems =
+                  dayShifts.length > 0 ||
+                  dayBookings.length > 0 ||
+                  dayEvents.length > 0 ||
+                  daySuperSaaSBookings.length > 0;
 
                 return (
                   <div key={`${bus}-${day.toISOString()}`} className="rounded-2xl bg-cream/70 p-3">
@@ -152,7 +169,10 @@ export default async function BusCalendarPage({
                     </div>
                     <div className="mt-2 grid gap-2">
                       {dayBookings.map((booking) => (
-                        <div key={booking.id} className="rounded-2xl border border-bus/30 bg-bus/10 p-3 text-sm text-ink">
+                        <div
+                          key={booking.id}
+                          className="rounded-2xl border border-bus/30 bg-bus/10 p-3 text-sm text-ink"
+                        >
                           <div className="flex items-center gap-2 font-bold">
                             <Clock size={14} />
                             {booking.startTime} - {booking.endTime}
@@ -174,7 +194,8 @@ export default async function BusCalendarPage({
                           </div>
                           <p className="mt-1 text-xs text-slate-700">{event.title}</p>
                           <p className="mt-1 text-xs text-slate-600">
-                            {event.signups.reduce((sum, signup) => sum + signup.passengers, 0)}/{event.capacity} tilmeldte
+                            {event.signups.reduce((sum, signup) => sum + signup.passengers, 0)}/{event.capacity}{" "}
+                            tilmeldte
                           </p>
                           <p className="mt-1 text-xs font-bold text-brown">Begivenhed</p>
                         </Link>
@@ -192,7 +213,9 @@ export default async function BusCalendarPage({
                             {booking.startTime} - {booking.endTime}
                           </div>
                           <p className="mt-1 text-xs text-slate-700">{booking.title}</p>
-                          {booking.organizer ? <p className="mt-1 text-xs text-slate-600">{booking.organizer}</p> : null}
+                          {booking.organizer ? (
+                            <p className="mt-1 text-xs text-slate-600">{booking.organizer}</p>
+                          ) : null}
                           <p className="mt-1 text-xs font-bold text-brown">SuperSaaS</p>
                         </a>
                       ))}
@@ -206,7 +229,9 @@ export default async function BusCalendarPage({
                             <Clock size={14} />
                             {shift.startTime} - {shift.endTime}
                           </div>
-                          <p className="mt-1 text-xs text-slate-600">{shift.driverProfile?.user.name ?? "Mangler chauffør"}</p>
+                          <p className="mt-1 text-xs text-slate-600">
+                            {shift.driverProfile?.user.name ?? "Mangler chauffør"}
+                          </p>
                           {shift.notes ? <p className="mt-1 text-xs text-slate-500">{shift.notes}</p> : null}
                         </Link>
                       ))}
@@ -237,19 +262,28 @@ export default async function BusCalendarPage({
               <div className="bg-cream px-4 py-4 font-bold text-ink">{busLabels[bus as BusName]}</div>
               {weekDays.map((day) => {
                 const dayShifts = shifts.filter((shift) => shift.bus === bus && sameDate(shift.shiftDate, day));
-                const dayBookings = bookings.filter((booking) => booking.bus === bus && sameDate(booking.bookingDate, day));
-                const daySuperSaaSBookings = supersaasBookings.filter((booking) => booking.bus === bus && sameDate(booking.date, day));
+                const dayBookings = bookings.filter(
+                  (booking) => booking.bus === bus && sameDate(booking.bookingDate, day),
+                );
+                const daySuperSaaSBookings = supersaasBookings.filter(
+                  (booking) => booking.bus === bus && sameDate(booking.date, day),
+                );
                 const dayEvents = events.filter((event) => event.bus === bus && sameDate(event.eventDate, day));
 
                 return (
                   <div key={`${bus}-${day.toISOString()}`} className="min-h-36 border-l border-slate-100 p-3">
                     <div className="grid gap-2">
                       {dayBookings.map((booking) => (
-                        <div key={booking.id} className="rounded-2xl border border-bus/30 bg-bus/10 px-3 py-2 text-sm text-ink">
+                        <div
+                          key={booking.id}
+                          className="rounded-2xl border border-bus/30 bg-bus/10 px-3 py-2 text-sm text-ink"
+                        >
                           <div className="font-bold">
                             {booking.startTime} - {booking.endTime}
                           </div>
-                          <div className="mt-1 text-xs text-slate-700">{organizationName(booking.organizationProfile)}</div>
+                          <div className="mt-1 text-xs text-slate-700">
+                            {organizationName(booking.organizationProfile)}
+                          </div>
                           <div className="mt-1 text-xs text-slate-600">Chauffør: {booking.driverProfile.user.name}</div>
                           <div className="mt-1 text-xs text-slate-500">{booking.purpose}</div>
                         </div>
@@ -266,7 +300,8 @@ export default async function BusCalendarPage({
                           <div className="mt-1 text-xs text-slate-700">{event.title}</div>
                           <div className="mt-1 text-xs text-slate-600">{event.location}</div>
                           <div className="mt-1 text-xs font-bold text-brown">
-                            Begivenhed · {event.signups.reduce((sum, signup) => sum + signup.passengers, 0)}/{event.capacity}
+                            Begivenhed · {event.signups.reduce((sum, signup) => sum + signup.passengers, 0)}/
+                            {event.capacity}
                           </div>
                         </Link>
                       ))}
@@ -282,7 +317,9 @@ export default async function BusCalendarPage({
                             {booking.startTime} - {booking.endTime}
                           </div>
                           <div className="mt-1 text-xs text-slate-700">{booking.title}</div>
-                          {booking.organizer ? <div className="mt-1 text-xs text-slate-600">{booking.organizer}</div> : null}
+                          {booking.organizer ? (
+                            <div className="mt-1 text-xs text-slate-600">{booking.organizer}</div>
+                          ) : null}
                           <div className="mt-1 text-xs font-bold text-brown">SuperSaaS</div>
                         </a>
                       ))}
@@ -295,11 +332,16 @@ export default async function BusCalendarPage({
                           <div className="font-bold">
                             {shift.startTime} - {shift.endTime}
                           </div>
-                          <div className="mt-1 text-xs text-slate-600">{shift.driverProfile?.user.name ?? "Mangler chauffør"}</div>
+                          <div className="mt-1 text-xs text-slate-600">
+                            {shift.driverProfile?.user.name ?? "Mangler chauffør"}
+                          </div>
                           {shift.notes ? <div className="mt-1 text-xs text-slate-500">{shift.notes}</div> : null}
                         </Link>
                       ))}
-                      {dayShifts.length === 0 && dayBookings.length === 0 && dayEvents.length === 0 && daySuperSaaSBookings.length === 0 ? (
+                      {dayShifts.length === 0 &&
+                      dayBookings.length === 0 &&
+                      dayEvents.length === 0 &&
+                      daySuperSaaSBookings.length === 0 ? (
                         <span className="text-xs text-slate-400">Ledig</span>
                       ) : null}
                     </div>

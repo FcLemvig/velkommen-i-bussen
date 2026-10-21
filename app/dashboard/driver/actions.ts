@@ -1,4 +1,7 @@
 "use server";
+import { hasDeparted } from "@/lib/dates";
+import { isMembershipActive } from "@/lib/membership";
+import { driverIsUnavailable } from "@/lib/scheduling";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -8,10 +11,10 @@ import {
   notifyCitizenAboutAssignment,
   notifyCitizenAboutDriverMessage,
   notifyCitizenAboutStatus,
-  notifyDriverAboutAssignment
+  notifyDriverAboutAssignment,
 } from "@/lib/email";
-import { createNotification, createNotifications } from "@/lib/notifications";
-import { prisma } from "@/lib/prisma";
+import { createNotification, createNotifications, notifyRideParticipants } from "@/lib/notifications";
+import { prisma, scheduleTransaction } from "@/lib/prisma";
 import { ensureRideSharingEvent, updateRideSharingEventStatus } from "@/lib/ride-sharing";
 import { saveDriverImage } from "@/lib/uploads";
 
@@ -33,7 +36,7 @@ function toRideEmailData(ride: {
     rideTime: ride.rideTime,
     passengers: ride.passengers,
     purpose: ride.purpose,
-    notes: ride.notes
+    notes: ride.notes,
   };
 }
 
@@ -45,43 +48,47 @@ export async function completeRideAction(formData: FormData) {
     redirect("/dashboard/driver?error=Turen%20kunne%20ikke%20opdateres.");
   }
 
-  const assignment = await prisma.rideAssignment.findFirst({
-    where: {
-      rideRequestId,
-      driverProfileId: user.driverProfile.id
+  const { ride } = await scheduleTransaction(async () => {
+    const assignment = await prisma.rideAssignment.findFirst({
+      where: {
+        rideRequestId,
+        driverProfileId: user.driverProfile!.id,
+      },
+    });
+
+    if (!assignment) {
+      redirect("/dashboard/driver?error=Du%20kan%20kun%20opdatere%20ture%2C%20der%20er%20tildelt%20dig.");
     }
+
+    const ride = await prisma.rideRequest.update({
+      where: { id: rideRequestId },
+      data: { status: "COMPLETED" },
+      include: {
+        citizenProfile: {
+          include: { user: true },
+        },
+      },
+    });
+
+    await updateRideSharingEventStatus(ride.id, "CLOSED");
+
+    return { ride };
   });
-
-  if (!assignment) {
-    redirect("/dashboard/driver?error=Du%20kan%20kun%20opdatere%20ture%2C%20der%20er%20tildelt%20dig.");
-  }
-
-  const ride = await prisma.rideRequest.update({
-    where: { id: rideRequestId },
-    data: { status: "COMPLETED" },
-    include: {
-      citizenProfile: {
-        include: { user: true }
-      }
-    }
-  });
-
-  await updateRideSharingEventStatus(ride.id, "CLOSED");
 
   await notifyCitizenAboutStatus(
     {
       email: ride.citizenProfile.user.email,
-      name: ride.citizenProfile.user.name
+      name: ride.citizenProfile.user.name,
     },
     toRideEmailData(ride),
-    "COMPLETED"
+    "COMPLETED",
   );
 
   await createNotification({
     userId: ride.citizenProfile.user.id,
     title: "Din tur er gennemført",
     body: `Turen den ${ride.rideDate.toLocaleDateString("da-DK")} kl. ${ride.rideTime} er markeret som gennemført.`,
-    href: "/dashboard/citizen#mine-ture"
+    href: "/dashboard/citizen#mine-ture",
   });
 
   revalidatePath("/dashboard/driver");
@@ -110,15 +117,15 @@ export async function sendRideMessageAction(formData: FormData) {
   const assignment = await prisma.rideAssignment.findFirst({
     where: {
       rideRequestId,
-      driverProfileId: user.driverProfile.id
+      driverProfileId: user.driverProfile!.id,
     },
     include: {
       rideRequest: {
         include: {
-          citizenProfile: { include: { user: true } }
-        }
-      }
-    }
+          citizenProfile: { include: { user: true } },
+        },
+      },
+    },
   });
 
   if (!assignment) {
@@ -128,18 +135,18 @@ export async function sendRideMessageAction(formData: FormData) {
   const ride = assignment.rideRequest;
   const citizen = {
     email: ride.citizenProfile.user.email,
-    name: ride.citizenProfile.user.name
+    name: ride.citizenProfile.user.name,
   };
   const driver = {
     email: user.email,
-    name: user.name
+    name: user.name,
   };
 
   await createNotification({
     userId: ride.citizenProfile.user.id,
     title: "Besked fra din chauffør",
     body: `${user.name}: ${message}`,
-    href: "/dashboard/citizen#mine-ture"
+    href: "/dashboard/citizen#mine-ture",
   });
 
   await notifyCitizenAboutDriverMessage(citizen, toRideEmailData(ride), driver, message);
@@ -161,7 +168,9 @@ export async function updateDriverProfileImageAction(formData: FormData) {
   try {
     imageUrl = await saveDriverImage(formData.get("image") as File | null);
   } catch (error) {
-    redirect(`/dashboard/driver?error=${encodeURIComponent(error instanceof Error ? error.message : "Billedet kunne ikke uploades.")}`);
+    redirect(
+      `/dashboard/driver?error=${encodeURIComponent(error instanceof Error ? error.message : "Billedet kunne ikke uploades.")}`,
+    );
   }
 
   if (!imageUrl) {
@@ -169,8 +178,8 @@ export async function updateDriverProfileImageAction(formData: FormData) {
   }
 
   await prisma.driverProfile.update({
-    where: { id: user.driverProfile.id },
-    data: { imageUrl }
+    where: { id: user.driverProfile!.id },
+    data: { imageUrl },
   });
 
   revalidatePath("/dashboard/driver");
@@ -185,69 +194,98 @@ export async function claimShiftAction(formData: FormData) {
     redirect("/dashboard/driver?error=Vagten%20kunne%20ikke%20tages.");
   }
 
-  const shift = await prisma.driverShift.findUnique({ where: { id: shiftId } });
+  const { shift, ridesInShift } = await scheduleTransaction(async () => {
+    const shift = await prisma.driverShift.findUnique({ where: { id: shiftId } });
 
-  if (!shift || shift.driverProfileId) {
-    redirect("/dashboard/driver?error=Vagten%20er%20allerede%20taget.");
-  }
+    if (!shift || shift.driverProfileId || hasDeparted(shift.shiftDate, shift.endTime)) {
+      redirect("/dashboard/driver?error=Vagten%20er%20allerede%20taget.");
+    }
 
-  const ridesInShift = shift.rideRequestId
-    ? await prisma.rideRequest.findMany({
-        where: {
-          id: shift.rideRequestId,
-          status: { notIn: ["COMPLETED", "CANCELLED"] }
-        },
-        include: {
-          citizenProfile: {
-            include: { user: true }
+    if (
+      await driverIsUnavailable(
+        user.driverProfile!.id,
+        shift.shiftDate,
+        shift.startTime,
+        shift.endTime,
+        shift.id,
+        shift.rideRequestId ?? undefined,
+      )
+    ) {
+      redirect(
+        "/dashboard/driver?error=" +
+          encodeURIComponent("Du er allerede optaget i tidsrummet, eller din chaufføradgang er sat på pause."),
+      );
+    }
+    const ridesInShift = shift.rideRequestId
+      ? await prisma.rideRequest.findMany({
+          where: {
+            id: shift.rideRequestId,
+            status: { notIn: ["COMPLETED", "CANCELLED"] },
           },
-          assignment: {
-            include: { driverProfile: { include: { user: true } } }
-          }
-        }
-      })
-    : [];
+          include: {
+            citizenProfile: {
+              include: { user: { include: { membership: true } } },
+            },
+            assignment: {
+              include: { driverProfile: { include: { user: true } } },
+            },
+          },
+        })
+      : [];
 
-  await prisma.$transaction([
-    prisma.driverShift.update({
-      where: { id: shiftId },
-      data: { driverProfileId: user.driverProfile.id }
-    }),
-    ...ridesInShift.map((ride) =>
-      prisma.rideAssignment.upsert({
-        where: { rideRequestId: ride.id },
-        create: {
-          rideRequestId: ride.id,
-          driverProfileId: user.driverProfile!.id
-        },
-        update: { driverProfileId: user.driverProfile!.id }
-      })
-    ),
-    ...ridesInShift.map((ride) =>
-      prisma.rideRequest.update({
-        where: { id: ride.id },
-        data: { status: "ASSIGNED" }
-      })
+    if (
+      shift.rideRequestId &&
+      (ridesInShift.length === 0 ||
+        ridesInShift.some((ride) => !isMembershipActive(ride.citizenProfile.user.membership)))
     )
-  ]);
+      redirect(
+        "/dashboard/driver?error=" +
+          encodeURIComponent("Turen skal være aktiv og medlemskabet betalt, før vagten kan tages."),
+      );
 
-  await Promise.all(ridesInShift.map((ride) => ensureRideSharingEvent(ride.id)));
+    await prisma.$transaction([
+      prisma.driverShift.update({
+        where: { id: shiftId, driverProfileId: null },
+        data: { driverProfileId: user.driverProfile!.id },
+      }),
+      ...ridesInShift.map((ride) =>
+        prisma.rideAssignment.upsert({
+          where: { rideRequestId: ride.id },
+          create: {
+            rideRequestId: ride.id,
+            driverProfileId: user.driverProfile!.id,
+          },
+          update: { driverProfileId: user.driverProfile!.id },
+        }),
+      ),
+      ...ridesInShift.map((ride) =>
+        prisma.rideRequest.update({
+          where: { id: ride.id },
+          data: { status: "ASSIGNED" },
+        }),
+      ),
+    ]);
+
+    await Promise.all(ridesInShift.map((ride) => ensureRideSharingEvent(ride.id)));
+
+    return { shift, ridesInShift };
+  });
 
   await createAuditLog({
     actorUserId: user.id,
     action: "SHIFT_CLAIMED",
     entityType: "DRIVER_SHIFT",
     entityId: shift.id,
-    description: `${user.name} tog vagten den ${shift.shiftDate.toLocaleDateString("da-DK")} kl. ${shift.startTime}-${shift.endTime}. ${ridesInShift.length} tilhørende tur(e) blev tildelt automatisk.`
+    description: `${user.name} tog vagten den ${shift.shiftDate.toLocaleDateString("da-DK")} kl. ${shift.startTime}-${shift.endTime}. ${ridesInShift.length} tilhørende tur(e) blev tildelt automatisk.`,
   });
 
   const previousDrivers = new Map<string, { userId: string; name: string }>();
   for (const ride of ridesInShift) {
     const previousDriver = ride.assignment?.driverProfile;
-    if (previousDriver && previousDriver.id !== user.driverProfile.id) {
+    if (previousDriver && previousDriver.id !== user.driverProfile!.id) {
       previousDrivers.set(previousDriver.user.id, {
         userId: previousDriver.user.id,
-        name: previousDriver.user.name
+        name: previousDriver.user.name,
       });
     }
   }
@@ -258,19 +296,19 @@ export async function claimShiftAction(formData: FormData) {
       title: "Tur overdraget til en anden chauffør",
       body: `En tur i vagten ${shift.startTime}-${shift.endTime} er nu overdraget til ${user.name}.`,
       href: "/dashboard/driver",
-      driverType: "RIDE_CHANGES" as const
-    }))
+      driverType: "RIDE_CHANGES" as const,
+    })),
   );
 
   for (const ride of ridesInShift) {
     const rideData = toRideEmailData(ride);
     const citizen = {
       email: ride.citizenProfile.user.email,
-      name: ride.citizenProfile.user.name
+      name: ride.citizenProfile.user.name,
     };
     const driver = {
       email: user.email,
-      name: user.name
+      name: user.name,
     };
 
     await notifyCitizenAboutAssignment(citizen, rideData, driver);
@@ -280,15 +318,15 @@ export async function claimShiftAction(formData: FormData) {
         userId: ride.citizenProfile.user.id,
         title: "Din tur er tildelt",
         body: `${user.name} er sat på din tur den ${ride.rideDate.toLocaleDateString("da-DK")} kl. ${ride.rideTime}.`,
-        href: "/dashboard/citizen#mine-ture"
+        href: "/dashboard/citizen#mine-ture",
       },
       {
         userId: user.id,
         title: "Du har fået en tur",
         body: `${ride.citizenProfile.user.name}: ${ride.pickupAddress} til ${ride.destinationAddress} den ${ride.rideDate.toLocaleDateString("da-DK")} kl. ${ride.rideTime}.`,
         href: "/dashboard/driver",
-        driverType: "ASSIGNED_RIDES"
-      }
+        driverType: "ASSIGNED_RIDES",
+      },
     ]);
   }
 
@@ -315,49 +353,63 @@ export async function releaseShiftAction(formData: FormData) {
     redirect("/dashboard/driver?error=Vagten%20kunne%20ikke%20frigives.");
   }
 
-  const shift = await prisma.driverShift.findFirst({
-    where: {
-      id: shiftId,
-      driverProfileId: user.driverProfile.id
+  const { shift, rideIds } = await scheduleTransaction(async () => {
+    const shift = await prisma.driverShift.findFirst({
+      where: {
+        id: shiftId,
+        driverProfileId: user.driverProfile!.id,
+      },
+    });
+
+    if (!shift) {
+      redirect("/dashboard/driver?error=Du%20kan%20kun%20frigive%20dine%20egne%20vagter.");
     }
+
+    const linkedRide = shift.rideRequestId
+      ? await prisma.rideRequest.findFirst({
+          where: {
+            id: shift.rideRequestId,
+            status: { notIn: ["COMPLETED", "CANCELLED"] },
+            assignment: { driverProfileId: user.driverProfile!.id },
+          },
+          select: { id: true },
+        })
+      : null;
+    const rideIds = linkedRide ? [linkedRide.id] : [];
+
+    await prisma.$transaction([
+      prisma.driverShift.update({
+        where: { id: shift.id },
+        data: { driverProfileId: null },
+      }),
+      prisma.rideAssignment.deleteMany({ where: { rideRequestId: { in: rideIds } } }),
+      prisma.rideRequest.updateMany({
+        where: { id: { in: rideIds } },
+        data: { status: "PENDING" },
+      }),
+    ]);
+
+    await Promise.all(rideIds.map((rideId) => updateRideSharingEventStatus(rideId, "CANCELLED")));
+
+    return { shift, rideIds };
   });
 
-  if (!shift) {
-    redirect("/dashboard/driver?error=Du%20kan%20kun%20frigive%20dine%20egne%20vagter.");
-  }
-
-  const linkedRide = shift.rideRequestId
-    ? await prisma.rideRequest.findFirst({
-        where: {
-          id: shift.rideRequestId,
-          status: { notIn: ["COMPLETED", "CANCELLED"] },
-          assignment: { driverProfileId: user.driverProfile.id }
-        },
-        select: { id: true }
-      })
-    : null;
-  const rideIds = linkedRide ? [linkedRide.id] : [];
-
-  await prisma.$transaction([
-    prisma.driverShift.update({
-      where: { id: shift.id },
-      data: { driverProfileId: null }
-    }),
-    prisma.rideAssignment.deleteMany({ where: { rideRequestId: { in: rideIds } } }),
-    prisma.rideRequest.updateMany({
-      where: { id: { in: rideIds } },
-      data: { status: "PENDING" }
-    })
-  ]);
-
-  await Promise.all(rideIds.map((rideId) => updateRideSharingEventStatus(rideId, "CANCELLED")));
+  await Promise.all(
+    rideIds.map((id) =>
+      notifyRideParticipants(
+        id,
+        "Turen afventer en ny chauffør",
+        "Chaufføren har frigivet vagten. Kontoret skal finde en ny chauffør.",
+      ),
+    ),
+  );
 
   await createAuditLog({
     actorUserId: user.id,
     action: "SHIFT_RELEASED",
     entityType: "DRIVER_SHIFT",
     entityId: shift.id,
-    description: `${user.name} frigav vagten den ${shift.shiftDate.toLocaleDateString("da-DK")} kl. ${shift.startTime}-${shift.endTime}. ${rideIds.length} tilhørende tur(e) blev frigivet samtidig.`
+    description: `${user.name} frigav vagten den ${shift.shiftDate.toLocaleDateString("da-DK")} kl. ${shift.startTime}-${shift.endTime}. ${rideIds.length} tilhørende tur(e) blev frigivet samtidig.`,
   });
 
   revalidatePath("/dashboard/driver");

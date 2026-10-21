@@ -10,10 +10,19 @@ export async function updateMembershipAction(formData: FormData) {
   const userId = String(formData.get("userId") ?? "");
   const status = String(formData.get("membershipStatus") ?? "");
   const type = String(formData.get("membershipType") ?? "");
-  const returnTo = String(formData.get("returnTo") ?? "citizens") === "organizations" ? "organizations" : "citizens";
+  const returnTo =
+    String(formData.get("returnTo") ?? "citizens") === "organizations"
+      ? "organizations"
+      : "citizens";
 
-  if (!userId || !["PENDING_PAYMENT", "ACTIVE", "PAUSED", "ENDED"].includes(status) || !["INDIVIDUAL", "FAMILY", "ORGANIZATION"].includes(type)) {
-    redirect(`/dashboard/admin/${returnTo}?error=Medlemskabet%20kunne%20ikke%20opdateres.`);
+  if (
+    !userId ||
+    !["PENDING_PAYMENT", "ACTIVE", "PAUSED", "ENDED"].includes(status) ||
+    !["INDIVIDUAL", "FAMILY", "ORGANIZATION"].includes(type)
+  ) {
+    redirect(
+      `/dashboard/admin/${returnTo}?error=Medlemskabet%20kunne%20ikke%20opdateres.`,
+    );
   }
 
   await prisma.membership.upsert({
@@ -22,18 +31,32 @@ export async function updateMembershipAction(formData: FormData) {
       userId,
       status,
       type,
-      startsAt: status === "ACTIVE" ? new Date() : undefined
+      startsAt: status === "ACTIVE" ? new Date() : undefined,
+      endsAt:
+        status === "ACTIVE"
+          ? null
+          : status === "ENDED"
+            ? new Date()
+            : undefined,
     },
     update: {
       status,
       type,
-      startsAt: status === "ACTIVE" ? new Date() : undefined
-    }
+      startsAt: status === "ACTIVE" ? new Date() : undefined,
+      endsAt:
+        status === "ACTIVE"
+          ? null
+          : status === "ENDED"
+            ? new Date()
+            : undefined,
+    },
   });
 
   revalidatePath("/dashboard/admin/citizens");
   revalidatePath("/dashboard/admin/organizations");
   revalidatePath("/dashboard/admin");
   revalidatePath("/dashboard/profile");
-  redirect(`/dashboard/admin/${returnTo}?success=Medlemskabet%20er%20opdateret.`);
+  redirect(
+    `/dashboard/admin/${returnTo}?success=Medlemskabet%20er%20opdateret.`,
+  );
 }

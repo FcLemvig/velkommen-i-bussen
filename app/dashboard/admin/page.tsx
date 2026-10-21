@@ -1,5 +1,18 @@
+import { danishToday } from "@/lib/dates";
 import Link from "next/link";
-import { Building2, BusFront, CalendarClock, CalendarPlus, History, KeyRound, MapPin, Pencil, Plus, SlidersHorizontal, Users } from "lucide-react";
+import {
+  Building2,
+  BusFront,
+  CalendarClock,
+  CalendarPlus,
+  History,
+  KeyRound,
+  MapPin,
+  Pencil,
+  Plus,
+  SlidersHorizontal,
+  Users,
+} from "lucide-react";
 import { assignDriverAction, updateRideBusAction, updateRideStatusAction } from "@/app/dashboard/admin/actions";
 import { FormMessage } from "@/components/FormMessage";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -16,34 +29,30 @@ function shiftSummary(
     startTime: string;
     endTime: string;
     driverProfile: { user: { name: string } } | null;
-  }>
+  }>,
 ) {
   return shifts
     .map((shift) =>
       shift.driverProfile
         ? `${busLabels[(shift.bus || "EAST") as BusName]}: ${shift.driverProfile.user.name} ${shift.startTime}-${shift.endTime}`
-        : `${busLabels[(shift.bus || "EAST") as BusName]}: ledig ${shift.startTime}-${shift.endTime}`
+        : `${busLabels[(shift.bus || "EAST") as BusName]}: ledig ${shift.startTime}-${shift.endTime}`,
     )
     .join(", ");
 }
 
 export default async function AdminDashboardPage({
-  searchParams
+  searchParams,
 }: {
   searchParams: Promise<{ status?: RideStatus; error?: string; success?: string }>;
 }) {
   await requireUser(["ADMIN"]);
   const params = await searchParams;
   const selectedStatus = params.status && isRideStatus(params.status) ? params.status : undefined;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = new Date(danishToday() + "T00:00:00Z");
   const rideFilter = selectedStatus
     ? { status: selectedStatus }
     : {
-        OR: [
-          { rideDate: { gte: today } },
-          { status: { notIn: ["COMPLETED", "CANCELLED"] } }
-        ]
+        OR: [{ rideDate: { gte: today } }, { status: { notIn: ["COMPLETED", "CANCELLED"] } }],
       };
 
   const [rides, drivers] = await Promise.all([
@@ -54,14 +63,14 @@ export default async function AdminDashboardPage({
       include: {
         citizenProfile: { include: { user: { include: { membership: true } } } },
         assignment: { include: { driverProfile: { include: { user: true } } } },
-        automaticShift: true
-      }
+        automaticShift: true,
+      },
     }),
     prisma.driverProfile.findMany({
       where: { isActive: true },
       orderBy: { user: { name: "asc" } },
-      include: { user: true }
-    })
+      include: { user: true },
+    }),
   ]);
 
   const firstRideDate = rides[0]?.rideDate;
@@ -72,11 +81,11 @@ export default async function AdminDashboardPage({
           where: {
             shiftDate: {
               gte: firstRideDate,
-              lte: lastRideDate
-            }
+              lte: lastRideDate,
+            },
           },
           orderBy: [{ shiftDate: "asc" }, { startTime: "asc" }],
-          include: { driverProfile: { include: { user: true } } }
+          include: { driverProfile: { include: { user: true } } },
         })
       : [];
 
@@ -96,35 +105,59 @@ export default async function AdminDashboardPage({
             <Plus size={18} />
             Opret tur
           </Link>
-          <Link href="/dashboard/admin/buses" className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20">
+          <Link
+            href="/dashboard/admin/buses"
+            className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20"
+          >
             <BusFront size={18} />
             Buskalender
           </Link>
-          <Link href="/dashboard/admin/events" className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20">
+          <Link
+            href="/dashboard/admin/events"
+            className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20"
+          >
             <CalendarPlus size={18} />
             Begivenheder
           </Link>
-          <Link href="/dashboard/admin/shifts" className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20">
+          <Link
+            href="/dashboard/admin/shifts"
+            className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20"
+          >
             <CalendarClock size={18} />
             Vagter
           </Link>
-          <Link href="/dashboard/admin/citizens" className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20">
+          <Link
+            href="/dashboard/admin/citizens"
+            className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20"
+          >
             <Users size={18} />
             Borgere
           </Link>
-          <Link href="/dashboard/admin/organizations" className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20">
+          <Link
+            href="/dashboard/admin/organizations"
+            className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20"
+          >
             <Building2 size={18} />
             Foreninger
           </Link>
-          <Link href="/dashboard/admin/drivers" className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20">
+          <Link
+            href="/dashboard/admin/drivers"
+            className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20"
+          >
             <Plus size={18} />
             Chauffører
           </Link>
-          <Link href="/dashboard/admin/activity" className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20">
+          <Link
+            href="/dashboard/admin/activity"
+            className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20"
+          >
             <History size={18} />
             Aktivitetslog
           </Link>
-          <Link href="/dashboard/admin/users" className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20">
+          <Link
+            href="/dashboard/admin/users"
+            className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20"
+          >
             <KeyRound size={18} />
             Adgange
           </Link>
@@ -182,7 +215,7 @@ export default async function AdminDashboardPage({
           const matchingShifts = shifts.filter(
             (shift) =>
               shift.shiftDate.toDateString() === rideDate &&
-              isRideWithinShift(ride.rideTime, shift.startTime, shift.endTime)
+              isRideWithinShift(ride.rideTime, shift.startTime, shift.endTime),
           );
           const coveredShifts = matchingShifts.filter((shift) => shift.driverProfile);
 
@@ -220,7 +253,9 @@ export default async function AdminDashboardPage({
                     {coveredShifts.length} matchende vagt(er)
                   </span>
                 ) : (
-                  <span className="w-fit rounded-full bg-bus/20 px-3 py-1.5 text-xs font-bold text-brown">Mangler vagt</span>
+                  <span className="w-fit rounded-full bg-bus/20 px-3 py-1.5 text-xs font-bold text-brown">
+                    Mangler vagt
+                  </span>
                 )}
                 {matchingShifts.length > 0 ? (
                   <div className="rounded-2xl bg-fjord/15 px-3 py-2 text-xs text-ink">
@@ -243,7 +278,10 @@ export default async function AdminDashboardPage({
               </div>
 
               <div className="mt-5 grid gap-3 border-t border-slate-100 pt-4">
-                <Link href={`/dashboard/admin/rides/${ride.id}`} className="button gap-2 bg-bus text-white hover:bg-bus/90">
+                <Link
+                  href={`/dashboard/admin/rides/${ride.id}`}
+                  className="button gap-2 bg-bus text-white hover:bg-bus/90"
+                >
                   <Pencil size={16} />
                   Rediger tur
                 </Link>
@@ -262,7 +300,11 @@ export default async function AdminDashboardPage({
                 <form action={assignDriverAction} className="grid gap-2">
                   <input type="hidden" name="rideRequestId" value={ride.id} />
                   <label htmlFor={`driver-${ride.id}`}>Chauffør</label>
-                  <select id={`driver-${ride.id}`} name="driverProfileId" defaultValue={ride.assignment?.driverProfileId ?? ""}>
+                  <select
+                    id={`driver-${ride.id}`}
+                    name="driverProfileId"
+                    defaultValue={ride.assignment?.driverProfileId ?? ""}
+                  >
                     <option value="">Vælg chauffør</option>
                     {drivers.map((driver) => (
                       <option key={driver.id} value={driver.id}>
@@ -318,7 +360,7 @@ export default async function AdminDashboardPage({
               const matchingShifts = shifts.filter(
                 (shift) =>
                   shift.shiftDate.toDateString() === rideDate &&
-                  isRideWithinShift(ride.rideTime, shift.startTime, shift.endTime)
+                  isRideWithinShift(ride.rideTime, shift.startTime, shift.endTime),
               );
               const coveredShifts = matchingShifts.filter((shift) => shift.driverProfile);
 
@@ -392,7 +434,10 @@ export default async function AdminDashboardPage({
                     <StatusBadge status={ride.status} />
                   </td>
                   <td className="px-4 py-3">
-                    <Link href={`/dashboard/admin/rides/${ride.id}`} className="button mb-3 w-full gap-2 bg-bus text-white hover:bg-bus/90">
+                    <Link
+                      href={`/dashboard/admin/rides/${ride.id}`}
+                      className="button mb-3 w-full gap-2 bg-bus text-white hover:bg-bus/90"
+                    >
                       <Pencil size={16} />
                       Rediger tur
                     </Link>

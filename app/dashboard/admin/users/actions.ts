@@ -1,5 +1,6 @@
 "use server";
 
+import { phoneSchema, addressSchema } from "@/lib/validation";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
@@ -17,8 +18,8 @@ async function getUserForAccess(userId: string) {
       driverProfile: true,
       organizationProfile: true,
       organizationMemberships: { include: { organizationProfile: { include: { user: true } } } },
-      membership: true
-    }
+      membership: true,
+    },
   });
 }
 
@@ -29,7 +30,12 @@ export async function addCitizenAccessToUserAction(formData: FormData) {
   const address = String(formData.get("citizenAddress") ?? "").trim();
   const membershipType = String(formData.get("membershipType") ?? "INDIVIDUAL");
 
-  if (!userId || phone.length < 8 || address.length < 3 || !["INDIVIDUAL", "FAMILY"].includes(membershipType)) {
+  if (
+    !userId ||
+    !phoneSchema.safeParse(phone).success ||
+    !addressSchema.safeParse(address).success ||
+    !["INDIVIDUAL", "FAMILY"].includes(membershipType)
+  ) {
     redirectToUsers("error", "Udfyld telefon, adresse og medlemskabstype for borgeradgang.");
   }
 
@@ -41,12 +47,12 @@ export async function addCitizenAccessToUserAction(formData: FormData) {
 
   await prisma.$transaction(async (tx) => {
     await tx.citizenProfile.create({
-      data: { userId: user.id, phone, address }
+      data: { userId: user.id, phone, address },
     });
 
     if (!user.membership) {
       await tx.membership.create({
-        data: { userId: user.id, type: membershipType, status: "PENDING_PAYMENT" }
+        data: { userId: user.id, type: membershipType, status: "PENDING_PAYMENT" },
       });
     }
   });
@@ -79,8 +85,8 @@ export async function addDriverAccessToUserAction(formData: FormData) {
       phone: phone || user.citizenProfile?.phone || user.organizationProfile?.phone || null,
       licenseNumber: licenseNumber || null,
       notes: notes || null,
-      isActive: true
-    }
+      isActive: true,
+    },
   });
 
   revalidatePath("/dashboard/admin/users");
@@ -95,7 +101,12 @@ export async function addOrganizationAccessToUserAction(formData: FormData) {
   const phone = String(formData.get("organizationPhone") ?? "").trim();
   const address = String(formData.get("organizationAddress") ?? "").trim();
 
-  if (!userId || name.length < 2 || phone.length < 8 || address.length < 3) {
+  if (
+    !userId ||
+    name.length < 2 ||
+    !phoneSchema.safeParse(phone).success ||
+    !addressSchema.safeParse(address).success
+  ) {
     redirectToUsers("error", "Udfyld foreningsnavn, telefon og adresse.");
   }
 
@@ -115,15 +126,15 @@ export async function addOrganizationAccessToUserAction(formData: FormData) {
         contacts: {
           create: {
             userId: user.id,
-            role: "OWNER"
-          }
-        }
-      }
+            role: "OWNER",
+          },
+        },
+      },
     });
 
     if (!user.membership) {
       await tx.membership.create({
-        data: { userId: user.id, type: "ORGANIZATION", status: "PENDING_PAYMENT" }
+        data: { userId: user.id, type: "ORGANIZATION", status: "PENDING_PAYMENT" },
       });
     }
   });

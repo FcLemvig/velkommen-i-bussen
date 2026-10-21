@@ -2,12 +2,13 @@
 
 import { Prisma } from "@prisma/client";
 import { randomBytes } from "crypto";
+import { phoneSchema, addressSchema } from "@/lib/validation";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { hashPassword, requireUser } from "@/lib/auth";
 import { sendDriverWelcomeEmail } from "@/lib/email";
 import { createPasswordResetToken, DRIVER_INVITE_MAX_AGE_MS } from "@/lib/password-reset";
-import { prisma } from "@/lib/prisma";
+import { prisma, scheduleTransaction } from "@/lib/prisma";
 import { saveDriverImage } from "@/lib/uploads";
 import { driverSchema } from "@/lib/validation";
 
@@ -18,12 +19,14 @@ export async function createDriverAction(formData: FormData) {
   try {
     imageUrl = await saveDriverImage(formData.get("image") as File | null);
   } catch (error) {
-    redirect(`/dashboard/admin/drivers/new?error=${encodeURIComponent(error instanceof Error ? error.message : "Billedet kunne ikke uploades.")}`);
+    redirect(
+      `/dashboard/admin/drivers/new?error=${encodeURIComponent(error instanceof Error ? error.message : "Billedet kunne ikke uploades.")}`,
+    );
   }
 
   const parsed = driverSchema.safeParse({
     ...Object.fromEntries(formData),
-    isActive: formData.get("isActive") === "on"
+    isActive: formData.get("isActive") === "on",
   });
 
   if (!parsed.success) {
@@ -33,7 +36,7 @@ export async function createDriverAction(formData: FormData) {
   const email = parsed.data.email.toLowerCase();
   const existingUser = await prisma.user.findUnique({
     where: { email },
-    include: { driverProfile: true }
+    include: { driverProfile: true },
   });
 
   if (existingUser?.driverProfile) {
@@ -51,8 +54,8 @@ export async function createDriverAction(formData: FormData) {
           licenseNumber: parsed.data.licenseNumber,
           imageUrl,
           notes: parsed.data.notes,
-          isActive: parsed.data.isActive
-        }
+          isActive: parsed.data.isActive,
+        },
       });
     } else {
       const invite = createPasswordResetToken();
@@ -72,18 +75,18 @@ export async function createDriverAction(formData: FormData) {
                 licenseNumber: parsed.data.licenseNumber,
                 imageUrl,
                 notes: parsed.data.notes,
-                isActive: parsed.data.isActive
-              }
-            }
-          }
+                isActive: parsed.data.isActive,
+              },
+            },
+          },
         });
 
         await tx.passwordResetToken.create({
           data: {
             userId: user.id,
             tokenHash: invite.tokenHash,
-            expiresAt: new Date(Date.now() + DRIVER_INVITE_MAX_AGE_MS)
-          }
+            expiresAt: new Date(Date.now() + DRIVER_INVITE_MAX_AGE_MS),
+          },
         });
       });
     }
@@ -95,10 +98,7 @@ export async function createDriverAction(formData: FormData) {
     redirect("/dashboard/admin/drivers/new?error=Chauff%C3%B8ren%20kunne%20ikke%20oprettes.");
   }
 
-  const emailSent = await sendDriverWelcomeEmail(
-    { email, name: parsed.data.name },
-    setupToken
-  );
+  const emailSent = await sendDriverWelcomeEmail({ email, name: parsed.data.name }, setupToken);
 
   revalidatePath("/dashboard/admin/drivers");
   const message = emailSent
@@ -109,7 +109,9 @@ export async function createDriverAction(formData: FormData) {
 
 export async function sendDriverWelcomeTestAction(formData: FormData) {
   const admin = await requireUser(["ADMIN"]);
-  const email = String(formData.get("testEmail") ?? "").trim().toLowerCase();
+  const email = String(formData.get("testEmail") ?? "")
+    .trim()
+    .toLowerCase();
 
   if (!/^\S+@\S+\.\S+$/.test(email)) {
     redirect("/dashboard/admin/drivers?error=Skriv%20en%20gyldig%20emailadresse.");
@@ -129,13 +131,17 @@ export async function addCitizenAccessAction(driverProfileId: string, formData: 
   const address = String(formData.get("citizenAddress") ?? "").trim();
   const membershipType = String(formData.get("membershipType") ?? "INDIVIDUAL");
 
-  if (phone.length < 8 || address.length < 3 || !["INDIVIDUAL", "FAMILY"].includes(membershipType)) {
+  if (
+    !phoneSchema.safeParse(phone).success ||
+    !addressSchema.safeParse(address).success ||
+    !["INDIVIDUAL", "FAMILY"].includes(membershipType)
+  ) {
     redirect(`/dashboard/admin/drivers/${driverProfileId}?error=Udfyld%20telefon%2C%20adresse%20og%20medlemskabstype.`);
   }
 
   const driver = await prisma.driverProfile.findUnique({
     where: { id: driverProfileId },
-    include: { user: { include: { citizenProfile: true } } }
+    include: { user: { include: { citizenProfile: true } } },
   });
 
   if (!driver || driver.user.citizenProfile) {
@@ -144,13 +150,13 @@ export async function addCitizenAccessAction(driverProfileId: string, formData: 
 
   await prisma.$transaction([
     prisma.citizenProfile.create({
-      data: { userId: driver.userId, phone, address }
+      data: { userId: driver.userId, phone, address },
     }),
     prisma.membership.upsert({
       where: { userId: driver.userId },
       create: { userId: driver.userId, type: membershipType, status: "PENDING_PAYMENT" },
-      update: { type: membershipType, status: "PENDING_PAYMENT", endsAt: null }
-    })
+      update: { type: membershipType, status: "PENDING_PAYMENT", endsAt: null },
+    }),
   ]);
 
   revalidatePath(`/dashboard/admin/drivers/${driverProfileId}`);
@@ -165,12 +171,14 @@ export async function updateDriverAction(driverProfileId: string, formData: Form
   try {
     imageUrl = await saveDriverImage(formData.get("image") as File | null);
   } catch (error) {
-    redirect(`/dashboard/admin/drivers/${driverProfileId}?error=${encodeURIComponent(error instanceof Error ? error.message : "Billedet kunne ikke uploades.")}`);
+    redirect(
+      `/dashboard/admin/drivers/${driverProfileId}?error=${encodeURIComponent(error instanceof Error ? error.message : "Billedet kunne ikke uploades.")}`,
+    );
   }
 
   const parsed = driverSchema.safeParse({
     ...Object.fromEntries(formData),
-    isActive: formData.get("isActive") === "on"
+    isActive: formData.get("isActive") === "on",
   });
 
   if (!parsed.success) {
@@ -178,21 +186,27 @@ export async function updateDriverAction(driverProfileId: string, formData: Form
   }
 
   try {
-    await prisma.driverProfile.update({
-      where: { id: driverProfileId },
-      data: {
-        phone: parsed.data.phone,
-        licenseNumber: parsed.data.licenseNumber,
-        ...(imageUrl ? { imageUrl } : {}),
-        notes: parsed.data.notes,
-        isActive: parsed.data.isActive,
-        user: {
-          update: {
-            name: parsed.data.name,
-            email: parsed.data.email.toLowerCase(),
-            ...(parsed.data.password ? { passwordHash: await hashPassword(parsed.data.password) } : {})
-          }
-        }
+    await scheduleTransaction(async () => {
+      const driver = await prisma.driverProfile.update({
+        where: { id: driverProfileId },
+        data: {
+          phone: parsed.data.phone,
+          licenseNumber: parsed.data.licenseNumber,
+          ...(imageUrl ? { imageUrl } : {}),
+          notes: parsed.data.notes,
+          isActive: parsed.data.isActive,
+          user: {
+            update: {
+              name: parsed.data.name,
+              email: parsed.data.email.toLowerCase(),
+              ...(parsed.data.password ? { passwordHash: await hashPassword(parsed.data.password) } : {}),
+            },
+          },
+        },
+      });
+      if (parsed.data.password) {
+        await prisma.session.deleteMany({ where: { userId: driver.userId } });
+        await prisma.passwordResetToken.deleteMany({ where: { userId: driver.userId } });
       }
     });
   } catch (error) {

@@ -18,6 +18,7 @@ function urlBase64ToUint8Array(base64String: string) {
 }
 
 export function PushPermissionButton({ publicKey }: { publicKey: string }) {
+  const [isEnabling, setIsEnabling] = useState(false);
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
 
@@ -29,25 +30,36 @@ export function PushPermissionButton({ publicKey }: { publicKey: string }) {
       return;
     }
 
-    const permission = await Notification.requestPermission();
-
-    if (permission !== "granted") {
-      setMessage("Push blev ikke slået til. Du kan prøve igen senere.");
+    if (!publicKey) {
+      setMessage("Push er ikke sat op endnu. Du kan stadig læse beskeder her i appen.");
       return;
     }
+    setIsEnabling(true);
+    try {
+      const permission = await Notification.requestPermission();
 
-    const registration = await navigator.serviceWorker.register("/sw.js");
-    const subscription =
-      (await registration.pushManager.getSubscription()) ||
-      (await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey)
-      }));
+      if (permission !== "granted") {
+        setMessage("Push blev ikke slået til. Du kan prøve igen senere.");
+        return;
+      }
 
-    startTransition(async () => {
-      const result = await savePushSubscriptionAction(subscription.toJSON(), navigator.userAgent);
-      setMessage(result.message);
-    });
+      const registration = await navigator.serviceWorker.register("/sw.js");
+      const subscription =
+        (await registration.pushManager.getSubscription()) ||
+        (await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey),
+        }));
+
+      startTransition(async () => {
+        const result = await savePushSubscriptionAction(subscription.toJSON(), navigator.userAgent);
+        setMessage(result.message);
+      });
+    } catch {
+      setMessage("Push kunne ikke slås til. Kontrollér browserens tilladelser og prøv igen.");
+    } finally {
+      setIsEnabling(false);
+    }
   }
 
   return (
@@ -56,10 +68,16 @@ export function PushPermissionButton({ publicKey }: { publicKey: string }) {
         <h2 className="font-bold text-ink">Push-notifikationer</h2>
         <p className="mt-1 text-sm text-slate-700">Få en besked på telefonen, når der sker noget vigtigt.</p>
       </div>
-      <button type="button" onClick={enablePush} disabled={isPending} className="w-full gap-2 bg-bus text-white hover:bg-bus/90 sm:w-fit">
+      <button
+        type="button"
+        onClick={enablePush}
+        disabled={isPending || isEnabling || !publicKey}
+        className="w-full gap-2 bg-bus text-white hover:bg-bus/90 sm:w-fit"
+      >
         <BellRing size={16} />
-        {isPending ? "Slår til..." : "Slå push til"}
+        {isPending || isEnabling ? "Slår til..." : "Slå push til"}
       </button>
+      {!publicKey ? <p className="text-sm">Push er ikke sat op endnu. Beskeder kan læses her i appen.</p> : null}
       {message ? <p className="text-sm font-semibold text-ink">{message}</p> : null}
     </div>
   );

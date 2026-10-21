@@ -1,3 +1,4 @@
+import { danishToday } from "@/lib/dates";
 import Link from "next/link";
 import { ArrowLeft, BusFront, CalendarPlus, Clock, Pencil, Trash2, UserCheck } from "lucide-react";
 import { createShiftAction, deleteShiftAction } from "@/app/dashboard/admin/shifts/actions";
@@ -7,21 +8,20 @@ import { prisma } from "@/lib/prisma";
 import { busLabels, busOptions, BusName } from "@/lib/shifts";
 
 export default async function AdminShiftsPage({
-  searchParams
+  searchParams,
 }: {
   searchParams: Promise<{ error?: string; success?: string }>;
 }) {
   await requireUser(["ADMIN"]);
   const params = await searchParams;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = new Date(danishToday() + "T00:00:00Z");
   const todayInput = today.toISOString().slice(0, 10);
 
   const shifts = await prisma.driverShift.findMany({
     where: { shiftDate: { gte: today } },
     orderBy: [{ shiftDate: "asc" }, { startTime: "asc" }],
     take: 120,
-    include: { driverProfile: { include: { user: true } } }
+    include: { driverProfile: { include: { user: true } } },
   });
 
   const openShifts = shifts.filter((shift) => !shift.driverProfile).length;
@@ -43,7 +43,10 @@ export default async function AdminShiftsPage({
               <BusFront size={16} />
               Buskalender
             </Link>
-            <Link href="/dashboard/admin" className="button gap-2 border border-white/25 bg-white/10 text-white hover:bg-white/15">
+            <Link
+              href="/dashboard/admin"
+              className="button gap-2 border border-white/25 bg-white/10 text-white hover:bg-white/15"
+            >
               <ArrowLeft size={16} />
               Tilbage
             </Link>
@@ -53,7 +56,9 @@ export default async function AdminShiftsPage({
 
       <FormMessage message={params.error} />
       {params.success ? (
-        <p className="rounded-2xl border border-fjord/30 bg-fjord/10 px-4 py-3 text-sm font-semibold text-ink">{params.success}</p>
+        <p className="rounded-2xl border border-fjord/30 bg-fjord/10 px-4 py-3 text-sm font-semibold text-ink">
+          {params.success}
+        </p>
       ) : null}
 
       <section className="grid gap-3 sm:grid-cols-3">
@@ -80,7 +85,10 @@ export default async function AdminShiftsPage({
         </div>
       </section>
 
-      <form action={createShiftAction} className="grid gap-4 rounded-[28px] border-2 border-fjord/25 bg-white p-5 shadow-sm lg:grid-cols-[1fr_1fr_1fr_1fr_2fr_auto] lg:items-end">
+      <form
+        action={createShiftAction}
+        className="grid gap-4 rounded-[28px] border-2 border-fjord/25 bg-white p-5 shadow-sm lg:grid-cols-[1fr_1fr_1fr_1fr_2fr_auto] lg:items-end"
+      >
         <div className="grid min-w-0 gap-2">
           <label htmlFor="date">Dato</label>
           <input id="date" name="date" type="date" min={todayInput} required className="min-w-0" />
@@ -128,21 +136,30 @@ export default async function AdminShiftsPage({
             </div>
             <div className="mt-3 grid gap-2 text-sm text-slate-700">
               <p>
-                <span className="font-semibold text-ink">Chauffør:</span> {shift.driverProfile?.user.name ?? "Ikke taget"}
+                <span className="font-semibold text-ink">Chauffør:</span>{" "}
+                {shift.driverProfile?.user.name ?? "Ikke taget"}
               </p>
               {shift.notes ? <p>{shift.notes}</p> : null}
-              <span className={`w-fit rounded-full px-3 py-1 text-xs font-bold ${shift.driverProfile ? "bg-fjord/25 text-ink" : "bg-bus/20 text-brown"}`}>
+              <span
+                className={`w-fit rounded-full px-3 py-1 text-xs font-bold ${shift.driverProfile ? "bg-fjord/25 text-ink" : "bg-bus/20 text-brown"}`}
+              >
                 {shift.driverProfile ? "Dækket" : "Mangler chauffør"}
               </span>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-2">
-              <Link href={`/dashboard/admin/shifts/${shift.id}`} className="button justify-center gap-2 border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
+              <Link
+                href={`/dashboard/admin/shifts/${shift.id}`}
+                className="button justify-center gap-2 border-2 border-fjord/30 bg-white text-ink hover:bg-cream"
+              >
                 <Pencil size={15} />
                 Rediger
               </Link>
               <form action={deleteShiftAction}>
                 <input type="hidden" name="shiftId" value={shift.id} />
-                <button type="submit" className="w-full justify-center gap-2 border border-red-200 bg-white text-red-700 hover:bg-red-50">
+                <button
+                  type="submit"
+                  className="w-full justify-center gap-2 border border-red-200 bg-white text-red-700 hover:bg-red-50"
+                >
                   <Trash2 size={15} />
                   Slet
                 </button>
@@ -150,7 +167,9 @@ export default async function AdminShiftsPage({
             </div>
           </article>
         ))}
-        {shifts.length === 0 ? <p className="rounded-2xl bg-white p-5 text-center text-slate-500">Der er ingen vagter endnu.</p> : null}
+        {shifts.length === 0 ? (
+          <p className="rounded-2xl bg-white p-5 text-center text-slate-500">Der er ingen vagter endnu.</p>
+        ) : null}
       </section>
 
       <section className="hidden overflow-x-auto rounded-[28px] border-2 border-fjord/25 bg-white shadow-sm md:block">
@@ -181,19 +200,27 @@ export default async function AdminShiftsPage({
                 <td className="px-4 py-3">{shift.driverProfile?.user.name ?? "Ikke taget"}</td>
                 <td className="px-4 py-3">{shift.notes || "-"}</td>
                 <td className="px-4 py-3">
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${shift.driverProfile ? "bg-fjord/25 text-ink" : "bg-bus/20 text-brown"}`}>
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${shift.driverProfile ? "bg-fjord/25 text-ink" : "bg-bus/20 text-brown"}`}
+                  >
                     {shift.driverProfile ? "Dækket" : "Mangler chauffør"}
                   </span>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-2">
-                    <Link href={`/dashboard/admin/shifts/${shift.id}`} className="button gap-2 border-2 border-fjord/30 bg-white text-ink hover:bg-cream">
+                    <Link
+                      href={`/dashboard/admin/shifts/${shift.id}`}
+                      className="button gap-2 border-2 border-fjord/30 bg-white text-ink hover:bg-cream"
+                    >
                       <Pencil size={15} />
                       Rediger
                     </Link>
                     <form action={deleteShiftAction}>
                       <input type="hidden" name="shiftId" value={shift.id} />
-                      <button type="submit" className="gap-2 border border-red-200 bg-white text-red-700 hover:bg-red-50">
+                      <button
+                        type="submit"
+                        className="gap-2 border border-red-200 bg-white text-red-700 hover:bg-red-50"
+                      >
                         <Trash2 size={15} />
                         Slet
                       </button>

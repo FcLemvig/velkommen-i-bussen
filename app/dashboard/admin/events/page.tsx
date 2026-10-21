@@ -1,6 +1,12 @@
+import { danishToday } from "@/lib/dates";
 import Link from "next/link";
 import { ArrowLeft, Bus, CalendarDays, ChevronDown, MapPin, Pencil, Trash2, UserRound, UsersRound } from "lucide-react";
-import { createEventAction, deleteEventAction, deleteEventSignupAction, updateEventStatusAction } from "@/app/dashboard/admin/events/actions";
+import {
+  createEventAction,
+  deleteEventAction,
+  deleteEventSignupAction,
+  updateEventStatusAction,
+} from "@/app/dashboard/admin/events/actions";
 import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { FormMessage } from "@/components/FormMessage";
 import { requireUser } from "@/lib/auth";
@@ -10,25 +16,24 @@ import { busLabels, busOptions, BusName } from "@/lib/shifts";
 const eventStatusLabels: Record<string, string> = {
   OPEN: "Åben",
   CLOSED: "Lukket",
-  CANCELLED: "Aflyst"
+  CANCELLED: "Aflyst",
 };
 
 export default async function AdminEventsPage({
-  searchParams
+  searchParams,
 }: {
   searchParams: Promise<{ error?: string; success?: string }>;
 }) {
   const params = await searchParams;
   await requireUser(["ADMIN"]);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = new Date(danishToday() + "T00:00:00Z");
   const minimumDate = today.toISOString().slice(0, 10);
 
   const [drivers, events] = await Promise.all([
     prisma.driverProfile.findMany({
       where: { isActive: true },
       orderBy: { user: { name: "asc" } },
-      include: { user: true }
+      include: { user: true },
     }),
     prisma.event.findMany({
       where: { eventDate: { gte: today } },
@@ -39,11 +44,11 @@ export default async function AdminEventsPage({
         signups: {
           orderBy: { createdAt: "asc" },
           include: {
-            citizenProfile: { include: { user: true } }
-          }
-        }
-      }
-    })
+            citizenProfile: { include: { user: true } },
+          },
+        },
+      },
+    }),
   ]);
 
   return (
@@ -57,7 +62,10 @@ export default async function AdminEventsPage({
               Opret fælles ture til arrangementer, reserver bus og følg tilmeldinger.
             </p>
           </div>
-          <Link href="/dashboard/admin" className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20">
+          <Link
+            href="/dashboard/admin"
+            className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20"
+          >
             <ArrowLeft size={16} />
             Tilbage
           </Link>
@@ -71,7 +79,10 @@ export default async function AdminEventsPage({
         </p>
       ) : null}
 
-      <details open={Boolean(params.error)} className="group rounded-[28px] border-2 border-fjord/25 bg-white shadow-sm open:shadow-md">
+      <details
+        open={Boolean(params.error)}
+        className="group rounded-[28px] border-2 border-fjord/25 bg-white shadow-sm open:shadow-md"
+      >
         <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-5 [&::-webkit-details-marker]:hidden md:p-6">
           <div>
             <h2 className="text-xl font-extrabold text-ink">Opret ny begivenhed</h2>
@@ -147,7 +158,12 @@ export default async function AdminEventsPage({
           </div>
           <div className="grid gap-2">
             <label htmlFor="pickupInfo">Opsamling</label>
-            <textarea id="pickupInfo" name="pickupInfo" rows={3} placeholder="Fx opsamling ved Frivilligcenter Lemvig kl. 09:00" />
+            <textarea
+              id="pickupInfo"
+              name="pickupInfo"
+              rows={3}
+              placeholder="Fx opsamling ved Frivilligcenter Lemvig kl. 09:00"
+            />
           </div>
           <button type="submit" className="h-14 bg-bus text-base text-white hover:bg-bus/90">
             Opret begivenhed
@@ -215,7 +231,10 @@ export default async function AdminEventsPage({
                 <h4 className="font-extrabold text-ink">Tilmeldte</h4>
                 <div className="mt-3 grid gap-2">
                   {event.signups.map((signup) => (
-                    <div key={signup.id} className="flex flex-wrap items-start justify-between gap-3 rounded-2xl bg-cream/70 p-3 text-sm">
+                    <div
+                      key={signup.id}
+                      className="flex flex-wrap items-start justify-between gap-3 rounded-2xl bg-cream/70 p-3 text-sm"
+                    >
                       <div>
                         <p className="font-bold text-ink">{signup.citizenProfile.user.name}</p>
                         <p className="text-slate-600">
@@ -230,7 +249,10 @@ export default async function AdminEventsPage({
                       </div>
                       <form action={deleteEventSignupAction}>
                         <input type="hidden" name="signupId" value={signup.id} />
-                        <button type="submit" className="gap-2 border border-red-200 bg-white text-red-700 hover:bg-red-50">
+                        <button
+                          type="submit"
+                          className="gap-2 border border-red-200 bg-white text-red-700 hover:bg-red-50"
+                        >
                           <Trash2 size={15} />
                           Fjern
                         </button>
@@ -246,7 +268,10 @@ export default async function AdminEventsPage({
               </p>
 
               <div className="mt-5 flex flex-wrap gap-3 border-t border-slate-100 pt-4">
-                <Link href={`/dashboard/admin/events/${event.id}`} className="button gap-2 bg-bus text-white hover:bg-bus/90">
+                <Link
+                  href={`/dashboard/admin/events/${event.id}`}
+                  className="button gap-2 bg-bus text-white hover:bg-bus/90"
+                >
                   <Pencil size={16} />
                   Rediger
                 </Link>

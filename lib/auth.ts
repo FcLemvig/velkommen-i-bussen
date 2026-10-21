@@ -29,8 +29,8 @@ export async function createSession(userId: string) {
     data: {
       tokenHash: hashSessionToken(token),
       userId,
-      expiresAt
-    }
+      expiresAt,
+    },
   });
 
   const cookieStore = await cookies();
@@ -39,7 +39,7 @@ export async function createSession(userId: string) {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: SESSION_MAX_AGE_SECONDS
+    maxAge: SESSION_MAX_AGE_SECONDS,
   });
 }
 
@@ -49,7 +49,7 @@ export async function clearSession() {
 
   if (token) {
     await prisma.session.deleteMany({
-      where: { tokenHash: hashSessionToken(token) }
+      where: { tokenHash: hashSessionToken(token) },
     });
   }
 
@@ -73,32 +73,32 @@ export const getCurrentUser = cache(async () => {
           driverProfile: true,
           organizationProfile: {
             include: {
-              user: { include: { membership: true } }
-            }
+              user: { include: { membership: true } },
+            },
           },
           organizationMemberships: {
             include: {
               organizationProfile: {
                 include: {
-                  user: { include: { membership: true } }
-                }
-              }
-            }
+                  user: { include: { membership: true } },
+                },
+              },
+            },
           },
           membership: true,
           _count: {
             select: {
-              notifications: { where: { readAt: null } }
-            }
-          }
-        }
-      }
-    }
+              notifications: { where: { readAt: null } },
+            },
+          },
+        },
+      },
+    },
   });
 
   if (!session || session.expiresAt < new Date()) {
     await prisma.session.deleteMany({
-      where: { tokenHash: hashSessionToken(token) }
+      where: { tokenHash: hashSessionToken(token) },
     });
     return null;
   }
@@ -109,8 +109,8 @@ export const getCurrentUser = cache(async () => {
 export async function deleteExpiredSessions() {
   await prisma.session.deleteMany({
     where: {
-      expiresAt: { lt: new Date() }
-    }
+      expiresAt: { lt: new Date() },
+    },
   });
 }
 
@@ -125,6 +125,9 @@ export async function requireUser(roles?: Role[]) {
     redirect("/dashboard");
   }
 
+  if (roles?.includes("DRIVER") && !user.driverProfile?.isActive) {
+    redirect("/dashboard/profile?error=" + encodeURIComponent("Din chaufføradgang er sat på pause. Kontakt kontoret."));
+  }
   return user;
 }
 
@@ -140,7 +143,11 @@ export function accessRolesForUser(user: {
   if (user.role === "ADMIN") roles.add("ADMIN");
   if (user.citizenProfile) roles.add("CITIZEN");
   if (user.driverProfile) roles.add("DRIVER");
-  if (user.organizationProfile || (Array.isArray(user.organizationMemberships) && user.organizationMemberships.length > 0)) roles.add("ORGANIZATION");
+  if (
+    user.organizationProfile ||
+    (Array.isArray(user.organizationMemberships) && user.organizationMemberships.length > 0)
+  )
+    roles.add("ORGANIZATION");
   if (isRole(user.role)) roles.add(user.role);
 
   return Array.from(roles);
@@ -154,7 +161,7 @@ export function userHasAccess(
     organizationProfile?: unknown;
     organizationMemberships?: unknown[] | null;
   },
-  role: Role
+  role: Role,
 ) {
   return accessRolesForUser(user).includes(role);
 }

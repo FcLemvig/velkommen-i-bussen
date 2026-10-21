@@ -106,9 +106,51 @@ Appen sender email ved:
 - Statusændring til borger
 - Gennemført tur til borger
 
-## Produktionsnoter
+## Kontrol og rettelser fra oktober 2026
+
+Kør `pnpm test`, `pnpm lint`, `pnpm typecheck` og `pnpm build` før udgivelse.
+Testene bruger en isoleret PGlite-database og testdata; de tilgår ikke `DATABASE_URL`.
+Bookinghandlinger bruger en fælles PostgreSQL-transaktionslås, så kontrol og skrivning
+udføres på samme forbindelse. Beskeder sendes efter transaktionen er gemt.
+
+### Adresseopslag
+
+DAWA er erstattet af den officielle Adressevælger. Appen bruger som standard det
+fælles token adressevaelger123, som Klimadatastyrelsen anbefaler pr. 21. oktober 2026.
+Der kræves endnu ingen personlig nøgle: https://confluence.kds.dk/display/ADV/Brugerstyring
+Når personlig brugerstyring indføres, kan tokenet erstattes via servervariablen
+ADDRESS_LOOKUP_TOKEN. Ved nedbrud kan brugeren stadig indtaste adressen manuelt.
+Fritekst er fortsat tilladt til opsamlingssteder.
+
+### Database og udgivelse
+
+Migrationen `20260801000000_restore_missing_tables` genskaber manglende historiske
+definitioner og er bevidst placeret før de migrationer, der henviser til tabellerne.
+Den kan også køres på en eksisterende database, hvor tabellerne allerede findes;
+den sletter ingen data. `20261021090000_complete_indexes` tilføjer manglende indeks.
+Eksisterende migrationsfiler er ikke ændret.
+
+Tag en databasebackup og kontrollér `pnpm exec prisma migrate status` i det valgte
+driftsmiljø. Kør derefter `pnpm exec prisma migrate deploy` som led i udgivelsen.
+Den lokale gennemgang har ikke kørt migrationer mod driftsdatabasen eller udgivet appen.
+Kontrollér tidligere gemte kalenderdatoer ved udgivelse: nye datoer gemmes konsekvent
+som UTC-midnat, mens dagens dato bestemmes i Europe/Copenhagen. Gamle datoer ændres
+ikke automatisk, da deres oprindelige tidszone først skal fastslås.
+
+### Eksterne tjenester
+
+SuperSaaS-fejl stopper nye reservationer frem for at blive tolket som en tom kalender.
+Integrationens reservationer hentes uden cache ved kontrol. Samtidige ændringer
+direkte i SuperSaaS kan ikke låses af appens database; integrationen er fortsat et
+læsebaseret kalenderfeed, ikke en fælles reservationstjeneste.
+
+Mail kræver `RESEND_API_KEY`, `EMAIL_FROM` og `ADMIN_NOTIFICATION_EMAIL`.
+Push kræver både `NEXT_PUBLIC_VAPID_PUBLIC_KEY` og `VAPID_PRIVATE_KEY` fra samme
+nøglepar. Uden pushopsætning vises ingen aktiv tilmeldingsknap.
+
+## Øvrige produktionsnoter
 
 - Sessioner gemmes i databasen med hash af session-token og HTTP-only cookie.
-- `SESSION_SECRET` skal være en lang tilfældig værdi i produktion.
+- Sessionsikkerheden bygger på tilfældige tokens, som kun gemmes som hash. `SESSION_SECRET` bruges ikke af den nuværende sessionskode.
 - Brug Neon/Vercel backup og adgangsstyring, før rigtige borgere inviteres.
 - Appen behandler persondata som navn, adresse, telefon, turformål og samtykkeoplysninger. Afklar GDPR, sletning og adgangsrettigheder før offentlig drift.

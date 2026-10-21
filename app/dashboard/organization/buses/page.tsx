@@ -1,3 +1,4 @@
+import { danishToday } from "@/lib/dates";
 import Link from "next/link";
 import { ArrowLeft, Bus, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { requireUser } from "@/lib/auth";
@@ -7,15 +8,15 @@ import { getSuperSaaSBookings } from "@/lib/supersaas-calendar";
 
 function startOfWeek(date: Date) {
   const next = new Date(date);
-  next.setHours(0, 0, 0, 0);
-  const day = next.getDay() || 7;
-  next.setDate(next.getDate() - day + 1);
+  next.setUTCHours(0, 0, 0, 0);
+  const day = next.getUTCDay() || 7;
+  next.setUTCDate(next.getUTCDate() - day + 1);
   return next;
 }
 
 function addDays(date: Date, days: number) {
   const next = new Date(date);
-  next.setDate(next.getDate() + days);
+  next.setUTCDate(next.getUTCDate() + days);
   return next;
 }
 
@@ -24,17 +25,17 @@ function toDateInputValue(date: Date) {
 }
 
 function sameDate(left: Date, right: Date) {
-  return left.toDateString() === right.toDateString();
+  return left.toISOString().slice(0, 10) === right.toISOString().slice(0, 10);
 }
 
 export default async function OrganizationBusCalendarPage({
-  searchParams
+  searchParams,
 }: {
   searchParams: Promise<{ week?: string }>;
 }) {
   await requireUser(["ORGANIZATION"]);
   const params = await searchParams;
-  const selectedDate = params.week ? new Date(`${params.week}T00:00:00`) : new Date();
+  const selectedDate = params.week ? new Date(`${params.week}T00:00:00Z`) : new Date(danishToday() + "T00:00:00Z");
   const weekStart = startOfWeek(Number.isNaN(selectedDate.getTime()) ? new Date() : selectedDate);
   const weekDays = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
   const weekEnd = addDays(weekStart, 7);
@@ -44,33 +45,33 @@ export default async function OrganizationBusCalendarPage({
       where: {
         shiftDate: {
           gte: weekStart,
-          lt: weekEnd
-        }
+          lt: weekEnd,
+        },
       },
-      orderBy: [{ shiftDate: "asc" }, { startTime: "asc" }]
+      orderBy: [{ shiftDate: "asc" }, { startTime: "asc" }],
     }),
     prisma.busBooking.findMany({
       where: {
         bookingDate: {
           gte: weekStart,
-          lt: weekEnd
+          lt: weekEnd,
         },
-        status: { not: "CANCELLED" }
+        status: { not: "CANCELLED" },
       },
-      orderBy: [{ bookingDate: "asc" }, { startTime: "asc" }]
+      orderBy: [{ bookingDate: "asc" }, { startTime: "asc" }],
     }),
     prisma.event.findMany({
       where: {
         eventDate: {
           gte: weekStart,
-          lt: weekEnd
+          lt: weekEnd,
         },
         sourceRideRequestId: null,
-        status: { not: "CANCELLED" }
+        status: { not: "CANCELLED" },
       },
-      orderBy: [{ eventDate: "asc" }, { startTime: "asc" }]
+      orderBy: [{ eventDate: "asc" }, { startTime: "asc" }],
     }),
-    getSuperSaaSBookings(weekStart, weekEnd)
+    getSuperSaaSBookings(weekStart, weekEnd),
   ]);
 
   const occupied = [
@@ -79,34 +80,34 @@ export default async function OrganizationBusCalendarPage({
       bus: booking.bus,
       date: booking.bookingDate,
       startTime: booking.startTime,
-      endTime: booking.endTime
+      endTime: booking.endTime,
     })),
     ...shifts.map((shift) => ({
       id: `shift-${shift.id}`,
       bus: shift.bus,
       date: shift.shiftDate,
       startTime: shift.startTime,
-      endTime: shift.endTime
+      endTime: shift.endTime,
     })),
     ...events.map((event) => ({
       id: `event-${event.id}`,
       bus: event.bus,
       date: event.eventDate,
       startTime: event.startTime,
-      endTime: event.endTime
+      endTime: event.endTime,
     })),
     ...supersaasBookings.map((booking) => ({
       id: booking.id,
       bus: booking.bus,
       date: booking.date,
       startTime: booking.startTime,
-      endTime: booking.endTime
-    }))
+      endTime: booking.endTime,
+    })),
   ].sort((left, right) => left.date.getTime() - right.date.getTime() || left.startTime.localeCompare(right.startTime));
 
   const previousWeek = toDateInputValue(addDays(weekStart, -7));
   const nextWeek = toDateInputValue(addDays(weekStart, 7));
-  const thisWeek = toDateInputValue(new Date());
+  const thisWeek = danishToday();
 
   return (
     <main className="mx-auto grid max-w-6xl gap-6 px-4 py-5 md:py-8">
@@ -119,7 +120,10 @@ export default async function OrganizationBusCalendarPage({
               Se hvornår Bus Øst og Bus Vest er optaget. Navn, chauffør og formål vises ikke her.
             </p>
           </div>
-          <Link href="/dashboard/organization" className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20">
+          <Link
+            href="/dashboard/organization"
+            className="button gap-2 bg-white/12 text-white ring-1 ring-white/25 hover:bg-white/20"
+          >
             <ArrowLeft size={16} />
             Tilbage
           </Link>
@@ -138,14 +142,23 @@ export default async function OrganizationBusCalendarPage({
             </div>
           </div>
           <div className="grid w-full grid-cols-3 gap-2 sm:w-auto">
-            <Link href={`/dashboard/organization/buses?week=${previousWeek}`} className="button gap-1 border-2 border-fjord/30 bg-white px-3 text-ink hover:bg-cream">
+            <Link
+              href={`/dashboard/organization/buses?week=${previousWeek}`}
+              className="button gap-1 border-2 border-fjord/30 bg-white px-3 text-ink hover:bg-cream"
+            >
               <ChevronLeft size={16} />
               Forrige
             </Link>
-            <Link href={`/dashboard/organization/buses?week=${thisWeek}`} className="button border-2 border-fjord/30 bg-white px-3 text-ink hover:bg-cream">
+            <Link
+              href={`/dashboard/organization/buses?week=${thisWeek}`}
+              className="button border-2 border-fjord/30 bg-white px-3 text-ink hover:bg-cream"
+            >
               Denne
             </Link>
-            <Link href={`/dashboard/organization/buses?week=${nextWeek}`} className="button gap-1 bg-bus px-3 text-white hover:bg-bus/90">
+            <Link
+              href={`/dashboard/organization/buses?week=${nextWeek}`}
+              className="button gap-1 bg-bus px-3 text-white hover:bg-bus/90"
+            >
               Næste
               <ChevronRight size={16} />
             </Link>
@@ -158,7 +171,9 @@ export default async function OrganizationBusCalendarPage({
           <article key={item.id} className="rounded-[24px] border-2 border-fjord/20 bg-white p-4 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-bold text-slate-500">{item.date.toLocaleDateString("da-DK", { weekday: "long" })}</p>
+                <p className="text-sm font-bold text-slate-500">
+                  {item.date.toLocaleDateString("da-DK", { weekday: "long" })}
+                </p>
                 <h3 className="mt-1 text-lg font-extrabold text-ink">
                   {item.date.toLocaleDateString("da-DK")} kl. {item.startTime}-{item.endTime}
                 </h3>
@@ -197,22 +212,32 @@ export default async function OrganizationBusCalendarPage({
               <div className="bg-cream px-4 py-4 font-bold text-ink">{busLabels[bus]}</div>
               {weekDays.map((day) => {
                 const dayShifts = shifts.filter((shift) => shift.bus === bus && sameDate(shift.shiftDate, day));
-                const dayBookings = bookings.filter((booking) => booking.bus === bus && sameDate(booking.bookingDate, day));
-                const daySuperSaaSBookings = supersaasBookings.filter((booking) => booking.bus === bus && sameDate(booking.date, day));
+                const dayBookings = bookings.filter(
+                  (booking) => booking.bus === bus && sameDate(booking.bookingDate, day),
+                );
+                const daySuperSaaSBookings = supersaasBookings.filter(
+                  (booking) => booking.bus === bus && sameDate(booking.date, day),
+                );
                 const dayEvents = events.filter((event) => event.bus === bus && sameDate(event.eventDate, day));
 
                 return (
                   <div key={`${bus}-${day.toISOString()}`} className="min-h-36 border-l border-slate-100 p-3">
                     <div className="grid gap-2">
                       {[...dayBookings, ...dayShifts, ...dayEvents, ...daySuperSaaSBookings].map((item) => (
-                        <div key={item.id} className="rounded-2xl border border-bus/30 bg-bus/10 px-3 py-2 text-sm text-ink">
+                        <div
+                          key={item.id}
+                          className="rounded-2xl border border-bus/30 bg-bus/10 px-3 py-2 text-sm text-ink"
+                        >
                           <div className="font-bold">
                             {item.startTime} - {item.endTime}
                           </div>
                           <div className="mt-1 text-xs text-slate-600">Optaget</div>
                         </div>
                       ))}
-                      {dayShifts.length === 0 && dayBookings.length === 0 && dayEvents.length === 0 && daySuperSaaSBookings.length === 0 ? (
+                      {dayShifts.length === 0 &&
+                      dayBookings.length === 0 &&
+                      dayEvents.length === 0 &&
+                      daySuperSaaSBookings.length === 0 ? (
                         <span className="text-xs text-slate-400">Ledig</span>
                       ) : null}
                     </div>

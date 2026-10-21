@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prisma, scheduleTransaction } from "@/lib/prisma";
 
 export const BUS_PASSENGER_CAPACITY = 6;
 
@@ -7,7 +7,10 @@ export function departureTownFromSharingTitle(title: string) {
 }
 
 function townFromAddress(address: string, fallback: string) {
-  const parts = address.split(",").map((part) => part.trim()).filter(Boolean);
+  const parts = address
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
   const postalPart = parts.at(-1) ?? "";
   const localTown = parts.length >= 3 ? parts.at(-2)?.trim() : "";
 
@@ -30,57 +33,61 @@ function townFromAddress(address: string, fallback: string) {
 }
 
 export async function ensureRideSharingEvent(rideRequestId: string) {
-  const ride = await prisma.rideRequest.findUnique({
-    where: { id: rideRequestId },
-    include: {
-      automaticShift: true,
-      assignment: true
+  return scheduleTransaction(async () => {
+    const ride = await prisma.rideRequest.findUnique({
+      where: { id: rideRequestId },
+      include: {
+        automaticShift: true,
+        assignment: true,
+      },
+    });
+
+    if (!ride?.isSharedRide || !ride.automaticShift || ["CANCELLED", "COMPLETED"].includes(ride.status)) {
+      return null;
     }
-  });
 
-  if (!ride?.isSharedRide || !ride.automaticShift || ["CANCELLED", "COMPLETED"].includes(ride.status)) {
-    return null;
-  }
+    const fromTown = townFromAddress(ride.pickupAddress, "opsamlingsstedet");
+    const toTown = townFromAddress(ride.destinationAddress, "destinationen");
+    const availableSeats = Math.max(BUS_PASSENGER_CAPACITY - ride.passengers, 0);
 
-  const fromTown = townFromAddress(ride.pickupAddress, "opsamlingsstedet");
-  const toTown = townFromAddress(ride.destinationAddress, "destinationen");
-  const availableSeats = Math.max(BUS_PASSENGER_CAPACITY - ride.passengers, 0);
-
-  return prisma.event.upsert({
-    where: { sourceRideRequestId: ride.id },
-    create: {
-      sourceRideRequestId: ride.id,
-      title: `Samkørsel fra ${fromTown} til ${toTown}`,
-      description: `Hop med på en allerede planlagt tur fra ${fromTown} til ${toTown}.`,
-      location: toTown,
-      eventDate: ride.rideDate,
-      startTime: ride.rideTime,
-      endTime: ride.automaticShift.endTime,
-      pickupInfo: `Afgang fra ${fromTown} kl. ${ride.rideTime}. Skriv en note, hvis du ønsker opsamling på ruten.`,
-      capacity: availableSeats,
-      bus: ride.automaticShift.bus,
-      driverProfileId: ride.assignment?.driverProfileId,
-      status: availableSeats > 0 ? "OPEN" : "CLOSED"
-    },
-    update: {
-      title: `Samkørsel fra ${fromTown} til ${toTown}`,
-      description: `Hop med på en allerede planlagt tur fra ${fromTown} til ${toTown}.`,
-      location: toTown,
-      eventDate: ride.rideDate,
-      startTime: ride.rideTime,
-      endTime: ride.automaticShift.endTime,
-      pickupInfo: `Afgang fra ${fromTown} kl. ${ride.rideTime}. Skriv en note, hvis du ønsker opsamling på ruten.`,
-      capacity: availableSeats,
-      bus: ride.automaticShift.bus,
-      driverProfileId: ride.assignment?.driverProfileId ?? null,
-      status: availableSeats > 0 ? "OPEN" : "CLOSED"
-    }
+    return prisma.event.upsert({
+      where: { sourceRideRequestId: ride.id },
+      create: {
+        sourceRideRequestId: ride.id,
+        title: `Samkørsel fra ${fromTown} til ${toTown}`,
+        description: `Hop med på en allerede planlagt tur fra ${fromTown} til ${toTown}.`,
+        location: toTown,
+        eventDate: ride.rideDate,
+        startTime: ride.rideTime,
+        endTime: ride.automaticShift.endTime,
+        pickupInfo: `Afgang fra ${fromTown} kl. ${ride.rideTime}. Skriv en note, hvis du ønsker opsamling på ruten.`,
+        capacity: availableSeats,
+        bus: ride.automaticShift.bus,
+        driverProfileId: ride.assignment?.driverProfileId,
+        status: availableSeats > 0 ? "OPEN" : "CLOSED",
+      },
+      update: {
+        title: `Samkørsel fra ${fromTown} til ${toTown}`,
+        description: `Hop med på en allerede planlagt tur fra ${fromTown} til ${toTown}.`,
+        location: toTown,
+        eventDate: ride.rideDate,
+        startTime: ride.rideTime,
+        endTime: ride.automaticShift.endTime,
+        pickupInfo: `Afgang fra ${fromTown} kl. ${ride.rideTime}. Skriv en note, hvis du ønsker opsamling på ruten.`,
+        capacity: availableSeats,
+        bus: ride.automaticShift.bus,
+        driverProfileId: ride.assignment?.driverProfileId ?? null,
+        status: availableSeats > 0 ? "OPEN" : "CLOSED",
+      },
+    });
   });
 }
 
 export async function updateRideSharingEventStatus(rideRequestId: string, status: "OPEN" | "CLOSED" | "CANCELLED") {
-  return prisma.event.updateMany({
-    where: { sourceRideRequestId: rideRequestId },
-    data: { status }
+  return scheduleTransaction(async () => {
+    return prisma.event.updateMany({
+      where: { sourceRideRequestId: rideRequestId },
+      data: { status },
+    });
   });
 }

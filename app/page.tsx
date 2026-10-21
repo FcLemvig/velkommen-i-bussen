@@ -1,3 +1,4 @@
+import { danishToday } from "@/lib/dates";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
@@ -11,7 +12,7 @@ import {
   MapPin,
   Route,
   ShieldCheck,
-  Users
+  Users,
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
@@ -28,7 +29,7 @@ const primaryActions = [
     href: "/register?type=citizen",
     action: "Opret profil",
     icon: MapPin,
-    external: false
+    external: false,
   },
   {
     title: "Forening",
@@ -36,7 +37,7 @@ const primaryActions = [
     href: "/register?type=organization",
     action: "Opret forening",
     icon: Users,
-    external: false
+    external: false,
   },
   {
     title: "Chauffør",
@@ -44,14 +45,14 @@ const primaryActions = [
     href: driverApplicationUrl,
     action: "Ansøg",
     icon: HandHeart,
-    external: true
-  }
+    external: true,
+  },
 ];
 
 const appHighlights = [
   { title: "Ture", text: "Se status og beskeder.", icon: Route, color: "bg-fjord/15 text-ink" },
   { title: "Vagter", text: "Tag ledige vagter.", icon: CalendarDays, color: "bg-bus/15 text-brown" },
-  { title: "Tryghed", text: "Godkendte chauffører.", icon: ShieldCheck, color: "bg-ink/10 text-ink" }
+  { title: "Tryghed", text: "Godkendte chauffører.", icon: ShieldCheck, color: "bg-ink/10 text-ink" },
 ];
 
 export default async function HomePage() {
@@ -61,16 +62,15 @@ export default async function HomePage() {
     redirect("/dashboard");
   }
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = new Date(danishToday() + "T00:00:00Z");
   const events = await prisma.event.findMany({
     where: {
       eventDate: { gte: today },
-      status: "OPEN"
+      status: "OPEN",
     },
     orderBy: [{ eventDate: "asc" }, { startTime: "asc" }],
     take: 6,
-    include: { signups: true }
+    include: { signups: true },
   });
 
   return (
@@ -102,21 +102,57 @@ export default async function HomePage() {
               <div className="border-b border-fjord/20 px-4 py-4 sm:px-5">
                 <p className="text-xs font-extrabold uppercase text-bus">Fællesture</p>
                 <h2 className="mt-1 text-xl font-extrabold text-ink sm:text-2xl">Hop med, når bussen allerede kører</h2>
-                <p className="mt-1 text-sm leading-5 text-slate-600">Se ture med ledige sæder. Alle kan se turene, og medlemmer kan reservere en plads.</p>
+                <p className="mt-1 text-sm leading-5 text-slate-600">
+                  Se ture med ledige sæder. Alle kan se turene, og medlemmer kan reservere en plads.
+                </p>
               </div>
-              {events.length > 0 ? <div className="divide-y divide-fjord/15">
-                {events.slice(0, 2).map((event) => {
-                  const takenSeats = event.signups.reduce((sum, signup) => sum + signup.passengers, 0);
-                  const remainingSeats = Math.max(event.capacity - takenSeats, 0);
-                  return <Link key={event.id} href="/faellesture" className="flex items-center justify-between gap-3 px-4 py-3 transition hover:bg-cream sm:px-5"><div className="min-w-0"><p className="text-xs font-bold text-slate-500">{event.eventDate.toLocaleDateString("da-DK")} kl. {event.startTime}</p><p className="mt-1 truncate text-sm font-extrabold text-ink">{event.title}</p></div><span className="shrink-0 rounded-full bg-fjord/25 px-3 py-1.5 text-xs font-bold text-ink">{remainingSeats} ledige</span></Link>;
-                })}
-                <Link href="/faellesture" className="flex items-center justify-between bg-bus px-4 py-3 text-sm font-extrabold text-white transition hover:bg-bus/90 sm:px-5">Se alle fællesture<ArrowRight size={18} /></Link>
-              </div> : <div className="flex items-center justify-between gap-3 px-4 py-4 sm:px-5"><p className="text-sm font-semibold text-slate-600">Der er ingen åbne fællesture lige nu.</p><Link href="/faellesture" className="font-bold text-bus hover:text-brown">Se oversigten</Link></div>}
+              {events.length > 0 ? (
+                <div className="divide-y divide-fjord/15">
+                  {events.slice(0, 2).map((event) => {
+                    const takenSeats = event.signups.reduce((sum, signup) => sum + signup.passengers, 0);
+                    const remainingSeats = Math.max(event.capacity - takenSeats, 0);
+                    return (
+                      <Link
+                        key={event.id}
+                        href="/faellesture"
+                        className="flex items-center justify-between gap-3 px-4 py-3 transition hover:bg-cream sm:px-5"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-500">
+                            {event.eventDate.toLocaleDateString("da-DK")} kl. {event.startTime}
+                          </p>
+                          <p className="mt-1 truncate text-sm font-extrabold text-ink">{event.title}</p>
+                        </div>
+                        <span className="shrink-0 rounded-full bg-fjord/25 px-3 py-1.5 text-xs font-bold text-ink">
+                          {remainingSeats} ledige
+                        </span>
+                      </Link>
+                    );
+                  })}
+                  <Link
+                    href="/faellesture"
+                    className="flex items-center justify-between bg-bus px-4 py-3 text-sm font-extrabold text-white transition hover:bg-bus/90 sm:px-5"
+                  >
+                    Se alle fællesture
+                    <ArrowRight size={18} />
+                  </Link>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-3 px-4 py-4 sm:px-5">
+                  <p className="text-sm font-semibold text-slate-600">Der er ingen åbne fællesture lige nu.</p>
+                  <Link href="/faellesture" className="font-bold text-bus hover:text-brown">
+                    Se oversigten
+                  </Link>
+                </div>
+              )}
             </section>
 
             <div className="mt-7 grid max-w-xl gap-3 rounded-[30px] bg-ink/55 p-3 shadow-2xl shadow-ink/35 ring-1 ring-white/20 backdrop-blur sm:grid-cols-3">
               {primaryActions.map(({ title, text, href, action, icon: Icon, external }) => (
-                <div key={title} className="rounded-3xl border-2 border-white bg-white p-4 text-ink shadow-2xl shadow-ink/35">
+                <div
+                  key={title}
+                  className="rounded-3xl border-2 border-white bg-white p-4 text-ink shadow-2xl shadow-ink/35"
+                >
                   <span className="grid h-11 w-11 place-items-center rounded-2xl bg-bus text-white shadow-md shadow-bus/25">
                     <Icon size={21} />
                   </span>
@@ -168,8 +204,7 @@ export default async function HomePage() {
               <p className="mt-4 text-2xl font-extrabold">Frivilligcenter Lemvig</p>
               <div className="mt-4 grid gap-2 text-sm text-white/82">
                 <p className="flex items-center gap-2">
-                  <Clock3 size={16} />
-                  I dag kl. 10:00
+                  <Clock3 size={16} />I dag kl. 10:00
                 </p>
                 <p className="flex items-center gap-2">
                   <MapPin size={16} />
@@ -219,14 +254,19 @@ export default async function HomePage() {
               const departureTown = event.sourceRideRequestId ? departureTownFromSharingTitle(event.title) : null;
 
               return (
-                <article key={event.id} className="rounded-[30px] border-2 border-fjord/20 bg-white p-5 shadow-lg shadow-ink/8">
+                <article
+                  key={event.id}
+                  className="rounded-[30px] border-2 border-fjord/20 bg-white p-5 shadow-lg shadow-ink/8"
+                >
                   <p className="flex items-center gap-2 text-sm font-bold text-slate-500">
                     <CalendarDays size={16} />
                     {event.eventDate.toLocaleDateString("da-DK")}
                   </p>
                   <h3 className="mt-3 text-xl font-extrabold text-ink">{event.title}</h3>
                   <p className="mt-2 text-sm font-extrabold text-brown">
-                    {departureTown ? `Afgang fra ${departureTown} kl. ${event.startTime}` : `Kl. ${event.startTime}-${event.endTime}`}
+                    {departureTown
+                      ? `Afgang fra ${departureTown} kl. ${event.startTime}`
+                      : `Kl. ${event.startTime}-${event.endTime}`}
                   </p>
                   <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-700">{event.description}</p>
                   <div className="mt-4 grid gap-2 text-sm text-slate-700">
@@ -239,11 +279,16 @@ export default async function HomePage() {
                       {busLabels[(event.bus || "EAST") as BusName]} · {remainingSeats} ledige plads(er)
                     </p>
                   </div>
-                  <Link href="/register?type=citizen" className="mt-5 inline-flex w-full items-center justify-between rounded-2xl bg-ink px-4 py-3 text-sm font-bold text-white transition hover:bg-brown">
+                  <Link
+                    href="/register?type=citizen"
+                    className="mt-5 inline-flex w-full items-center justify-between rounded-2xl bg-ink px-4 py-3 text-sm font-bold text-white transition hover:bg-brown"
+                  >
                     Opret medlemsprofil
                     <ArrowRight size={17} />
                   </Link>
-                  <Link href="/login" className="mt-2 block text-center text-sm font-bold text-ink hover:text-bus">Har du allerede en profil? Log ind</Link>
+                  <Link href="/login" className="mt-2 block text-center text-sm font-bold text-ink hover:text-bus">
+                    Har du allerede en profil? Log ind
+                  </Link>
                 </article>
               );
             })}
@@ -263,7 +308,9 @@ export default async function HomePage() {
           <h2 className="mt-2 text-3xl font-extrabold text-ink">Bedre transport og stærkere fællesskab</h2>
         </div>
         <div className="grid gap-4 text-sm leading-7 text-slate-700 sm:text-base">
-          <p>Projektet ledes af Frivilligcenter Lemvig i samarbejde med lokale borgere, foreninger og Lemvig Kommune.</p>
+          <p>
+            Projektet ledes af Frivilligcenter Lemvig i samarbejde med lokale borgere, foreninger og Lemvig Kommune.
+          </p>
           <p>
             Ordningen dækker Møborg, Nees-Skalstrup, Bøvling, Bækmarksbro og Fjaltring-Trans og gør det nemmere at
             deltage i hverdagsliv, fritidsaktiviteter og lokale fællesskaber.

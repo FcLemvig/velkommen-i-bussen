@@ -1,6 +1,17 @@
+import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import Link from "next/link";
-import { ArrowLeft, BadgeCheck, CreditCard, ExternalLink, KeyRound, Mail, MapPin, Phone, UserRound } from "lucide-react";
-import { changePasswordAction } from "@/app/dashboard/profile/actions";
+import {
+  ArrowLeft,
+  BadgeCheck,
+  CreditCard,
+  ExternalLink,
+  KeyRound,
+  Mail,
+  MapPin,
+  Phone,
+  UserRound,
+} from "lucide-react";
+import { changePasswordAction, updateProfileAction } from "@/app/dashboard/profile/actions";
 import { FormMessage } from "@/components/FormMessage";
 import { accessRolesForUser, requireUser } from "@/lib/auth";
 import { roleLabels } from "@/lib/labels";
@@ -15,7 +26,7 @@ function profileAddress(user: Awaited<ReturnType<typeof requireUser>>) {
 }
 
 export default async function ProfilePage({
-  searchParams
+  searchParams,
 }: {
   searchParams: Promise<{ error?: string; success?: string }>;
 }) {
@@ -49,7 +60,10 @@ export default async function ProfilePage({
             <h2 className="text-2xl font-extrabold text-ink">{user.name}</h2>
             <div className="mt-2 flex flex-wrap gap-2">
               {accessRoles.map((role) => (
-                <span key={role} className="inline-flex items-center gap-2 rounded-full bg-fjord/20 px-3 py-1 text-xs font-bold text-ink">
+                <span
+                  key={role}
+                  className="inline-flex items-center gap-2 rounded-full bg-fjord/20 px-3 py-1 text-xs font-bold text-ink"
+                >
                   <BadgeCheck size={14} />
                   {roleLabels[role]}
                 </span>
@@ -103,6 +117,31 @@ export default async function ProfilePage({
       </section>
 
       {hasMembershipProfile ? (
+        <section className="rounded-[32px] border-2 border-fjord/25 bg-white p-6">
+          <h2 className="text-xl font-extrabold">Ret kontaktoplysninger</h2>
+          <form action={updateProfileAction} className="mt-4 grid gap-4">
+            <div className="grid gap-2">
+              <label htmlFor="phone">Telefon</label>
+              <input
+                id="phone"
+                name="phone"
+                type="tel"
+                defaultValue={profilePhone(user) === "Ikke angivet" ? "" : profilePhone(user)}
+                required
+              />
+            </div>
+            <AddressAutocompleteInput
+              id="profileAddress"
+              name="address"
+              label="Adresse"
+              initialValue={profileAddress(user) === "Ikke angivet" ? "" : profileAddress(user)}
+              required
+            />
+            <button type="submit">Gem kontaktoplysninger</button>
+          </form>
+        </section>
+      ) : null}
+      {hasMembershipProfile ? (
         <section className="rounded-[32px] border-2 border-fjord/25 bg-white p-6 shadow-sm">
           <div className="flex items-start gap-3">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-bus/15 text-brown">
@@ -111,7 +150,8 @@ export default async function ProfilePage({
             <div>
               <h2 className="text-xl font-extrabold text-ink">Betaling og afmelding</h2>
               <p className="mt-1 text-sm leading-6 text-slate-600">
-                Tilmelding, betaling og afmelding håndteres hos Unioo. Når du har foretaget en ændring, opdaterer kontoret din medlemsstatus i appen manuelt.
+                Tilmelding, betaling og afmelding håndteres hos Unioo. Når du har foretaget en ændring, opdaterer
+                kontoret din medlemsstatus i appen manuelt.
               </p>
             </div>
           </div>
@@ -143,16 +183,36 @@ export default async function ProfilePage({
         <form action={changePasswordAction} className="mt-5 grid gap-4">
           <div className="grid gap-2">
             <label htmlFor="currentPassword">Nuv&aelig;rende adgangskode</label>
-            <input id="currentPassword" name="currentPassword" type="password" autoComplete="current-password" required />
+            <input
+              id="currentPassword"
+              name="currentPassword"
+              type="password"
+              autoComplete="current-password"
+              required
+            />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
               <label htmlFor="newPassword">Ny adgangskode</label>
-              <input id="newPassword" name="newPassword" type="password" autoComplete="new-password" minLength={8} required />
+              <input
+                id="newPassword"
+                name="newPassword"
+                type="password"
+                autoComplete="new-password"
+                minLength={8}
+                required
+              />
             </div>
             <div className="grid gap-2">
               <label htmlFor="confirmPassword">Gentag ny adgangskode</label>
-              <input id="confirmPassword" name="confirmPassword" type="password" autoComplete="new-password" minLength={8} required />
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                autoComplete="new-password"
+                minLength={8}
+                required
+              />
             </div>
           </div>
           <button type="submit" className="w-full bg-bus text-white hover:bg-bus/90 sm:w-fit">

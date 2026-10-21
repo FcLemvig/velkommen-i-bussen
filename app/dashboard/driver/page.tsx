@@ -1,10 +1,11 @@
+import { danishToday } from "@/lib/dates";
 import { Bus, CalendarClock, CheckCircle2, ChevronDown, MapPin, MessageSquare, Upload, UserRound } from "lucide-react";
 import {
   claimShiftAction,
   completeRideAction,
   releaseShiftAction,
   sendRideMessageAction,
-  updateDriverProfileImageAction
+  updateDriverProfileImageAction,
 } from "@/app/dashboard/driver/actions";
 import { FormMessage } from "@/components/FormMessage";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -13,14 +14,13 @@ import { prisma } from "@/lib/prisma";
 import { busLabels, BusName } from "@/lib/shifts";
 
 export default async function DriverDashboardPage({
-  searchParams
+  searchParams,
 }: {
   searchParams: Promise<{ error?: string; success?: string }>;
 }) {
   const params = await searchParams;
   const user = await requireUser(["DRIVER"]);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = new Date(danishToday() + "T00:00:00Z");
 
   const [assignments, myShifts, openShifts, myEvents] = user.driverProfile
     ? await Promise.all([
@@ -28,23 +28,23 @@ export default async function DriverDashboardPage({
           where: {
             driverProfileId: user.driverProfile.id,
             rideRequest: {
-              OR: [{ rideDate: { gte: today } }, { status: { notIn: ["COMPLETED", "CANCELLED"] } }]
-            }
+              OR: [{ rideDate: { gte: today } }, { status: { notIn: ["COMPLETED", "CANCELLED"] } }],
+            },
           },
           orderBy: { rideRequest: { rideDate: "asc" } },
           take: 40,
           include: {
             rideRequest: {
               include: {
-                citizenProfile: { include: { user: true } }
-              }
-            }
-          }
+                citizenProfile: { include: { user: true } },
+              },
+            },
+          },
         }),
         prisma.driverShift.findMany({
           where: { driverProfileId: user.driverProfile.id, shiftDate: { gte: today } },
           orderBy: [{ shiftDate: "asc" }, { startTime: "asc" }],
-          take: 40
+          take: 40,
         }),
         prisma.driverShift.findMany({
           where: { driverProfileId: null, shiftDate: { gte: today } },
@@ -52,26 +52,26 @@ export default async function DriverDashboardPage({
           take: 40,
           include: {
             rideRequest: {
-              include: { citizenProfile: { include: { user: true } } }
-            }
-          }
+              include: { citizenProfile: { include: { user: true } } },
+            },
+          },
         }),
         prisma.event.findMany({
           where: {
             driverProfileId: user.driverProfile.id,
             eventDate: { gte: today },
-            status: { not: "CANCELLED" }
+            status: { not: "CANCELLED" },
           },
           orderBy: [{ eventDate: "asc" }, { startTime: "asc" }],
           take: 20,
           include: {
             signups: {
               include: {
-                citizenProfile: { include: { user: true } }
-              }
-            }
-          }
-        })
+                citizenProfile: { include: { user: true } },
+              },
+            },
+          },
+        }),
       ])
     : [[], [], [], []];
 
@@ -171,7 +171,9 @@ export default async function DriverDashboardPage({
                 </div>
               </article>
             ))}
-            {myShifts.length === 0 ? <p className="text-sm text-slate-500">Du har ikke taget nogen vagter endnu.</p> : null}
+            {myShifts.length === 0 ? (
+              <p className="text-sm text-slate-500">Du har ikke taget nogen vagter endnu.</p>
+            ) : null}
           </div>
         </div>
 
@@ -182,7 +184,10 @@ export default async function DriverDashboardPage({
               const ride = shift.rideRequest;
 
               return (
-                <details key={shift.id} className="group rounded-2xl border border-bus/25 bg-bus/5 open:bg-white open:shadow-sm">
+                <details
+                  key={shift.id}
+                  className="group rounded-2xl border border-bus/25 bg-bus/5 open:bg-white open:shadow-sm"
+                >
                   <summary className="flex cursor-pointer list-none items-start justify-between gap-3 p-4 [&::-webkit-details-marker]:hidden">
                     <div className="min-w-0">
                       <div className="font-extrabold text-ink">{shift.shiftDate.toLocaleDateString("da-DK")}</div>
@@ -219,8 +224,11 @@ export default async function DriverDashboardPage({
                         {ride.notes ? <p className="rounded-2xl bg-cream px-4 py-3">Note: {ride.notes}</p> : null}
                         {ride.includesMinors ? (
                           <p className="rounded-2xl bg-bus/15 px-4 py-3 text-brown">
-                            Børn/unge på turen. Forældresamtykke er {ride.parentalConsent ? "bekræftet" : "ikke bekræftet"}.
-                            {ride.guardianName ? <span className="block">Forælder/værge: {ride.guardianName}</span> : null}
+                            Børn/unge på turen. Forældresamtykke er{" "}
+                            {ride.parentalConsent ? "bekræftet" : "ikke bekræftet"}.
+                            {ride.guardianName ? (
+                              <span className="block">Forælder/værge: {ride.guardianName}</span>
+                            ) : null}
                             {ride.guardianPhone ? <span className="block">Telefon: {ride.guardianPhone}</span> : null}
                           </p>
                         ) : null}
@@ -239,7 +247,9 @@ export default async function DriverDashboardPage({
                 </details>
               );
             })}
-            {openShifts.length === 0 ? <p className="text-sm text-slate-500">Der er ingen ledige vagter lige nu.</p> : null}
+            {openShifts.length === 0 ? (
+              <p className="text-sm text-slate-500">Der er ingen ledige vagter lige nu.</p>
+            ) : null}
           </div>
         </div>
       </section>
@@ -276,14 +286,19 @@ export default async function DriverDashboardPage({
               </p>
             </div>
 
-            {rideRequest.notes ? <p className="mt-4 rounded-2xl bg-cream px-4 py-3 text-sm text-slate-700">Note: {rideRequest.notes}</p> : null}
+            {rideRequest.notes ? (
+              <p className="mt-4 rounded-2xl bg-cream px-4 py-3 text-sm text-slate-700">Note: {rideRequest.notes}</p>
+            ) : null}
             {rideRequest.includesMinors ? (
               <p className="mt-4 rounded-2xl bg-bus/15 px-4 py-3 text-sm text-brown">
                 Børn/unge på turen. Forældresamtykke er {rideRequest.parentalConsent ? "bekræftet" : "ikke bekræftet"}.
               </p>
             ) : null}
 
-            <form action={sendRideMessageAction} className="mt-5 grid gap-3 rounded-2xl border-2 border-fjord/20 bg-cream/60 p-4">
+            <form
+              action={sendRideMessageAction}
+              className="mt-5 grid gap-3 rounded-2xl border-2 border-fjord/20 bg-cream/60 p-4"
+            >
               <input type="hidden" name="rideRequestId" value={rideRequest.id} />
               <div>
                 <label htmlFor={`message-${rideRequest.id}`} className="flex items-center gap-2 text-ink">
@@ -364,7 +379,9 @@ export default async function DriverDashboardPage({
                     <div key={signup.id} className="rounded-2xl bg-cream/70 px-4 py-3 text-sm text-slate-700">
                       <strong className="text-ink">{signup.citizenProfile.user.name}</strong>
                       <span className="block">{signup.passengers} passager(er)</span>
-                      {signup.citizenProfile.phone ? <span className="block">Tlf. {signup.citizenProfile.phone}</span> : null}
+                      {signup.citizenProfile.phone ? (
+                        <span className="block">Tlf. {signup.citizenProfile.phone}</span>
+                      ) : null}
                       {signup.pickupAddress ? <span className="block">Opsamling: {signup.pickupAddress}</span> : null}
                       {signup.notes ? <span className="mt-1 block">Note: {signup.notes}</span> : null}
                     </div>
