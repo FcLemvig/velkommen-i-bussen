@@ -7,7 +7,6 @@ import { requireUser } from "@/lib/auth";
 import { createNotification, createNotifications } from "@/lib/notifications";
 import { prisma, scheduleTransaction } from "@/lib/prisma";
 import { shiftsOverlap } from "@/lib/shifts";
-import { getSuperSaaSBookings } from "@/lib/supersaas-calendar";
 import { eventSchema } from "@/lib/validation";
 
 function dayRange(date: Date) {
@@ -28,7 +27,7 @@ async function eventHasConflict(data: {
   skipBusConflicts?: boolean;
 }) {
   const { start, end } = dayRange(data.date);
-  const [bookings, shifts, events, supersaasBookings] = await Promise.all([
+  const [bookings, shifts, events] = await Promise.all([
     prisma.busBooking.findMany({
       where: {
         bus: data.bus,
@@ -50,20 +49,25 @@ async function eventHasConflict(data: {
         status: { not: "CANCELLED" },
       },
     }),
-    getSuperSaaSBookings(start, end),
   ]);
 
   const busBusy =
     !data.skipBusConflicts &&
     [
-      ...bookings.map((booking) => ({ startTime: booking.startTime, endTime: booking.endTime })),
+      ...bookings.map((booking) => ({
+        startTime: booking.startTime,
+        endTime: booking.endTime,
+      })),
       ...shifts
         .filter((shift) => shift.rideRequestId !== data.excludeRideRequestId)
-        .map((shift) => ({ startTime: shift.startTime, endTime: shift.endTime })),
-      ...events.map((event) => ({ startTime: event.startTime, endTime: event.endTime })),
-      ...supersaasBookings
-        .filter((booking) => booking.bus === data.bus)
-        .map((booking) => ({ startTime: booking.startTime, endTime: booking.endTime })),
+        .map((shift) => ({
+          startTime: shift.startTime,
+          endTime: shift.endTime,
+        })),
+      ...events.map((event) => ({
+        startTime: event.startTime,
+        endTime: event.endTime,
+      })),
     ].some((item) => shiftsOverlap(data.startTime, data.endTime, item.startTime, item.endTime));
 
   if (busBusy) return "Bussen er allerede optaget i det tidsrum.";
@@ -95,11 +99,17 @@ async function eventHasConflict(data: {
   ]);
 
   const driverBusy = [
-    ...driverBookings.map((booking) => ({ startTime: booking.startTime, endTime: booking.endTime })),
+    ...driverBookings.map((booking) => ({
+      startTime: booking.startTime,
+      endTime: booking.endTime,
+    })),
     ...driverShifts
       .filter((shift) => shift.rideRequestId !== data.excludeRideRequestId)
       .map((shift) => ({ startTime: shift.startTime, endTime: shift.endTime })),
-    ...driverEvents.map((event) => ({ startTime: event.startTime, endTime: event.endTime })),
+    ...driverEvents.map((event) => ({
+      startTime: event.startTime,
+      endTime: event.endTime,
+    })),
   ].some((item) => shiftsOverlap(data.startTime, data.endTime, item.startTime, item.endTime));
 
   return driverBusy ? "Chaufføren er allerede optaget i det tidsrum." : null;
@@ -208,7 +218,10 @@ export async function updateEventStatusAction(formData: FormData) {
   const event = await scheduleTransaction(async () => {
     const existing = await prisma.event.findUnique({
       where: { id: eventId },
-      include: { signups: { include: { citizenProfile: true } }, driverProfile: true },
+      include: {
+        signups: { include: { citizenProfile: true } },
+        driverProfile: true,
+      },
     });
     if (!existing) redirect("/dashboard/admin/events?error=" + encodeURIComponent("Begivenheden findes ikke længere."));
     if (status !== "CANCELLED") {
@@ -223,7 +236,9 @@ export async function updateEventStatusAction(formData: FormData) {
       });
       if (conflict) redirect("/dashboard/admin/events?error=" + encodeURIComponent(conflict));
       if (existing.sourceRideRequestId) {
-        const ride = await prisma.rideRequest.findUnique({ where: { id: existing.sourceRideRequestId } });
+        const ride = await prisma.rideRequest.findUnique({
+          where: { id: existing.sourceRideRequestId },
+        });
         if (!ride || ["CANCELLED", "COMPLETED"].includes(ride.status))
           redirect("/dashboard/admin/events?error=" + encodeURIComponent("Den tilknyttede tur er afsluttet."));
       }

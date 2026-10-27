@@ -5,7 +5,6 @@ import { PGlite } from "@electric-sql/pglite";
 import { dateSchema, timeSchema, phoneSchema, rideRequestSchema } from "../lib/validation";
 import { danishToday, hasDeparted } from "../lib/dates";
 import { searchAddresses } from "../lib/addresses";
-import { CalendarUnavailableError, getSuperSaaSBookings, getSuperSaaSCalendarDisplay } from "../lib/supersaas-calendar";
 
 test("dates, times, telephone numbers and consent reject invalid input", () => {
   for (const value of ["not-a-date", "2026-02-30", "2025-02-29", "2026-13-01"])
@@ -24,7 +23,11 @@ test("dates, times, telephone numbers and consent reject invalid input", () => {
     passengers: 2,
     purpose: "Besøg",
   };
-  const parsed = rideRequestSchema.parse({ ...base, includesMinors: "false", parentalConsent: "false" });
+  const parsed = rideRequestSchema.parse({
+    ...base,
+    includesMinors: "false",
+    parentalConsent: "false",
+  });
   assert.equal(parsed.includesMinors, false);
   assert.equal(parsed.parentalConsent, false);
   assert.equal(
@@ -52,82 +55,13 @@ test("Adressevælger request uses the new API and normalizes its response", asyn
     assert.equal(url.origin, "https://adressevaelger.dk");
     assert.equal(url.pathname, "/adresser/soeg");
     assert.equal(url.searchParams.get("tekst"), "Testvej 1 & 2");
-    return Response.json({ fund: [{ id: "abc", titel: "Testvej 1, 7620 Lemvig", type: "adresse" }] });
+    return Response.json({
+      fund: [{ id: "abc", titel: "Testvej 1, 7620 Lemvig", type: "adresse" }],
+    });
   });
   assert.deepEqual(result, [{ id: "abc", tekst: "Testvej 1, 7620 Lemvig", type: "adresse" }]);
   await assert.rejects(searchAddresses("test", "test-token", async () => Response.json({ status: "fejl" })));
   await assert.rejects(searchAddresses("test", "test-token", async () => new Response("", { status: 503 })));
-});
-
-test("calendar outages never masquerade as an available bus", async () => {
-  const original = globalThis.fetch;
-  try {
-    for (const response of [
-      () => Promise.reject(new Error("offline")),
-      async () => new Response("", { status: 503 }),
-      async () => new Response("<html>Unavailable</html>"),
-    ]) {
-      globalThis.fetch = response;
-      await assert.rejects(
-        getSuperSaaSBookings(new Date("2026-10-21"), new Date("2026-10-22")),
-        CalendarUnavailableError,
-      );
-    }
-  } finally {
-    globalThis.fetch = original;
-  }
-});
-
-test("calendar converts UTC times, splits overnight bookings and skips cancellations", async () => {
-  const original = globalThis.fetch;
-  globalThis.fetch = async () =>
-    new Response(`BEGIN:VCALENDAR
-BEGIN:VEVENT
-UID:overnight
-DTSTART:20261021T210000Z
-DTEND:20261022T010000Z
-DESCRIPTION:Bus Vest
-END:VEVENT
-BEGIN:VEVENT
-UID:cancelled
-DTSTART:20261021T100000Z
-DTEND:20261021T110000Z
-STATUS:CANCELLED
-END:VEVENT
-END:VCALENDAR`);
-  try {
-    const result = await getSuperSaaSBookings(new Date("2026-10-21"), new Date("2026-10-23"));
-    assert.deepEqual(
-      result.map((b) => [b.date.toISOString().slice(0, 10), b.startTime, b.endTime, b.bus]),
-      [
-        ["2026-10-21", "23:00", "24:00", "WEST"],
-        ["2026-10-22", "00:00", "03:00", "WEST"],
-      ],
-    );
-  } finally {
-    globalThis.fetch = original;
-  }
-});
-
-test("SuperSaaS subscription error is not a booking or proof of availability", async () => {
-  const original = globalThis.fetch;
-  globalThis.fetch = async () => new Response(`BEGIN:VCALENDAR
-BEGIN:VEVENT
-DTSTART;TZID=Europe/Copenhagen:20261027T121200
-DTEND;TZID=Europe/Copenhagen:20261101T121200
-UID:s@supersaas.com
-SUMMARY:Ikke tilladt
-DESCRIPTION:Denne mulighed er kun tilgængelig for abonnenter
-END:VEVENT
-END:VCALENDAR`);
-  try {
-    const start = new Date("2026-10-26");
-    const end = new Date("2026-11-02");
-    await assert.rejects(getSuperSaaSBookings(start, end), CalendarUnavailableError);
-    assert.deepEqual(await getSuperSaaSCalendarDisplay(start, end), { available: false, bookings: [] });
-  } finally {
-    globalThis.fetch = original;
-  }
 });
 
 test("all migrations build a fresh database; recovery migration is repeatable", async () => {

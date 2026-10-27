@@ -12,7 +12,6 @@ import { busLabels, BusName } from "@/lib/shifts";
 import { addHoursToTime, shiftsOverlap } from "@/lib/shifts";
 import { prisma, scheduleTransaction } from "@/lib/prisma";
 import { ensureRideSharingEvent, updateRideSharingEventStatus } from "@/lib/ride-sharing";
-import { getSuperSaaSBookings } from "@/lib/supersaas-calendar";
 import { driverShiftSchema } from "@/lib/validation";
 
 async function findOverlappingBusShift(data: {
@@ -24,9 +23,7 @@ async function findOverlappingBusShift(data: {
   excludeRideRequestId?: string;
 }) {
   const date = new Date(`${data.date}T00:00:00Z`);
-  const nextDate = new Date(date);
-  nextDate.setUTCDate(nextDate.getUTCDate() + 1);
-  const [shifts, bookings, events, supersaasBookings] = await Promise.all([
+  const [shifts, bookings, events] = await Promise.all([
     prisma.driverShift.findMany({
       where: {
         bus: data.bus,
@@ -43,14 +40,12 @@ async function findOverlappingBusShift(data: {
       where: { bus: data.bus, eventDate: date, status: { not: "CANCELLED" } },
       select: { startTime: true, endTime: true, sourceRideRequestId: true },
     }),
-    getSuperSaaSBookings(date, nextDate),
   ]);
 
   return [
     ...shifts,
     ...bookings,
     ...events.filter((event) => !data.excludeRideRequestId || event.sourceRideRequestId !== data.excludeRideRequestId),
-    ...supersaasBookings.filter((booking) => booking.bus === data.bus),
   ].some((item) => shiftsOverlap(data.startTime, data.endTime, item.startTime, item.endTime));
 }
 
@@ -126,17 +121,28 @@ export async function deleteShiftAction(formData: FormData) {
   }
 
   const { shift } = await scheduleTransaction(async () => {
-    const existing = await prisma.driverShift.findUnique({ where: { id: shiftId }, include: { rideRequest: true } });
+    const existing = await prisma.driverShift.findUnique({
+      where: { id: shiftId },
+      include: { rideRequest: true },
+    });
     if (existing?.rideRequest && ["CANCELLED", "COMPLETED"].includes(existing.rideRequest.status))
       redirect(
         "/dashboard/admin/shifts?error=" +
           encodeURIComponent("Vagten tilhører en afsluttet tur og bevares i historikken."),
       );
-    const shift = await prisma.driverShift.delete({ where: { id: shiftId }, include: { driverProfile: true } });
+    const shift = await prisma.driverShift.delete({
+      where: { id: shiftId },
+      include: { driverProfile: true },
+    });
     if (shift.rideRequestId) {
       await prisma.$transaction([
-        prisma.rideAssignment.deleteMany({ where: { rideRequestId: shift.rideRequestId } }),
-        prisma.rideRequest.update({ where: { id: shift.rideRequestId }, data: { status: "PENDING" } }),
+        prisma.rideAssignment.deleteMany({
+          where: { rideRequestId: shift.rideRequestId },
+        }),
+        prisma.rideRequest.update({
+          where: { id: shift.rideRequestId },
+          data: { status: "PENDING" },
+        }),
       ]);
       await updateRideSharingEventStatus(shift.rideRequestId, "CANCELLED");
     }
@@ -187,7 +193,10 @@ export async function updateShiftAction(shiftId: string, formData: FormData) {
 
   const { shift, driverProfileId } = await scheduleTransaction(async () => {
     const driverProfileId = String(formData.get("driverProfileId") ?? "");
-    const existing = await prisma.driverShift.findUnique({ where: { id: shiftId }, include: { rideRequest: true } });
+    const existing = await prisma.driverShift.findUnique({
+      where: { id: shiftId },
+      include: { rideRequest: true },
+    });
     if (!existing) redirect("/dashboard/admin/shifts?error=" + encodeURIComponent("Vagten findes ikke længere."));
     if (
       existing.rideRequestId &&
@@ -253,13 +262,21 @@ export async function updateShiftAction(shiftId: string, formData: FormData) {
             create: { rideRequestId: shift.rideRequestId, driverProfileId },
             update: { driverProfileId },
           }),
-          prisma.rideRequest.update({ where: { id: shift.rideRequestId }, data: { status: "ASSIGNED" } }),
+          prisma.rideRequest.update({
+            where: { id: shift.rideRequestId },
+            data: { status: "ASSIGNED" },
+          }),
         ]);
         await ensureRideSharingEvent(shift.rideRequestId);
       } else {
         await prisma.$transaction([
-          prisma.rideAssignment.deleteMany({ where: { rideRequestId: shift.rideRequestId } }),
-          prisma.rideRequest.update({ where: { id: shift.rideRequestId }, data: { status: "PENDING" } }),
+          prisma.rideAssignment.deleteMany({
+            where: { rideRequestId: shift.rideRequestId },
+          }),
+          prisma.rideRequest.update({
+            where: { id: shift.rideRequestId },
+            data: { status: "PENDING" },
+          }),
         ]);
         await updateRideSharingEventStatus(shift.rideRequestId, "CANCELLED");
       }
@@ -269,7 +286,10 @@ export async function updateShiftAction(shiftId: string, formData: FormData) {
   });
 
   const selectedDriver = driverProfileId
-    ? await prisma.driverProfile.findUnique({ where: { id: driverProfileId }, include: { user: true } })
+    ? await prisma.driverProfile.findUnique({
+        where: { id: driverProfileId },
+        include: { user: true },
+      })
     : null;
   await createAuditLog({
     actorUserId: admin.id,

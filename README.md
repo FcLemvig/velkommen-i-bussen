@@ -139,10 +139,9 @@ ikke automatisk, da deres oprindelige tidszone først skal fastslås.
 
 ### Eksterne tjenester
 
-SuperSaaS-fejl stopper nye reservationer frem for at blive tolket som en tom kalender.
-Integrationens reservationer hentes uden cache ved kontrol. Samtidige ændringer
-direkte i SuperSaaS kan ikke låses af appens database; integrationen er fortsat et
-læsebaseret kalenderfeed, ikke en fælles reservationstjeneste.
+Buskalenderen og ledighedskontrollen bruger udelukkende appens egne bookinger,
+vagter og begivenheder. Reservationer i andre systemer skal oprettes i appen
+for at blokere tidsrummet.
 
 Mail kræver `RESEND_API_KEY`, `EMAIL_FROM` og `ADMIN_NOTIFICATION_EMAIL`.
 Push kræver både `NEXT_PUBLIC_VAPID_PUBLIC_KEY` og `VAPID_PRIVATE_KEY` fra samme

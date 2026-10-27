@@ -5,7 +5,6 @@ import { requireUser } from "@/lib/auth";
 import { organizationName } from "@/lib/organizations";
 import { prisma } from "@/lib/prisma";
 import { busLabels, busOptions, BusName } from "@/lib/shifts";
-import { getSuperSaaSCalendarDisplay } from "@/lib/supersaas-calendar";
 
 function startOfWeek(date: Date) {
   const next = new Date(date);
@@ -37,7 +36,7 @@ export default async function BusCalendarPage({ searchParams }: { searchParams: 
   const weekDays = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
   const weekEnd = addDays(weekStart, 7);
 
-  const [shifts, bookings, events, supersaasCalendar] = await Promise.all([
+  const [shifts, bookings, events] = await Promise.all([
     prisma.driverShift.findMany({
       where: {
         shiftDate: {
@@ -77,10 +76,7 @@ export default async function BusCalendarPage({ searchParams }: { searchParams: 
         signups: true,
       },
     }),
-    getSuperSaaSCalendarDisplay(weekStart, weekEnd),
   ]);
-
-  const supersaasBookings = supersaasCalendar.bookings;
 
   const previousWeek = toDateInputValue(addDays(weekStart, -7));
   const nextWeek = toDateInputValue(addDays(weekStart, 7));
@@ -115,7 +111,7 @@ export default async function BusCalendarPage({ searchParams }: { searchParams: 
               <h2 className="text-xl font-semibold text-ink">
                 {weekStart.toLocaleDateString("da-DK")} - {addDays(weekStart, 6).toLocaleDateString("da-DK")}
               </h2>
-              <p className="text-sm text-slate-600">Orange er app-bookinger. Turkis er vagter. Lys er SuperSaaS.</p>
+              <p className="text-sm text-slate-600">Orange er bookinger og begivenheder. Turkis er vagter.</p>
             </div>
           </div>
           <div className="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto sm:flex-wrap">
@@ -143,11 +139,6 @@ export default async function BusCalendarPage({ searchParams }: { searchParams: 
         </div>
       </section>
 
-      {!supersaasCalendar.available ? (
-        <p role="alert" className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          SuperSaaS-bookinger kan ikke hentes. Kun appens egne bookinger vises. Tjek SuperSaaS, før du regner en bus for ledig.
-        </p>
-      ) : null}
       <section className="grid gap-4 md:hidden">
         {busOptions.map((bus) => (
           <div key={bus} className="rounded-[24px] border border-fjord/20 bg-white p-4 shadow-sm">
@@ -158,15 +149,8 @@ export default async function BusCalendarPage({ searchParams }: { searchParams: 
                 const dayBookings = bookings.filter(
                   (booking) => booking.bus === bus && sameDate(booking.bookingDate, day),
                 );
-                const daySuperSaaSBookings = supersaasBookings.filter(
-                  (booking) => booking.bus === bus && sameDate(booking.date, day),
-                );
                 const dayEvents = events.filter((event) => event.bus === bus && sameDate(event.eventDate, day));
-                const hasItems =
-                  dayShifts.length > 0 ||
-                  dayBookings.length > 0 ||
-                  dayEvents.length > 0 ||
-                  daySuperSaaSBookings.length > 0;
+                const hasItems = dayShifts.length > 0 || dayBookings.length > 0 || dayEvents.length > 0;
 
                 return (
                   <div key={`${bus}-${day.toISOString()}`} className="rounded-2xl bg-cream/70 p-3">
@@ -207,25 +191,6 @@ export default async function BusCalendarPage({ searchParams }: { searchParams: 
                           <p className="mt-1 text-xs font-bold text-brown">Begivenhed</p>
                         </Link>
                       ))}
-                      {daySuperSaaSBookings.map((booking) => (
-                        <a
-                          key={booking.id}
-                          href={booking.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="rounded-2xl border border-ink/15 bg-cream p-3 text-sm text-ink hover:bg-cream/80"
-                        >
-                          <div className="flex items-center gap-2 font-bold">
-                            <Clock size={14} />
-                            {booking.startTime} - {booking.endTime}
-                          </div>
-                          <p className="mt-1 text-xs text-slate-700">{booking.title}</p>
-                          {booking.organizer ? (
-                            <p className="mt-1 text-xs text-slate-600">{booking.organizer}</p>
-                          ) : null}
-                          <p className="mt-1 text-xs font-bold text-brown">SuperSaaS</p>
-                        </a>
-                      ))}
                       {dayShifts.map((shift) => (
                         <Link
                           key={shift.id}
@@ -242,7 +207,7 @@ export default async function BusCalendarPage({ searchParams }: { searchParams: 
                           {shift.notes ? <p className="mt-1 text-xs text-slate-500">{shift.notes}</p> : null}
                         </Link>
                       ))}
-                      {!hasItems ? <span className="text-xs text-slate-400">{supersaasCalendar.available ? "Ledig" : "Ingen app-bookinger"}</span> : null}
+                      {!hasItems ? <span className="text-xs text-slate-400">Ledig</span> : null}
                     </div>
                   </div>
                 );
@@ -271,9 +236,6 @@ export default async function BusCalendarPage({ searchParams }: { searchParams: 
                 const dayShifts = shifts.filter((shift) => shift.bus === bus && sameDate(shift.shiftDate, day));
                 const dayBookings = bookings.filter(
                   (booking) => booking.bus === bus && sameDate(booking.bookingDate, day),
-                );
-                const daySuperSaaSBookings = supersaasBookings.filter(
-                  (booking) => booking.bus === bus && sameDate(booking.date, day),
                 );
                 const dayEvents = events.filter((event) => event.bus === bus && sameDate(event.eventDate, day));
 
@@ -312,24 +274,6 @@ export default async function BusCalendarPage({ searchParams }: { searchParams: 
                           </div>
                         </Link>
                       ))}
-                      {daySuperSaaSBookings.map((booking) => (
-                        <a
-                          key={booking.id}
-                          href={booking.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="rounded-2xl border border-ink/15 bg-cream px-3 py-2 text-sm text-ink hover:bg-cream/80"
-                        >
-                          <div className="font-bold">
-                            {booking.startTime} - {booking.endTime}
-                          </div>
-                          <div className="mt-1 text-xs text-slate-700">{booking.title}</div>
-                          {booking.organizer ? (
-                            <div className="mt-1 text-xs text-slate-600">{booking.organizer}</div>
-                          ) : null}
-                          <div className="mt-1 text-xs font-bold text-brown">SuperSaaS</div>
-                        </a>
-                      ))}
                       {dayShifts.map((shift) => (
                         <Link
                           key={shift.id}
@@ -345,11 +289,8 @@ export default async function BusCalendarPage({ searchParams }: { searchParams: 
                           {shift.notes ? <div className="mt-1 text-xs text-slate-500">{shift.notes}</div> : null}
                         </Link>
                       ))}
-                      {dayShifts.length === 0 &&
-                      dayBookings.length === 0 &&
-                      dayEvents.length === 0 &&
-                      daySuperSaaSBookings.length === 0 ? (
-                        <span className="text-xs text-slate-400">{supersaasCalendar.available ? "Ledig" : "Ingen app-bookinger"}</span>
+                      {dayShifts.length === 0 && dayBookings.length === 0 && dayEvents.length === 0 ? (
+                        <span className="text-xs text-slate-400">Ledig</span>
                       ) : null}
                     </div>
                   </div>

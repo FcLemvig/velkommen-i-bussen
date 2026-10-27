@@ -1,7 +1,6 @@
 import { driverIsUnavailable } from "@/lib/scheduling";
 import { ensureRideSharingEvent, updateRideSharingEventStatus } from "@/lib/ride-sharing";
 import { prisma, scheduleTransaction } from "@/lib/prisma";
-import { getSuperSaaSBookings } from "@/lib/supersaas-calendar";
 import { addMinutesToDateAndTime, BusName, preferredBusForAddress, shiftsOverlap } from "@/lib/shifts";
 
 export type RideRequestInput = {
@@ -67,7 +66,7 @@ async function busIsAvailable(data: {
   excludeRideRequestId?: string;
 }) {
   const { start, end } = dayRange(data.date);
-  const [shifts, bookings, events, supersaasBookings] = await Promise.all([
+  const [shifts, bookings, events] = await Promise.all([
     prisma.driverShift.findMany({
       where: {
         bus: data.bus,
@@ -88,20 +87,19 @@ async function busIsAvailable(data: {
         status: { not: "CANCELLED" },
       },
     }),
-    getSuperSaaSBookings(start, end),
   ]);
 
   return ![
     ...shifts
       .filter((shift) => shift.id !== data.excludeShiftId)
       .map((shift) => ({ startTime: shift.startTime, endTime: shift.endTime })),
-    ...bookings.map((booking) => ({ startTime: booking.startTime, endTime: booking.endTime })),
+    ...bookings.map((booking) => ({
+      startTime: booking.startTime,
+      endTime: booking.endTime,
+    })),
     ...events
       .filter((event) => event.sourceRideRequestId !== data.excludeRideRequestId)
       .map((event) => ({ startTime: event.startTime, endTime: event.endTime })),
-    ...supersaasBookings
-      .filter((booking) => booking.bus === data.bus)
-      .map((booking) => ({ startTime: booking.startTime, endTime: booking.endTime })),
   ].some((item) => shiftsOverlap(data.startTime, data.endTime, item.startTime, item.endTime));
 }
 
@@ -131,7 +129,9 @@ export async function setRideBus(rideRequestId: string, bus: BusName) {
         });
 
     if (!sameUtcDate(shiftStart.date, shiftEnd.date)) {
-      return { error: "Turen går over midnat og skal planlægges manuelt." } as const;
+      return {
+        error: "Turen går over midnat og skal planlægges manuelt.",
+      } as const;
     }
 
     const available = await busIsAvailable({
@@ -144,7 +144,9 @@ export async function setRideBus(rideRequestId: string, bus: BusName) {
     });
 
     if (!available) {
-      return { error: `${bus === "EAST" ? "Bus Øst" : "Bus Vest"} er optaget i det valgte tidsrum.` } as const;
+      return {
+        error: `${bus === "EAST" ? "Bus Øst" : "Bus Vest"} er optaget i det valgte tidsrum.`,
+      } as const;
     }
 
     const selectedDriver = linkableShift?.driverProfileId ?? ride.assignment?.driverProfileId;
@@ -159,7 +161,9 @@ export async function setRideBus(rideRequestId: string, bus: BusName) {
         ride.id,
       ))
     )
-      return { error: "Chaufføren er inaktiv eller optaget i tidsrummet." } as const;
+      return {
+        error: "Chaufføren er inaktiv eller optaget i tidsrummet.",
+      } as const;
     const shift = await prisma.$transaction(async (tx) => {
       if (ride.automaticShift)
         return tx.driverShift.update({
@@ -184,7 +188,10 @@ export async function setRideBus(rideRequestId: string, bus: BusName) {
             create: { rideRequestId: ride.id, driverProfileId },
             update: { driverProfileId },
           });
-          await tx.rideRequest.update({ where: { id: ride.id }, data: { status: "ASSIGNED" } });
+          await tx.rideRequest.update({
+            where: { id: ride.id },
+            data: { status: "ASSIGNED" },
+          });
         }
         return linkedShift;
       }
@@ -248,7 +255,9 @@ export async function updateRideDetails(rideRequestId: string, data: RideRequest
 
     if (bus) {
       if (!sameUtcDate(shiftStart.date, shiftEnd.date)) {
-        return { error: "Turen går over midnat og skal planlægges manuelt." } as const;
+        return {
+          error: "Turen går over midnat og skal planlægges manuelt.",
+        } as const;
       }
       const available = await busIsAvailable({
         bus,
@@ -259,7 +268,9 @@ export async function updateRideDetails(rideRequestId: string, data: RideRequest
         excludeRideRequestId: existingRide.id,
       });
       if (!available)
-        return { error: `${bus === "EAST" ? "Bus Øst" : "Bus Vest"} er optaget i det nye tidsrum.` } as const;
+        return {
+          error: `${bus === "EAST" ? "Bus Øst" : "Bus Vest"} er optaget i det nye tidsrum.`,
+        } as const;
     }
 
     const selectedDriver = linkableShift?.driverProfileId ?? existingRide.assignment?.driverProfileId;
@@ -274,7 +285,9 @@ export async function updateRideDetails(rideRequestId: string, data: RideRequest
         existingRide.id,
       ))
     )
-      return { error: "Chaufføren er inaktiv eller optaget i tidsrummet." } as const;
+      return {
+        error: "Chaufføren er inaktiv eller optaget i tidsrummet.",
+      } as const;
     const result = await prisma.$transaction(async (tx) => {
       const ride = await tx.rideRequest.update({
         where: { id: existingRide.id },
@@ -318,7 +331,10 @@ export async function updateRideDetails(rideRequestId: string, data: RideRequest
             create: { rideRequestId: existingRide.id, driverProfileId },
             update: { driverProfileId },
           });
-          await tx.rideRequest.update({ where: { id: existingRide.id }, data: { status: "ASSIGNED" } });
+          await tx.rideRequest.update({
+            where: { id: existingRide.id },
+            data: { status: "ASSIGNED" },
+          });
         }
       } else if (bus) {
         shift = await tx.driverShift.create({
@@ -347,7 +363,14 @@ async function findAvailableBus(data: { pickupAddress: string; date: Date; start
   const busOrder: BusName[] = preferredBus === "EAST" ? ["EAST", "WEST"] : ["WEST", "EAST"];
 
   for (const bus of busOrder) {
-    if (await busIsAvailable({ bus, date: data.date, startTime: data.startTime, endTime: data.endTime })) {
+    if (
+      await busIsAvailable({
+        bus,
+        date: data.date,
+        startTime: data.startTime,
+        endTime: data.endTime,
+      })
+    ) {
       return bus;
     }
   }

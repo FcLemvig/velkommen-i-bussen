@@ -9,14 +9,11 @@ import { isMembershipActive } from "@/lib/membership";
 import { organizationName, primaryOrganizationForUser } from "@/lib/organizations";
 import { prisma, scheduleTransaction } from "@/lib/prisma";
 import { busLabels, BusName, shiftsOverlap } from "@/lib/shifts";
-import { getSuperSaaSBookings } from "@/lib/supersaas-calendar";
 import { organizationBookingSchema } from "@/lib/validation";
 
 async function busIsBooked(data: { bus: string; date: string; startTime: string; endTime: string }) {
   const bookingDate = new Date(`${data.date}T00:00:00Z`);
-  const nextDate = new Date(bookingDate);
-  nextDate.setUTCDate(nextDate.getUTCDate() + 1);
-  const [shifts, bookings, events, supersaasBookings] = await Promise.all([
+  const [shifts, bookings, events] = await Promise.all([
     prisma.driverShift.findMany({
       where: {
         bus: data.bus,
@@ -37,11 +34,10 @@ async function busIsBooked(data: { bus: string; date: string; startTime: string;
         status: { not: "CANCELLED" },
       },
     }),
-    getSuperSaaSBookings(bookingDate, nextDate),
   ]);
 
-  return [...shifts, ...bookings, ...events, ...supersaasBookings.filter((booking) => booking.bus === data.bus)].some(
-    (item) => shiftsOverlap(data.startTime, data.endTime, item.startTime, item.endTime),
+  return [...shifts, ...bookings, ...events].some((item) =>
+    shiftsOverlap(data.startTime, data.endTime, item.startTime, item.endTime),
   );
 }
 
