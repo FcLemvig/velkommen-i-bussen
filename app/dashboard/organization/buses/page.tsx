@@ -4,7 +4,7 @@ import { ArrowLeft, Bus, CalendarDays, ChevronLeft, ChevronRight } from "lucide-
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { busLabels, busOptions, BusName } from "@/lib/shifts";
-import { getSuperSaaSBookings } from "@/lib/supersaas-calendar";
+import { getSuperSaaSCalendarDisplay } from "@/lib/supersaas-calendar";
 
 function startOfWeek(date: Date) {
   const next = new Date(date);
@@ -40,7 +40,7 @@ export default async function OrganizationBusCalendarPage({
   const weekDays = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
   const weekEnd = addDays(weekStart, 7);
 
-  const [shifts, bookings, events, supersaasBookings] = await Promise.all([
+  const [shifts, bookings, events, supersaasCalendar] = await Promise.all([
     prisma.driverShift.findMany({
       where: {
         shiftDate: {
@@ -71,8 +71,10 @@ export default async function OrganizationBusCalendarPage({
       },
       orderBy: [{ eventDate: "asc" }, { startTime: "asc" }],
     }),
-    getSuperSaaSBookings(weekStart, weekEnd),
+    getSuperSaaSCalendarDisplay(weekStart, weekEnd),
   ]);
+
+  const supersaasBookings = supersaasCalendar.bookings;
 
   const occupied = [
     ...bookings.map((booking) => ({
@@ -111,6 +113,11 @@ export default async function OrganizationBusCalendarPage({
 
   return (
     <main className="mx-auto grid max-w-6xl gap-6 px-4 py-5 md:py-8">
+      {!supersaasCalendar.available ? (
+        <p role="alert" className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          SuperSaaS-bookinger kan ikke hentes. Kun appens egne bookinger vises. Tjek SuperSaaS, før du regner en bus for ledig.
+        </p>
+      ) : null}
       <section className="rounded-[32px] bg-ink px-5 py-6 text-white shadow-xl shadow-ink/10 md:px-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -189,8 +196,10 @@ export default async function OrganizationBusCalendarPage({
         {occupied.length === 0 ? (
           <div className="rounded-[28px] border-2 border-dashed border-fjord/25 bg-white p-8 text-center text-slate-500">
             <CalendarDays className="mx-auto text-bus" size={34} />
-            <h3 className="mt-3 text-xl font-extrabold text-ink">Ingen optagede tider</h3>
-            <p className="mt-2 text-sm text-slate-600">Begge busser ser ledige ud i denne uge.</p>
+            <h3 className="mt-3 text-xl font-extrabold text-ink">Ingen app-bookinger</h3>
+            <p className="mt-2 text-sm text-slate-600">
+              {supersaasCalendar.available ? "Begge busser ser ledige ud i denne uge." : "Ledighed kan ikke bekræftes, da SuperSaaS ikke kan hentes."}
+            </p>
           </div>
         ) : null}
       </section>
@@ -238,7 +247,7 @@ export default async function OrganizationBusCalendarPage({
                       dayBookings.length === 0 &&
                       dayEvents.length === 0 &&
                       daySuperSaaSBookings.length === 0 ? (
-                        <span className="text-xs text-slate-400">Ledig</span>
+                        <span className="text-xs text-slate-400">{supersaasCalendar.available ? "Ledig" : "Ingen app-bookinger"}</span>
                       ) : null}
                     </div>
                   </div>

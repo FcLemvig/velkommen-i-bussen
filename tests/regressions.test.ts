@@ -5,7 +5,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { dateSchema, timeSchema, phoneSchema, rideRequestSchema } from "../lib/validation";
 import { danishToday, hasDeparted } from "../lib/dates";
 import { searchAddresses } from "../lib/addresses";
-import { CalendarUnavailableError, getSuperSaaSBookings } from "../lib/supersaas-calendar";
+import { CalendarUnavailableError, getSuperSaaSBookings, getSuperSaaSCalendarDisplay } from "../lib/supersaas-calendar";
 
 test("dates, times, telephone numbers and consent reject invalid input", () => {
   for (const value of ["not-a-date", "2026-02-30", "2025-02-29", "2026-13-01"])
@@ -104,6 +104,27 @@ END:VCALENDAR`);
         ["2026-10-22", "00:00", "03:00", "WEST"],
       ],
     );
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test("SuperSaaS subscription error is not a booking or proof of availability", async () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = async () => new Response(`BEGIN:VCALENDAR
+BEGIN:VEVENT
+DTSTART;TZID=Europe/Copenhagen:20261027T121200
+DTEND;TZID=Europe/Copenhagen:20261101T121200
+UID:s@supersaas.com
+SUMMARY:Ikke tilladt
+DESCRIPTION:Denne mulighed er kun tilgængelig for abonnenter
+END:VEVENT
+END:VCALENDAR`);
+  try {
+    const start = new Date("2026-10-26");
+    const end = new Date("2026-11-02");
+    await assert.rejects(getSuperSaaSBookings(start, end), CalendarUnavailableError);
+    assert.deepEqual(await getSuperSaaSCalendarDisplay(start, end), { available: false, bookings: [] });
   } finally {
     globalThis.fetch = original;
   }

@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { organizationName } from "@/lib/organizations";
 import { prisma } from "@/lib/prisma";
 import { busLabels, busOptions, BusName } from "@/lib/shifts";
-import { getSuperSaaSBookings } from "@/lib/supersaas-calendar";
+import { getSuperSaaSCalendarDisplay } from "@/lib/supersaas-calendar";
 
 function startOfWeek(date: Date) {
   const next = new Date(date);
@@ -37,7 +37,7 @@ export default async function BusCalendarPage({ searchParams }: { searchParams: 
   const weekDays = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
   const weekEnd = addDays(weekStart, 7);
 
-  const [shifts, bookings, events, supersaasBookings] = await Promise.all([
+  const [shifts, bookings, events, supersaasCalendar] = await Promise.all([
     prisma.driverShift.findMany({
       where: {
         shiftDate: {
@@ -77,8 +77,10 @@ export default async function BusCalendarPage({ searchParams }: { searchParams: 
         signups: true,
       },
     }),
-    getSuperSaaSBookings(weekStart, weekEnd),
+    getSuperSaaSCalendarDisplay(weekStart, weekEnd),
   ]);
+
+  const supersaasBookings = supersaasCalendar.bookings;
 
   const previousWeek = toDateInputValue(addDays(weekStart, -7));
   const nextWeek = toDateInputValue(addDays(weekStart, 7));
@@ -141,6 +143,11 @@ export default async function BusCalendarPage({ searchParams }: { searchParams: 
         </div>
       </section>
 
+      {!supersaasCalendar.available ? (
+        <p role="alert" className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          SuperSaaS-bookinger kan ikke hentes. Kun appens egne bookinger vises. Tjek SuperSaaS, før du regner en bus for ledig.
+        </p>
+      ) : null}
       <section className="grid gap-4 md:hidden">
         {busOptions.map((bus) => (
           <div key={bus} className="rounded-[24px] border border-fjord/20 bg-white p-4 shadow-sm">
@@ -235,7 +242,7 @@ export default async function BusCalendarPage({ searchParams }: { searchParams: 
                           {shift.notes ? <p className="mt-1 text-xs text-slate-500">{shift.notes}</p> : null}
                         </Link>
                       ))}
-                      {!hasItems ? <span className="text-xs text-slate-400">Ledig</span> : null}
+                      {!hasItems ? <span className="text-xs text-slate-400">{supersaasCalendar.available ? "Ledig" : "Ingen app-bookinger"}</span> : null}
                     </div>
                   </div>
                 );
@@ -342,7 +349,7 @@ export default async function BusCalendarPage({ searchParams }: { searchParams: 
                       dayBookings.length === 0 &&
                       dayEvents.length === 0 &&
                       daySuperSaaSBookings.length === 0 ? (
-                        <span className="text-xs text-slate-400">Ledig</span>
+                        <span className="text-xs text-slate-400">{supersaasCalendar.available ? "Ledig" : "Ingen app-bookinger"}</span>
                       ) : null}
                     </div>
                   </div>

@@ -122,6 +122,12 @@ export async function getSuperSaaSBookings(start: Date, end: Date): Promise<Supe
       const endDate = parseIcsDate(event.DTEND);
       const description = decodeIcsText(event.DESCRIPTION);
 
+      // SuperSaaS encodes subscription/access errors as a synthetic VEVENT.
+      // It contains no availability data and must never become a reservation.
+      if (event.UID === "s@supersaas.com" && decodeIcsText(event.SUMMARY) === "Ikke tilladt") {
+        throw new CalendarUnavailableError();
+      }
+
       if (event.STATUS === "CANCELLED") continue;
       if (!startDate || !endDate || event.RRULE) throw new CalendarUnavailableError();
       // Split overnight and all-day bookings into daily intervals.
@@ -151,5 +157,16 @@ export async function getSuperSaaSBookings(start: Date, end: Date): Promise<Supe
     );
   } catch {
     throw new CalendarUnavailableError();
+  }
+}
+
+// Display pages can show local bookings during an outage. Scheduling writes
+// must keep using getSuperSaaSBookings so unknown availability blocks booking.
+export async function getSuperSaaSCalendarDisplay(start: Date, end: Date) {
+  try {
+    return { available: true, bookings: await getSuperSaaSBookings(start, end) };
+  } catch (error) {
+    if (!(error instanceof CalendarUnavailableError)) throw error;
+    return { available: false, bookings: [] as SuperSaaSBooking[] };
   }
 }
